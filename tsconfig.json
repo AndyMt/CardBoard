@@ -12,8 +12,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vite/client"],
-    "ignoreDeprecations": "6.0"
+    "types": ["vite/client"]
   },
   "include": ["src"],
   "exclude": ["node_modules"]
