@@ -54,7 +54,7 @@ export const Card: React.FC<CardProps> = ({
   const [cardText, setCardText] = useState(text);
   const [formattedText, setFormattedText] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Format text with line breaks
   useEffect(() => {
@@ -67,6 +67,7 @@ export const Card: React.FC<CardProps> = ({
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
+    data: { type: 'card' }
   });
 
   const style = {
@@ -74,7 +75,7 @@ export const Card: React.FC<CardProps> = ({
     left: `${x}px`,
     top: `${y}px`,
     width: '200px',
-    height: `${cardHeight}px`,
+    minHeight: `${cardHeight}px`,
   };
 
   const handleTextChange = (newText: string) => {
@@ -91,46 +92,73 @@ export const Card: React.FC<CardProps> = ({
     }
   };
 
+  const handleContentClick = () => {
+    // Start editing on single click
+    setIsEditing(true);
+  };
+
+  const handleTextareaBlur = () => {
+    setIsEditing(false);
+  };
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      setIsEditing(false);
+    }
+  };
+
+  // Auto-focus and select all text when editing starts
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.select();
+    }
+  }, [isEditing]);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
       onClick={handleClick}
       className={`
         absolute
         border-2 border-solid ${isSelected ? 'border-blue-500' : 'border-gray-800'}
         rounded-lg p-2
         bg-white shadow-sm
-        cursor-pointer
         flex flex-col
         overflow-hidden
       `}
     >
+      {/* Drag handle - top bar */}
+      <div
+        {...listeners}
+        {...attributes}
+        className="h-4 w-full cursor-move mb-1 flex justify-center"
+      >
+        <div className="h-1 w-8 bg-gray-400 rounded"></div>
+      </div>
+      
       {isEditing ? (
-        <div
-          ref={contentRef}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={(e) => handleTextChange(e.currentTarget.textContent || '')}
-          onBlur={() => setIsEditing(false)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              setIsEditing(false);
-            }
+        <textarea
+          ref={textareaRef}
+          value={cardText}
+          onChange={(e) => handleTextChange(e.target.value)}
+          onBlur={handleTextareaBlur}
+          onKeyDown={handleTextareaKeyDown}
+          className="outline-none min-h-[20px] w-full p-1 bg-blue-50 rounded resize-none"
+          style={{
+            minHeight: `${lineCount * LINE_HEIGHT}px`,
+            whiteSpace: 'pre-wrap',
+            overflow: 'hidden'
           }}
-          className="outline-none min-h-[20px] whitespace-pre-wrap"
-        >
-          {cardText}
-        </div>
+        />
       ) : (
         <div
-          onDoubleClick={() => setIsEditing(true)}
-          className="min-h-[20px] whitespace-pre-wrap"
+          onClick={handleContentClick}
+          className="min-h-[20px] whitespace-pre-wrap flex-1 p-1 cursor-text hover:bg-gray-50 rounded"
         >
-          {formattedText || 'Double-click to edit'}
+          {formattedText || 'Click to edit'}
         </div>
       )}
     </div>

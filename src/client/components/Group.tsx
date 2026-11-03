@@ -5,7 +5,6 @@ const DEFAULT_WIDTH = 440; // 2x2 cards + padding
 const DEFAULT_HEIGHT = 440;
 const MIN_WIDTH = 220; // 1x1 card + padding
 const MIN_HEIGHT = 220;
-const LINE_HEIGHT = 20; // px
 
 interface GroupProps {
   id: string;
@@ -19,7 +18,6 @@ interface GroupProps {
 
 const formatTextWithLineBreaks = (text: string): string => {
   if (!text) return '';
-
   // For group labels, we'll just ensure they fit in the width
   // Groups have a fixed width, so we'll truncate if needed
   return text.length > 30 ? text.substring(0, 27) + '...' : text;
@@ -37,7 +35,7 @@ export const Group: React.FC<GroupProps> = ({
   const [groupLabel, setGroupLabel] = useState(label);
   const [formattedLabel, setFormattedLabel] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Format label
   useEffect(() => {
@@ -46,6 +44,7 @@ export const Group: React.FC<GroupProps> = ({
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
+    data: { type: 'group' }
   });
 
   const style = {
@@ -72,47 +71,70 @@ export const Group: React.FC<GroupProps> = ({
     }
   };
 
+  const handleLabelClick = () => {
+    // Start editing on single click
+    setIsEditing(true);
+  };
+
+  const handleInputBlur = () => {
+    setIsEditing(false);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setIsEditing(false);
+    }
+  };
+
+  // Auto-focus when editing starts
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
       onClick={handleClick}
       className={`
         absolute
         border border-dashed ${isSelected ? 'border-blue-500' : 'border-gray-400'}
         rounded-lg
         bg-gray-50
-        cursor-pointer
         flex flex-col
         overflow-hidden
       `}
     >
+      {/* Drag handle - top bar */}
+      <div
+        {...listeners}
+        {...attributes}
+        className="h-4 w-full cursor-move mb-1 flex justify-center"
+      >
+        <div className="h-1 w-12 bg-gray-400 rounded"></div>
+      </div>
+      
       {/* Label area - white background that breaks the border */}
       <div className="relative -mt-3 self-start">
         <div className="bg-white px-2 py-1 rounded border border-dashed border-gray-400">
           {isEditing ? (
-            <div
-              ref={contentRef}
-              contentEditable
-              suppressContentEditableWarning
-              onInput={(e) => handleLabelChange(e.currentTarget.textContent || '')}
-              onBlur={() => setIsEditing(false)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  setIsEditing(false);
-                }
-              }}
-              className="outline-none text-sm font-medium min-w-[50px]"
-            >
-              {groupLabel}
-            </div>
+            <input
+              ref={inputRef}
+              type="text"
+              value={groupLabel}
+              onChange={(e) => handleLabelChange(e.target.value)}
+              onBlur={handleInputBlur}
+              onKeyDown={handleInputKeyDown}
+              className="outline-none text-sm font-medium min-w-[50px] bg-blue-50 rounded p-1"
+            />
           ) : (
             <div
-              onDoubleClick={() => setIsEditing(true)}
-              className="text-sm font-medium"
+              onClick={handleLabelClick}
+              className="text-sm font-medium cursor-text hover:bg-gray-50 rounded p-1"
             >
               {formattedLabel || 'Group'}
             </div>
