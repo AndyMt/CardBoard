@@ -93,13 +93,17 @@ export const Group: React.FC<GroupProps> = ({
       `}
       onClick={handleClick}
     >
-      {/* Make entire group draggable */}
-      <div {...listeners} {...attributes} className="w-full h-full">
-        {/* 8px high bar across entire width */}
-        <div className="h-2 w-full bg-blue-500"></div>
+      {/* Header with 8px blue bar and label */}
+      <div className="flex flex-col">
+        {/* 8px high blue bar - this is the drag handle */}
+        <div
+          {...listeners}
+          {...attributes}
+          className="h-2 w-full bg-blue-500 cursor-move"
+        ></div>
         
-        {/* Label area */}
-        <div className="p-2">
+        {/* Label area - positioned right below the blue bar */}
+        <div className="px-2 py-1">
           {isEditing ? (
             <input
               ref={inputRef}
@@ -109,6 +113,7 @@ export const Group: React.FC<GroupProps> = ({
               onBlur={handleInputBlur}
               onKeyDown={handleInputKeyDown}
               className="outline-none text-sm font-medium w-full bg-blue-50 rounded px-1 py-0.5"
+              onClick={(e) => e.stopPropagation()}
             />
           ) : (
             <div
@@ -119,11 +124,11 @@ export const Group: React.FC<GroupProps> = ({
             </div>
           )}
         </div>
-        
-        {/* Content area */}
-        <div className="flex-1 p-2 pt-0">
-          {/* This is where cards will be placed */}
-        </div>
+      </div>
+      
+      {/* Content area */}
+      <div className="flex-1 p-2 pt-0">
+        {/* This is where cards will be placed */}
       </div>
     </div>
   );

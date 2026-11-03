@@ -105,22 +105,21 @@ export const Card: React.FC<CardProps> = ({
       className={`
         absolute
         border-2 border-solid ${isSelected ? 'border-blue-500' : 'border-gray-800'}
-        rounded-lg p-2
-        bg-white shadow-sm
+        rounded-lg
+        bg-white
         flex flex-col
         overflow-hidden
       `}
     >
-      {/* Drag handle - top bar */}
+      {/* Drag handle - 8px blue bar at top */}
       <div
         {...listeners}
         {...attributes}
-        className="h-4 w-full cursor-move mb-1 flex justify-center"
-      >
-        <div className="h-1 w-8 bg-gray-400 rounded"></div>
-      </div>
+        className="h-2 w-full bg-blue-500 cursor-move"
+      ></div>
       
-      <div className="flex-1 w-full">
+      {/* Content area */}
+      <div className="flex-1 p-2">
         {isEditing ? (
           <textarea
             ref={textareaRef}
@@ -137,7 +136,7 @@ export const Card: React.FC<CardProps> = ({
                 setIsEditing(false);
               }
             }}
-            className="outline-none w-full p-1 bg-blue-50 rounded resize-none"
+            className="outline-none w-full bg-blue-50 rounded resize-none"
             style={{
               whiteSpace: 'pre-wrap',
               wordWrap: 'break-word',
@@ -154,7 +153,7 @@ export const Card: React.FC<CardProps> = ({
           <div
             ref={textRef}
             onClick={handleContentClick}
-            className="w-full p-1 cursor-text hover:bg-gray-50 rounded"
+            className="w-full cursor-text hover:bg-gray-50 rounded"
             style={{
               whiteSpace: 'pre-wrap',
               wordWrap: 'break-word',
