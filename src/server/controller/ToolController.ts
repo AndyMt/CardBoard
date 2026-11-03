@@ -10,7 +10,4 @@ export class ToolController {
   setSelectedTool(tool: ToolType): void {
     this.selectedTool = tool;
   }
-  
-  // Additional tool-related methods can be added here
-  // For example: validateToolChange, getAvailableTools, etc.
 }

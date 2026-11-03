@@ -1,30 +1,30 @@
 import React, { useState } from 'react';
 import BoardView from './components/BoardView.js';
 import Toolbar from './components/Toolbar.js';
-import { ToolController, ToolType } from './controllers/ToolController.js';
+import ToolService, { ToolType } from './services/ToolService.js';
 
 export interface AppProps {
   // Define props if needed
 }
 
 const App: React.FC<AppProps> = () => {
-  // Create tool controller instance
-  const toolController = new ToolController();
+  // Get tool service instance
+  const toolService = ToolService.getInstance();
   
-  // State for selected tool (using controller)
+  // State for selected tool (using service)
   const [selectedTool, setSelectedTool] = useState<ToolType>(
-    toolController.getSelectedTool()
+    toolService.getSelectedTool()
   );
 
-  // Handle tool selection through controller
+  // Handle tool selection through service
   const handleToolSelect = (tool: ToolType) => {
-    toolController.setSelectedTool(tool);
+    toolService.setSelectedTool(tool);
     setSelectedTool(tool);
   };
 
   return (
     <div className="app h-screen bg-gray-100 overflow-hidden flex flex-col">
-      {/* Toolbar with controller */}
+      {/* Toolbar with service */}
       <Toolbar
         selectedTool={selectedTool}
         onToolSelect={handleToolSelect}
