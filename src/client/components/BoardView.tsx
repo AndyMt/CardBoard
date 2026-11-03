@@ -5,6 +5,7 @@ import Group from './Group.js';
 import { Card as CardType } from '../../types/Card';
 import { Group as GroupType } from '../../types/Group';
 import BoardService from '../services/BoardService';
+import logger from '../utils/logger';
 
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
@@ -161,33 +162,30 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
     }));
   };
 
-  const handleSelect = (id: string, e: React.MouseEvent) => {
-    // Check if Ctrl/Cmd key is pressed for multi-select
-    const isMultiSelect = e.ctrlKey || e.metaKey;
+  const handleSelect = (id: string) => {
+    logger.selection(`Selecting item ${id}`);
     
     setSelectedItems(prev => {
-      // If Ctrl/Cmd is pressed, toggle selection of this item
-      if (isMultiSelect) {
-        if (prev.includes(id)) {
-          return prev.filter(item => item !== id);
-        } else {
-          return [...prev, id];
-        }
+      // If already selected, deselect it
+      if (prev.length === 1 && prev[0] === id) {
+        logger.selection(`Deselecting ${id}`);
+        return [];
       }
-      // If no modifier key, select only this item
+      // Otherwise select this item
       else {
+        logger.selection(`Selecting ${id}`);
         return [id];
       }
     });
   };
 
   const handleBoardClick = async (e: React.MouseEvent<HTMLDivElement>) => {
-    // Deselect all when clicking on empty space
+    logger.selection('Board click - deselecting all items');
     setSelectedItems([]);
     
     // Handle tool-specific actions
     if (selectedTool === 'select') {
-      // Do nothing for select tool
+      logger.selection('Select tool active, no action taken');
       return;
     }
     
@@ -197,6 +195,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
     const y = e.clientY - boardRect.top;
     
     if (selectedTool === 'card') {
+      logger.selection(`Creating new card at x: ${x}, y: ${y}`);
       // Create new card using client-side helper
       const newCard = createDefaultCard(x, y);
       
@@ -205,10 +204,12 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
         const boardService = BoardService.getInstance();
         const { cards } = await boardService.addCard(newCard);
         setCards(cards);
+        logger.selection('Card created successfully');
       } catch (err) {
         console.error('Failed to add card:', err);
       }
     } else if (selectedTool === 'group') {
+      logger.selection(`Creating new group at x: ${x}, y: ${y}`);
       // Create new group using client-side helper
       const newGroup = createDefaultGroup(x, y);
       
@@ -217,49 +218,67 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
         const boardService = BoardService.getInstance();
         const { groups } = await boardService.addGroup(newGroup);
         setGroups(groups);
+        logger.selection('Group created successfully');
       } catch (err) {
         console.error('Failed to add group:', err);
       }
     }
   };
 
+  // Debug: Show selected items
+  console.log('Selected items:', selectedItems);
+  
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div
         className="relative w-full h-full bg-gray-100 overflow-auto"
         onClick={handleBoardClick}
       >
+        {/* Debug: Show selected items count */}
+        <div className="absolute top-4 left-4 bg-white p-2 rounded shadow z-50">
+          Selected: {selectedItems.length} items
+        </div>
         {/* Groups */}
-        {groups.map(group => (
-          <Group
-            key={group.id}
-            id={group.id}
-            label={group.label}
-            x={group.x}
-            y={group.y}
-            width={group.width || 440}
-            height={group.height || 440}
-            isSelected={selectedItems.includes(group.id)}
-            onLabelChange={handleGroupLabelChange}
-            onSelect={(id, e) => handleSelect(id, e)}
-          />
-        ))}
+        {groups.map(group => {
+          const isGroupSelected = selectedItems.includes(group.id);
+          console.log(`Group ${group.id}: isSelected = ${isGroupSelected}`);
+          
+          return (
+            <Group
+              key={group.id}
+              id={group.id}
+              label={group.label}
+              x={group.x}
+              y={group.y}
+              width={group.width || 440}
+              height={group.height || 440}
+              isSelected={isGroupSelected}
+              onLabelChange={handleGroupLabelChange}
+              onSelect={handleSelect}
+            />
+          );
+        })}
         
         {/* Cards */}
-        {cards.map(card => (
-          <Card
-            key={card.id}
-            id={card.id}
-            text={card.text}
-            x={card.x}
-            y={card.y}
-            width={card.width || 200}
-            height={card.height || 60}
-            isSelected={selectedItems.includes(card.id)}
-            onTextChange={handleCardTextChange}
-            onSelect={(id, e) => handleSelect(id, e)}
-          />
-        ))}
+        {cards.map(card => {
+          const isCardSelected = selectedItems.includes(card.id);
+          console.log(`Card ${card.id}: isSelected = ${isCardSelected}`);
+          
+          return (
+            <Card
+              key={card.id}
+              id={card.id}
+              text={card.text}
+              x={card.x}
+              y={card.y}
+              width={card.width || 200}
+              height={card.height || 60}
+              isSelected={isCardSelected}
+              onTextChange={handleCardTextChange}
+              onSelect={handleSelect}
+            />
+          );
+        })}
       </div>
     </DndContext>
   );

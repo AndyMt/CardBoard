@@ -16,6 +16,30 @@ const persistence = new JSONPersistence();
 app.use(cors());
 app.use(express.json());
 
+// Logging endpoint
+app.post('/api/log', (req, res) => {
+  const { type, message } = req.body;
+  const logger = require('./logger');
+  
+  if (type && message) {
+    switch(type) {
+      case 'selection':
+        logger.selection(message);
+        break;
+      case 'card':
+        logger.card(message);
+        break;
+      case 'group':
+        logger.group(message);
+        break;
+      default:
+        logger.log(message);
+    }
+  }
+  
+  res.json({ success: true });
+});
+
 // API Routes
 app.get('/api/board', async (req, res) => {
   try {

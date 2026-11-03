@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import logger from '../utils/logger';
 
 const CARD_WIDTH = 200; // px
 const LINE_HEIGHT = 20; // px
@@ -9,6 +10,8 @@ interface CardProps {
   text: string;
   x: number;
   y: number;
+  width?: number;
+  height?: number;
   isSelected: boolean;
   onTextChange?: (id: string, newText: string) => void;
   onSelect?: (id: string) => void;
@@ -19,7 +22,7 @@ export const Card: React.FC<CardProps> = ({
   text,
   x,
   y,
-  width = 200,
+  width = CARD_WIDTH,
   height = 60,
   isSelected = false,
   onTextChange,
@@ -30,6 +33,8 @@ export const Card: React.FC<CardProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(20);
+
+  console.log(`Card ${id}: Rendering, isSelected=${isSelected}`);
 
   // Measure text height and update both elements
   const updateHeight = () => {
@@ -81,13 +86,19 @@ export const Card: React.FC<CardProps> = ({
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    // Only select if clicking on the border (not content)
-    if (e.target === e.currentTarget && onSelect) {
+    logger.card(`Click on card ${id}`);
+    e.stopPropagation();
+    
+    if (onSelect) {
+      logger.card(`Calling onSelect for ${id}`);
       onSelect(id);
+    } else {
+      logger.card(`onSelect handler not defined for ${id}`);
     }
   };
 
   const handleContentClick = () => {
+    console.log(`Card ${id}: Content click, entering edit mode`);
     // Start editing on single click
     setIsEditing(true);
   };
@@ -95,6 +106,7 @@ export const Card: React.FC<CardProps> = ({
   // Auto-enter edit mode when card is created with empty text
   useEffect(() => {
     if (cardText === '' && !isEditing) {
+      console.log(`Card ${id}: Empty text, auto-entering edit mode`);
       setIsEditing(true);
     }
   }, [cardText]);
@@ -102,6 +114,7 @@ export const Card: React.FC<CardProps> = ({
   // Auto-focus and select all text when editing starts
   useEffect(() => {
     if (isEditing && textareaRef.current) {
+      console.log(`Card ${id}: Editing mode, focusing textarea`);
       textareaRef.current.focus();
       textareaRef.current.select();
     }
@@ -112,22 +125,23 @@ export const Card: React.FC<CardProps> = ({
       ref={setNodeRef}
       style={style}
       onClick={handleClick}
-      className={`
-        absolute
-        border-2 border-solid border-gray-800
-        rounded-lg
-        bg-white
-        flex flex-col
-        overflow-hidden
-        card-component
-        ${isSelected ? 'selected' : ''}
-      `}
+      className={`absolute border-2 border-solid border-gray-800 rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}
     >
+
+      
       {/* Drag handle - 8px blue bar at top */}
       <div
         {...listeners}
         {...attributes}
         className="h-2 w-full bg-blue-500 cursor-move"
+        onClick={(e) => {
+          logger.card(`Drag handle click on card ${id}`);
+          e.stopPropagation();
+          if (onSelect) {
+            logger.card(`Calling onSelect from drag handle for ${id}`);
+            onSelect(id);
+          }
+        }}
       ></div>
       
       {/* Content area */}
@@ -141,41 +155,49 @@ export const Card: React.FC<CardProps> = ({
               // Update height as user types
               setTimeout(updateHeight, 0);
             }}
-            onBlur={() => setIsEditing(false)}
+            onBlur={() => {
+              console.log(`Card ${id}: Editing blur, exiting edit mode`);
+              setIsEditing(false);
+            }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
+                console.log(`Card ${id}: Enter pressed, exiting edit mode`);
                 setIsEditing(false);
               }
             }}
             className="outline-none w-full bg-blue-50 rounded resize-none"
-            style={{
-              whiteSpace: 'pre-wrap',
-              wordWrap: 'break-word',
-              fontFamily: 'inherit',
-              fontSize: 'inherit',
-              lineHeight: `${LINE_HEIGHT}px`,
-              minHeight: '20px',
-              boxSizing: 'border-box',
-              border: 'none',
-              height: `${contentHeight}px`
-            }}
+            style={
+              {
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+                lineHeight: `${LINE_HEIGHT}px`,
+                minHeight: '20px',
+                boxSizing: 'border-box',
+                border: 'none',
+                height: `${contentHeight}px`
+              }
+            }
           />
         ) : (
           <div
             ref={textRef}
             onClick={handleContentClick}
             className="w-full cursor-text hover:bg-gray-50 rounded"
-            style={{
-              whiteSpace: 'pre-wrap',
-              wordWrap: 'break-word',
-              fontFamily: 'inherit',
-              fontSize: 'inherit',
-              lineHeight: `${LINE_HEIGHT}px`,
-              minHeight: '20px',
-              boxSizing: 'border-box',
-              height: `${contentHeight}px`
-            }}
+            style={
+              {
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word',
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+                lineHeight: `${LINE_HEIGHT}px`,
+                minHeight: '20px',
+                boxSizing: 'border-box',
+                height: `${contentHeight}px`
+              }
+            }
           >
             {cardText || 'Click to edit'}
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import logger from '../utils/logger';
 
 const DEFAULT_WIDTH = 440; // 2x2 cards + padding
 const DEFAULT_HEIGHT = 440;
@@ -11,6 +12,8 @@ interface GroupProps {
   label: string;
   x: number;
   y: number;
+  width?: number;
+  height?: number;
   isSelected: boolean;
   onLabelChange?: (id: string, newLabel: string) => void;
   onSelect?: (id: string) => void;
@@ -30,6 +33,8 @@ export const Group: React.FC<GroupProps> = ({
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  console.log(`Group ${id}: Rendering, isSelected=${isSelected}`);
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
@@ -54,22 +59,31 @@ export const Group: React.FC<GroupProps> = ({
   };
 
   const handleClick = (e: React.MouseEvent) => {
+    logger.group(`Click on group ${id}`);
+    e.stopPropagation();
+    
     if (onSelect) {
+      logger.group(`Calling onSelect for ${id}`);
       onSelect(id);
+    } else {
+      logger.group(`onSelect handler not defined for ${id}`);
     }
   };
 
   const handleLabelClick = () => {
+    console.log(`Group ${id}: Label click, entering edit mode`);
     setIsEditing(true);
   };
 
   const handleInputBlur = () => {
+    console.log(`Group ${id}: Input blur, exiting edit mode`);
     setIsEditing(false);
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+      console.log(`Group ${id}: Enter pressed, exiting edit mode`);
       setIsEditing(false);
     }
   };
@@ -77,6 +91,7 @@ export const Group: React.FC<GroupProps> = ({
   // Auto-enter edit mode when group is created with empty label
   useEffect(() => {
     if (groupLabel === '' && !isEditing) {
+      console.log(`Group ${id}: Empty label, auto-entering edit mode`);
       setIsEditing(true);
     }
   }, [groupLabel]);
@@ -84,6 +99,7 @@ export const Group: React.FC<GroupProps> = ({
   // Auto-focus when editing starts
   useEffect(() => {
     if (isEditing && inputRef.current) {
+      console.log(`Group ${id}: Editing mode, focusing input`);
       inputRef.current.focus();
       inputRef.current.select();
     }
@@ -93,15 +109,11 @@ export const Group: React.FC<GroupProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`
-        absolute
-        border-[1.33px] border-dashed ${isSelected ? 'border-blue-500' : 'border-gray-400'}
-        rounded-lg
-        bg-white
-        overflow-hidden
-      `}
       onClick={handleClick}
+      className={`absolute border-[1.33px] border-dashed border-gray-400 rounded-lg bg-white overflow-hidden group-component ${isSelected ? 'selected' : ''}`}
     >
+
+      
       {/* Header with 8px blue bar and centered label */}
       <div className="flex flex-col">
         {/* 8px high blue bar - this is the drag handle */}
@@ -109,6 +121,14 @@ export const Group: React.FC<GroupProps> = ({
           {...listeners}
           {...attributes}
           className="h-2 w-full bg-blue-500 cursor-move"
+          onClick={(e) => {
+            logger.group(`Drag handle click on group ${id}`);
+            e.stopPropagation();
+            if (onSelect) {
+              logger.group(`Calling onSelect from drag handle for ${id}`);
+              onSelect(id);
+            }
+          }}
         ></div>
         
         {/* Label area - centered */}
