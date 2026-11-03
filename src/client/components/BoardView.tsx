@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { DndContext, DragEndEvent } from '@dnd-kit/core';
 import Card from './Card.js';
 import Group from './Group.js';
-import { Card as CardType } from '../../types/Card';
-import { Group as GroupType } from '../../types/Group';
+import { Card as CardType } from '../../types/Card.js';
+import { Group as GroupType } from '../../types/Group.js';
 
 // Client-side model helpers (following MVC pattern)
 const createCard = (x: number, y: number): CardType => ({

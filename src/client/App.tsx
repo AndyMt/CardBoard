@@ -1,20 +1,33 @@
 import React, { useState } from 'react';
 import BoardView from './components/BoardView.js';
-import Toolbar, { ToolType } from './components/Toolbar.js';
+import Toolbar from './components/Toolbar.js';
+import { ToolController, ToolType } from './controllers/ToolController.js';
 
 export interface AppProps {
   // Define props if needed
 }
 
 const App: React.FC<AppProps> = () => {
-  const [selectedTool, setSelectedTool] = useState<ToolType>('select');
+  // Create tool controller instance
+  const toolController = new ToolController();
+  
+  // State for selected tool (using controller)
+  const [selectedTool, setSelectedTool] = useState<ToolType>(
+    toolController.getSelectedTool()
+  );
+
+  // Handle tool selection through controller
+  const handleToolSelect = (tool: ToolType) => {
+    toolController.setSelectedTool(tool);
+    setSelectedTool(tool);
+  };
 
   return (
     <div className="app h-screen bg-gray-100 overflow-hidden flex flex-col">
-      {/* Toolbar at the top - fixed position */}
+      {/* Toolbar with controller */}
       <Toolbar
         selectedTool={selectedTool}
-        onToolSelect={setSelectedTool}
+        onToolSelect={handleToolSelect}
       />
       
       {/* Board view takes remaining space */}
