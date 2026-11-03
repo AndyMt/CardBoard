@@ -1,144 +1,216 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DndContext, DragEndEvent } from '@dnd-kit/core';
 import Card from './Card.js';
 import Group from './Group.js';
-import { Card as CardType } from '../../types/Card.js';
-import { Group as GroupType } from '../../types/Group.js';
-
-// Client-side model helpers (following MVC pattern)
-const createCard = (x: number, y: number): CardType => ({
-  id: `card-${Date.now()}`,
-  text: '',
-  x: x - 100, // Center the card
-  y: y - 30,  // Account for header
-  width: 200,
-  height: 60,
-  isSelected: false
-});
-
-const createGroup = (x: number, y: number): GroupType => ({
-  id: `group-${Date.now()}`,
-  label: '',
-  x: x - 220, // Center the group
-  y: y - 30,  // Account for header
-  width: 440,
-  height: 440,
-  isSelected: false
-});
+import { Card as CardType } from '../../types/Card';
+import { Group as GroupType } from '../../types/Group';
+import BoardService from '../services/BoardService';
 
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
 }
 
+// Helper functions for model operations (client-side only)
+const createDefaultCard = (x: number, y: number): CardType => {
+  return {
+    id: `card-${Date.now()}`,
+    text: '',
+    x: x - 100, // Center the card on click position
+    y: y - 30,  // Account for card height
+    width: 200, // Default card width
+    height: 60, // Default card height
+    isSelected: false,
+  };
+};
+
+const createDefaultGroup = (x: number, y: number): GroupType => {
+  return {
+    id: `group-${Date.now()}`,
+    label: '',
+    x: x - 220, // Center the group on click position
+    y: y - 30,  // Account for group header height
+    width: 440, // Default group width
+    height: 440, // Default group height
+    isSelected: false,
+  };
+};
+
 export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
-  // State with proper typing
-  const [cards, setCards] = useState<CardType[]>([
-    {
-      id: 'card-1',
-      text: 'This is a sample card with some text that should wrap to multiple lines based on the character limit.',
-      x: 50,
-      y: 100,
-      width: 200,
-      height: 80,
-      isSelected: false,
-    },
-    {
-      id: 'card-2',
-      text: 'Short text',
-      x: 300,
-      y: 100,
-      width: 200,
-      height: 60,
-      isSelected: false,
-    },
-    {
-      id: 'card-3',
-      text: 'Another card with a very long text that should demonstrate the word wrapping functionality properly when rendered.',
-      x: 50,
-      y: 300,
-      width: 200,
-      height: 80,
-      isSelected: false,
-    }
-  ]);
-
-  const [groups, setGroups] = useState<GroupType[]>([
-    {
-      id: 'group-1',
-      label: 'Sample Group',
-      x: 400,
-      y: 50,
-      width: 440,
-      height: 440,
-      isSelected: false,
-    },
-    {
-      id: 'group-2',
-      label: 'Another Group with a Longer Label',
-      x: 400,
-      y: 300,
-      width: 440,
-      height: 440,
-      isSelected: false,
-    }
-  ]);
-
+  const [cards, setCards] = useState<CardType[]>([]);
+  const [groups, setGroups] = useState<GroupType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
-  // Controller methods
+  // Load board data on component mount
+  useEffect(() => {
+    const loadBoard = async () => {
+      try {
+        const boardService = BoardService.getInstance();
+        const { cards, groups } = await boardService.getBoard();
+        setCards(cards);
+        setGroups(groups);
+      } catch (err) {
+        console.error('Failed to load board:', err);
+        setError('Failed to load board data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadBoard();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="relative w-full h-full bg-gray-100 overflow-auto flex items-center justify-center">
+        <div>Loading board...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="relative w-full h-full bg-gray-100 overflow-auto flex items-center justify-center">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
 
     if (active.data.current?.type === 'card') {
-      setCards(prev => prev.map(card =>
-        card.id === active.id
-          ? { ...card, x: card.x + delta.x, y: card.y + delta.y }
-          : card
-      ));
+      setCards(prevCards => prevCards.map(card => {
+        if (card.id === active.id) {
+          const updatedCard = {
+            ...card,
+            x: card.x + delta.x,
+            y: card.y + delta.y,
+          };
+          
+          // Update card position in persistence
+          const boardService = BoardService.getInstance();
+          boardService.updateCard(card.id, {
+            x: updatedCard.x,
+            y: updatedCard.y
+          }).catch(err => {
+            console.error('Failed to update card position:', err);
+          });
+          
+          return updatedCard;
+        }
+        return card;
+      }));
     } else if (active.data.current?.type === 'group') {
-      setGroups(prev => prev.map(group =>
-        group.id === active.id
-          ? { ...group, x: group.x + delta.x, y: group.y + delta.y }
-          : group
-      ));
+      setGroups(prevGroups => prevGroups.map(group => {
+        if (group.id === active.id) {
+          const updatedGroup = {
+            ...group,
+            x: group.x + delta.x,
+            y: group.y + delta.y,
+          };
+          
+          // Update group position in persistence
+          const boardService = BoardService.getInstance();
+          boardService.updateGroup(group.id, {
+            x: updatedGroup.x,
+            y: updatedGroup.y
+          }).catch(err => {
+            console.error('Failed to update group position:', err);
+          });
+          
+          return updatedGroup;
+        }
+        return group;
+      }));
     }
   };
 
   const handleCardTextChange = (id: string, newText: string) => {
-    setCards(prev => prev.map(card =>
-      card.id === id ? { ...card, text: newText } : card
-    ));
+    setCards(prevCards => prevCards.map(card => {
+      if (card.id === id) {
+        const updatedCard = { ...card, text: newText };
+        
+        // Update card text in persistence
+        const boardService = BoardService.getInstance();
+        boardService.updateCard(id, { text: newText }).catch(err => {
+          console.error('Failed to update card text:', err);
+        });
+        
+        return updatedCard;
+      }
+      return card;
+    }));
   };
 
   const handleGroupLabelChange = (id: string, newLabel: string) => {
-    setGroups(prev => prev.map(group =>
-      group.id === id ? { ...group, label: newLabel } : group
-    ));
+    setGroups(prevGroups => prevGroups.map(group => {
+      if (group.id === id) {
+        const updatedGroup = { ...group, label: newLabel };
+        
+        // Update group label in persistence
+        const boardService = BoardService.getInstance();
+        boardService.updateGroup(id, { label: newLabel }).catch(err => {
+          console.error('Failed to update group label:', err);
+        });
+        
+        return updatedGroup;
+      }
+      return group;
+    }));
   };
 
   const handleSelect = (id: string, type: 'card' | 'group') => {
-    setSelectedItems(prev =>
-      prev.includes(id)
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
-    );
+    setSelectedItems(prev => {
+      // Toggle selection
+      if (prev.includes(id)) {
+        return prev.filter(item => item !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
   };
 
-  const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleBoardClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     // Deselect all when clicking on empty space
     setSelectedItems([]);
-
-    if (selectedTool === 'select') return;
-
-    // Get click position
+    
+    // Handle tool-specific actions
+    if (selectedTool === 'select') {
+      // Do nothing for select tool
+      return;
+    }
+    
+    // Get click position relative to board
     const boardRect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - boardRect.left;
     const y = e.clientY - boardRect.top;
-
+    
     if (selectedTool === 'card') {
-      setCards(prev => [...prev, createCard(x, y)]);
+      // Create new card using client-side helper
+      const newCard = createDefaultCard(x, y);
+      
+      // Add card to persistence
+      try {
+        const boardService = BoardService.getInstance();
+        const { cards } = await boardService.addCard(newCard);
+        setCards(cards);
+      } catch (err) {
+        console.error('Failed to add card:', err);
+      }
     } else if (selectedTool === 'group') {
-      setGroups(prev => [...prev, createGroup(x, y)]);
+      // Create new group using client-side helper
+      const newGroup = createDefaultGroup(x, y);
+      
+      // Add group to persistence
+      try {
+        const boardService = BoardService.getInstance();
+        const { groups } = await boardService.addGroup(newGroup);
+        setGroups(groups);
+      } catch (err) {
+        console.error('Failed to add group:', err);
+      }
     }
   };
 
@@ -161,7 +233,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
             onSelect={() => handleSelect(group.id, 'group')}
           />
         ))}
-
+        
         {/* Cards */}
         {cards.map(card => (
           <Card
