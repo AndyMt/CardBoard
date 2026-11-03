@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 
-const MAX_CHARS_PER_LINE = 30;
+const CARD_WIDTH = 200; // px
 const LINE_HEIGHT = 20; // px
 
 interface CardProps {
@@ -14,34 +14,6 @@ interface CardProps {
   onSelect?: (id: string) => void;
 }
 
-const formatTextWithLineBreaks = (text: string): string => {
-  if (!text) return '';
-
-  const words = text.split(' ');
-  let currentLine = '';
-  let result = '';
-
-  for (const word of words) {
-    if (currentLine.length + word.length + 1 <= MAX_CHARS_PER_LINE) {
-      // Add to current line
-      currentLine += (currentLine ? ' ' : '') + word;
-    } else {
-      // Start new line
-      if (result) result += '\n';
-      result += currentLine;
-      currentLine = word;
-    }
-  }
-
-  // Add the last line
-  if (currentLine) {
-    if (result) result += '\n';
-    result += currentLine;
-  }
-
-  return result;
-};
-
 export const Card: React.FC<CardProps> = ({
   id,
   text,
@@ -52,18 +24,39 @@ export const Card: React.FC<CardProps> = ({
   onSelect
 }) => {
   const [cardText, setCardText] = useState(text);
-  const [formattedText, setFormattedText] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const [contentHeight, setContentHeight] = useState(20);
 
-  // Format text with line breaks
+  // Measure text height and update both elements
+  const updateHeight = () => {
+    if (isEditing && textareaRef.current) {
+      // For textarea, temporarily set to auto height to measure
+      textareaRef.current.style.height = 'auto';
+      const height = textareaRef.current.scrollHeight;
+      setContentHeight(Math.max(height, 20));
+      textareaRef.current.style.height = `${height}px`;
+    } else if (!isEditing && textRef.current) {
+      // For div, use scrollHeight
+      const height = textRef.current.scrollHeight;
+      setContentHeight(Math.max(height, 20));
+    }
+  };
+
+  // Update height when text or mode changes
   useEffect(() => {
-    setFormattedText(formatTextWithLineBreaks(cardText));
-  }, [cardText]);
+    updateHeight();
+  }, [cardText, isEditing]);
 
-  // Calculate height based on line count
-  const lineCount = formattedText.split('\n').length;
-  const cardHeight = lineCount * LINE_HEIGHT + 40; // 40px for padding/border
+  // Also update height when refs become available
+  useEffect(() => {
+    if (textRef.current) updateHeight();
+  }, [textRef.current]);
+
+  useEffect(() => {
+    if (textareaRef.current) updateHeight();
+  }, [textareaRef.current]);
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
@@ -74,8 +67,7 @@ export const Card: React.FC<CardProps> = ({
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     left: `${x}px`,
     top: `${y}px`,
-    width: '200px',
-    minHeight: `${cardHeight}px`,
+    width: `${CARD_WIDTH}px`,
   };
 
   const handleTextChange = (newText: string) => {
@@ -95,17 +87,6 @@ export const Card: React.FC<CardProps> = ({
   const handleContentClick = () => {
     // Start editing on single click
     setIsEditing(true);
-  };
-
-  const handleTextareaBlur = () => {
-    setIsEditing(false);
-  };
-
-  const handleTextareaKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      setIsEditing(false);
-    }
   };
 
   // Auto-focus and select all text when editing starts
@@ -139,28 +120,56 @@ export const Card: React.FC<CardProps> = ({
         <div className="h-1 w-8 bg-gray-400 rounded"></div>
       </div>
       
-      {isEditing ? (
-        <textarea
-          ref={textareaRef}
-          value={cardText}
-          onChange={(e) => handleTextChange(e.target.value)}
-          onBlur={handleTextareaBlur}
-          onKeyDown={handleTextareaKeyDown}
-          className="outline-none min-h-[20px] w-full p-1 bg-blue-50 rounded resize-none"
-          style={{
-            minHeight: `${lineCount * LINE_HEIGHT}px`,
-            whiteSpace: 'pre-wrap',
-            overflow: 'hidden'
-          }}
-        />
-      ) : (
-        <div
-          onClick={handleContentClick}
-          className="min-h-[20px] whitespace-pre-wrap flex-1 p-1 cursor-text hover:bg-gray-50 rounded"
-        >
-          {formattedText || 'Click to edit'}
-        </div>
-      )}
+      <div className="flex-1 w-full">
+        {isEditing ? (
+          <textarea
+            ref={textareaRef}
+            value={cardText}
+            onChange={(e) => {
+              handleTextChange(e.target.value);
+              // Update height as user types
+              setTimeout(updateHeight, 0);
+            }}
+            onBlur={() => setIsEditing(false)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                setIsEditing(false);
+              }
+            }}
+            className="outline-none w-full p-1 bg-blue-50 rounded resize-none"
+            style={{
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+              fontFamily: 'inherit',
+              fontSize: 'inherit',
+              lineHeight: `${LINE_HEIGHT}px`,
+              minHeight: '20px',
+              boxSizing: 'border-box',
+              border: 'none',
+              height: `${contentHeight}px`
+            }}
+          />
+        ) : (
+          <div
+            ref={textRef}
+            onClick={handleContentClick}
+            className="w-full p-1 cursor-text hover:bg-gray-50 rounded"
+            style={{
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+              fontFamily: 'inherit',
+              fontSize: 'inherit',
+              lineHeight: `${LINE_HEIGHT}px`,
+              minHeight: '20px',
+              boxSizing: 'border-box',
+              height: `${contentHeight}px`
+            }}
+          >
+            {cardText || 'Click to edit'}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
