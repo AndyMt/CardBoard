@@ -1,41 +1,70 @@
-import { Card } from './Card.js';
-import { Group } from './Group.js';
-import { Board } from '../../types/Board.js';
+import { Card } from './Card';
+import { Group } from './Group';
 
-export class BoardModel implements Board {
+export interface BoardModel {
   cards: Card[];
   groups: Group[];
-  groupCards: Array<{ groupId: string; cardId: string }>;
+  lastUpdated: string;
+}
 
-  constructor() {
-    this.cards = [];
-    this.groups = [];
-    this.groupCards = [];
+export const createDefaultBoard = (): BoardModel => ({
+  cards: [],
+  groups: [],
+  lastUpdated: new Date().toISOString()
+});
+
+export class BoardModelManager {
+  private board: BoardModel;
+  
+  constructor(initialBoard?: BoardModel) {
+    this.board = initialBoard || createDefaultBoard();
   }
-
-  addCard(cardData: Partial<Card>): void {
-    const card = new Card(cardData);
-    this.cards.push(card);
+  
+  getBoard(): BoardModel {
+    return this.board;
   }
-
-  addGroup(groupData: Partial<Group>): void {
-    const group = new Group(groupData);
-    this.groups.push(group);
+  
+  addCard(card: Card): void {
+    this.board.cards.push(card);
+    this.board.lastUpdated = new Date().toISOString();
   }
-
+  
+  addGroup(group: Group): void {
+    this.board.groups.push(group);
+    this.board.lastUpdated = new Date().toISOString();
+  }
+  
+  updateCard(cardId: string, updates: Partial<Card>): void {
+    const cardIndex = this.board.cards.findIndex(c => c.id === cardId);
+    if (cardIndex >= 0) {
+      this.board.cards[cardIndex] = { ...this.board.cards[cardIndex], ...updates };
+      this.board.lastUpdated = new Date().toISOString();
+    }
+  }
+  
+  updateGroup(groupId: string, updates: Partial<Group>): void {
+    const groupIndex = this.board.groups.findIndex(g => g.id === groupId);
+    if (groupIndex >= 0) {
+      this.board.groups[groupIndex] = { ...this.board.groups[groupIndex], ...updates };
+      this.board.lastUpdated = new Date().toISOString();
+    }
+  }
+  
   moveCard(cardId: string, x: number, y: number): void {
-    const card = this.cards.find(c => c.id === cardId);
+    const card = this.board.cards.find(c => c.id === cardId);
     if (card) {
       card.x = x;
       card.y = y;
+      this.board.lastUpdated = new Date().toISOString();
     }
   }
-
+  
   moveGroup(groupId: string, x: number, y: number): void {
-    const group = this.groups.find(g => g.id === groupId);
+    const group = this.board.groups.find(g => g.id === groupId);
     if (group) {
       group.x = x;
       group.y = y;
+      this.board.lastUpdated = new Date().toISOString();
     }
   }
 }
