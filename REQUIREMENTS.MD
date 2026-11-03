@@ -17,17 +17,20 @@ The application shall have the following features:
 
 ## User interface
 
-- toolbar with buttons for adding new groups, cards, and selecting/deselecting items on the left border
-- indicator how many users are currently on the board top right corner
+- toolbar with buttons for adding groups, cards and selecting/deselecting/moving items on the top border
+- toolbar buttons shall be order left to right.
+- the toolbar shall not scroll with the canvas = shall always stay visible.
+- when a toolbar button is selected, its background color shall be highlighted.
+- for card or group when clicking into some empty area shall place the element at that position and go right into edit mode.
+- indicator how many users are currently on the board is shown in the toolbar in the top right corner.
 
 ## Card element
 
-- default size is 200 pixels or 30 characters wide.
+- default size is 200 pixels or approx 30 characters wide.
 - Border shall be 2px thick continuous
 - Text shall be centered horizontally
 - Text shall be rendered with word break
 - Height shall adapt according to number of lines needed
-- constraint: no more than 30 characters wide per line
 - clicking on the card border shall select the card.
 
 ## Group element
