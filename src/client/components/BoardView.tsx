@@ -128,7 +128,7 @@ export const BoardView: React.FC<BoardViewProps> = () => {
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div
-        className="relative w-full h-[800px] bg-gray-100 overflow-auto"
+        className="relative w-full h-full bg-gray-100 overflow-auto"
         onClick={handleBoardClick}
       >
         {/* Groups */}
