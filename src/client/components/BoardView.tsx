@@ -5,7 +5,6 @@ import Group from './Group.js';
 import { Card as CardType } from '../../types/Card';
 import { Group as GroupType } from '../../types/Group';
 import BoardService from '../services/BoardService';
-import logger from '../utils/logger';
 
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
@@ -163,29 +162,24 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
   };
 
   const handleSelect = (id: string) => {
-    logger.selection(`Selecting item ${id}`);
     
     setSelectedItems(prev => {
       // If already selected, deselect it
       if (prev.length === 1 && prev[0] === id) {
-        logger.selection(`Deselecting ${id}`);
         return [];
       }
       // Otherwise select this item
       else {
-        logger.selection(`Selecting ${id}`);
         return [id];
       }
     });
   };
 
   const handleBoardClick = async (e: React.MouseEvent<HTMLDivElement>) => {
-    logger.selection('Board click - deselecting all items');
     setSelectedItems([]);
     
     // Handle tool-specific actions
     if (selectedTool === 'select') {
-      logger.selection('Select tool active, no action taken');
       return;
     }
     
@@ -195,7 +189,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
     const y = e.clientY - boardRect.top;
     
     if (selectedTool === 'card') {
-      logger.selection(`Creating new card at x: ${x}, y: ${y}`);
       // Create new card using client-side helper
       const newCard = createDefaultCard(x, y);
       
@@ -204,12 +197,10 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
         const boardService = BoardService.getInstance();
         const { cards } = await boardService.addCard(newCard);
         setCards(cards);
-        logger.selection('Card created successfully');
       } catch (err) {
         console.error('Failed to add card:', err);
       }
     } else if (selectedTool === 'group') {
-      logger.selection(`Creating new group at x: ${x}, y: ${y}`);
       // Create new group using client-side helper
       const newGroup = createDefaultGroup(x, y);
       
@@ -218,7 +209,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
         const boardService = BoardService.getInstance();
         const { groups } = await boardService.addGroup(newGroup);
         setGroups(groups);
-        logger.selection('Group created successfully');
       } catch (err) {
         console.error('Failed to add group:', err);
       }

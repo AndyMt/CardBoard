@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import logger from '../utils/logger';
 
 const CARD_WIDTH = 200; // px
 const LINE_HEIGHT = 20; // px
@@ -33,8 +32,6 @@ export const Card: React.FC<CardProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(20);
-
-  logger.card(`Rendering card ${id}, isSelected=${isSelected}`);
 
   // Measure text height and update both elements
   const updateHeight = () => {
@@ -103,27 +100,21 @@ export const Card: React.FC<CardProps> = ({
       clickX > rect.width - 6 ||        // Right selection zone (6px)
       clickY > rect.height - 6;         // Bottom selection zone (6px)
     
-    logger.card(`Click on card ${id} at (${clickX}, ${clickY}), drag handle: ${isInDragHandle}, selection zone: ${isInSelectionZone}`);
-    
     if (isInDragHandle || isInSelectionZone) {
       e.stopPropagation();
       e.preventDefault();
       if (onSelect) {
-        logger.card(`Calling onSelect for ${id} from ${isInDragHandle ? 'drag handle' : 'selection zone'}`);
         onSelect(id);
       } else {
-        logger.card(`onSelect handler not defined for ${id}`);
       }
       return;
     }
     
     // For content area, proceed with normal click handling
     // (which will trigger text editing)
-    logger.card(`Click in content area of card ${id}`);
   };
 
   const handleContentClick = () => {
-    logger.card(`Content click on card ${id}, entering edit mode`);
     // Start editing on single click
     setIsEditing(true);
   };
@@ -131,7 +122,6 @@ export const Card: React.FC<CardProps> = ({
   // Auto-enter edit mode when card is created with empty text
   useEffect(() => {
     if (cardText === '' && !isEditing) {
-      logger.card(`Empty text in card ${id}, auto-entering edit mode`);
       setIsEditing(true);
     }
   }, [cardText]);
@@ -139,7 +129,6 @@ export const Card: React.FC<CardProps> = ({
   // Auto-focus and select all text when editing starts
   useEffect(() => {
     if (isEditing && textareaRef.current) {
-      logger.card(`Editing mode in card ${id}, focusing textarea`);
       textareaRef.current.focus();
       textareaRef.current.select();
     }
@@ -171,13 +160,11 @@ export const Card: React.FC<CardProps> = ({
               setTimeout(updateHeight, 0);
             }}
             onBlur={() => {
-              logger.card(`Editing blur in card ${id}, exiting edit mode`);
               setIsEditing(false);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                logger.card(`Enter pressed in card ${id}, exiting edit mode`);
                 setIsEditing(false);
               }
             }}
