@@ -15,7 +15,7 @@ interface GroupProps {
   height?: number;
   isSelected: boolean;
   onLabelChange?: (id: string, newLabel: string) => void;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, ctrlKey?: boolean) => void;
 }
 
 export const Group: React.FC<GroupProps> = ({
@@ -85,9 +85,8 @@ export const Group: React.FC<GroupProps> = ({
       e.stopPropagation();
       e.preventDefault();
       if (onSelect) {
-        onSelect(id);
+        onSelect(id, e.ctrlKey);
       }
-      
     }
     
     // For content area, proceed with normal click handling

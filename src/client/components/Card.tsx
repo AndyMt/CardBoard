@@ -13,7 +13,7 @@ interface CardProps {
   height?: number;
   isSelected: boolean;
   onTextChange?: (id: string, newText: string) => void;
-  onSelect?: (id: string) => void;
+  onSelect?: (id: string, ctrlKey?: boolean) => void;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -88,7 +88,7 @@ export const Card: React.FC<CardProps> = ({
       e.stopPropagation();
       e.preventDefault();
       if (onSelect) {
-        onSelect(id);
+        onSelect(id, e.ctrlKey);
       }
     }
   };

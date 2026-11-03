@@ -161,16 +161,26 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
     }));
   };
 
-  const handleSelect = (id: string) => {
-    
+  const handleSelect = (id: string, ctrlKey: boolean = false) => {
     setSelectedItems(prev => {
-      // If already selected, deselect it
-      if (prev.length === 1 && prev[0] === id) {
-        return [];
+      // If Ctrl key is pressed, toggle the selection state of the item
+      if (ctrlKey) {
+        if (prev.includes(id)) {
+          return prev.filter(itemId => itemId !== id);
+        } else {
+          return [...prev, id];
+        }
       }
-      // Otherwise select this item
+      // If Ctrl key is not pressed, replace the selection with the clicked item
       else {
-        return [id];
+        // If already selected, deselect it
+        if (prev.length === 1 && prev[0] === id) {
+          return [];
+        }
+        // Otherwise select this item
+        else {
+          return [id];
+        }
       }
     });
   };
@@ -263,9 +273,10 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
               y={card.y}
               width={card.width || 200}
               height={card.height || 60}
+
               isSelected={isCardSelected}
-              onTextChange={handleCardTextChange}
               onSelect={handleSelect}
+              onTextChange={handleCardTextChange}
             />
           );
         })}
