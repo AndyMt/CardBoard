@@ -1,24 +1,35 @@
-import { Card as CardInterface } from '../../types/Card.js';
+import { Card } from '../../types/Card';
 
-export class Card implements CardInterface {
-  id: string;
-  text: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+const CARD_WIDTH = 200; // Default card width
+const CARD_MIN_HEIGHT = 60; // Minimum card height
+const LINE_HEIGHT = 20; // px
 
-  constructor({ id, text, x, y, width = 200, height }: Partial<CardInterface> = {}) {
-    this.id = id || '';
-    this.text = text || '';
-    this.x = x || 0;
-    this.y = y || 0;
-    this.width = width;
-    this.height = height ?? this.calculateHeight(text || '');
+export class CardModel {
+  static createDefault(x: number, y: number): Card {
+    return {
+      id: `card-${Date.now()}`,
+      text: '',
+      x: x - CARD_WIDTH / 2, // Center the card on the click position
+      y: y - 30, // Account for card header height
+      width: CARD_WIDTH,
+      height: CARD_MIN_HEIGHT
+    };
   }
-
-  private calculateHeight(text: string): number {
-    const lines = Math.ceil(text.length / 30);
-    return lines * 20; // 20px per line
+  
+  static createFromData(data: Partial<Card>): Card {
+    return {
+      id: data.id || `card-${Date.now()}`,
+      text: data.text || '',
+      x: data.x || 0,
+      y: data.y || 0,
+      width: data.width || CARD_WIDTH,
+      height: data.height || CARD_MIN_HEIGHT
+    };
+  }
+  
+  static calculateHeight(text: string): number {
+    if (!text) return CARD_MIN_HEIGHT;
+    const lines = text.split('\n').length;
+    return Math.max(CARD_MIN_HEIGHT, lines * LINE_HEIGHT + 40); // Add padding
   }
 }

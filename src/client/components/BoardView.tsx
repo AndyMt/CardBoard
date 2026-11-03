@@ -2,25 +2,44 @@ import { useState } from 'react';
 import { DndContext, DragEndEvent } from '@dnd-kit/core';
 import Card from './Card.js';
 import Group from './Group.js';
+import { Card as CardType } from '../../types/Card';
+import { Group as GroupType } from '../../types/Group';
 
+// Client-side model helpers (following MVC pattern)
+const createCard = (x: number, y: number): CardType => ({
+  id: `card-${Date.now()}`,
+  text: '',
+  x: x - 100, // Center the card
+  y: y - 30,  // Account for header
+  width: 200,
+  height: 60,
+  isSelected: false
+});
+
+const createGroup = (x: number, y: number): GroupType => ({
+  id: `group-${Date.now()}`,
+  label: '',
+  x: x - 220, // Center the group
+  y: y - 30,  // Account for header
+  width: 440,
+  height: 440,
+  isSelected: false
+});
 
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
 }
 
 export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
-  const [cards, setCards] = useState<{
-    id: string;
-    text: string;
-    x: number;
-    y: number;
-    isSelected: boolean;
-  }[]>([
+  // State with proper typing
+  const [cards, setCards] = useState<CardType[]>([
     {
       id: 'card-1',
       text: 'This is a sample card with some text that should wrap to multiple lines based on the character limit.',
       x: 50,
       y: 100,
+      width: 200,
+      height: 80,
       isSelected: false,
     },
     {
@@ -28,6 +47,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
       text: 'Short text',
       x: 300,
       y: 100,
+      width: 200,
+      height: 60,
       isSelected: false,
     },
     {
@@ -35,22 +56,20 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
       text: 'Another card with a very long text that should demonstrate the word wrapping functionality properly when rendered.',
       x: 50,
       y: 300,
+      width: 200,
+      height: 80,
       isSelected: false,
     }
   ]);
 
-  const [groups, setGroups] = useState<{
-    id: string;
-    label: string;
-    x: number;
-    y: number;
-    isSelected: boolean;
-  }[]>([
+  const [groups, setGroups] = useState<GroupType[]>([
     {
       id: 'group-1',
       label: 'Sample Group',
       x: 400,
       y: 50,
+      width: 440,
+      height: 440,
       isSelected: false,
     },
     {
@@ -58,104 +77,68 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
       label: 'Another Group with a Longer Label',
       x: 400,
       y: 300,
+      width: 440,
+      height: 440,
       isSelected: false,
     }
   ]);
 
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
+  // Controller methods
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
 
     if (active.data.current?.type === 'card') {
-      setCards(prevCards => prevCards.map(card => {
-        if (card.id === active.id) {
-          return {
-            ...card,
-            x: card.x + delta.x,
-            y: card.y + delta.y,
-          };
-        }
-        return card;
-      }));
+      setCards(prev => prev.map(card =>
+        card.id === active.id
+          ? { ...card, x: card.x + delta.x, y: card.y + delta.y }
+          : card
+      ));
     } else if (active.data.current?.type === 'group') {
-      setGroups(prevGroups => prevGroups.map(group => {
-        if (group.id === active.id) {
-          return {
-            ...group,
-            x: group.x + delta.x,
-            y: group.y + delta.y,
-          };
-        }
-        return group;
-      }));
+      setGroups(prev => prev.map(group =>
+        group.id === active.id
+          ? { ...group, x: group.x + delta.x, y: group.y + delta.y }
+          : group
+      ));
     }
   };
 
   const handleCardTextChange = (id: string, newText: string) => {
-    setCards(prevCards => prevCards.map(card => {
-      if (card.id === id) {
-        return { ...card, text: newText };
-      }
-      return card;
-    }));
+    setCards(prev => prev.map(card =>
+      card.id === id ? { ...card, text: newText } : card
+    ));
   };
 
   const handleGroupLabelChange = (id: string, newLabel: string) => {
-    setGroups(prevGroups => prevGroups.map(group => {
-      if (group.id === id) {
-        return { ...group, label: newLabel };
-      }
-      return group;
-    }));
+    setGroups(prev => prev.map(group =>
+      group.id === id ? { ...group, label: newLabel } : group
+    ));
   };
 
   const handleSelect = (id: string, type: 'card' | 'group') => {
-    setSelectedItems(prev => {
-      // Toggle selection
-      if (prev.includes(id)) {
-        return prev.filter(item => item !== id);
-      } else {
-        return [...prev, id];
-      }
-    });
+    setSelectedItems(prev =>
+      prev.includes(id)
+        ? prev.filter(item => item !== id)
+        : [...prev, id]
+    );
   };
 
   const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Deselect all when clicking on empty space
     setSelectedItems([]);
-    
-    // Handle tool-specific actions
-    if (selectedTool === 'select') {
-      // Do nothing for select tool
-      return;
-    }
-    
-    // Get click position relative to board
+
+    if (selectedTool === 'select') return;
+
+    // Get click position
     const boardRect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - boardRect.left;
     const y = e.clientY - boardRect.top;
-    
+
     if (selectedTool === 'card') {
-      // Create new card
-      const newCard = {
-        id: `card-${Date.now()}`,
-        text: '',
-        x: x - 100, // Center the card on click position
-        y: y - 30,  // Account for card height
-        isSelected: false,
-      };
-      setCards(prevCards => [...prevCards, newCard]);
+      setCards(prev => [...prev, createCard(x, y)]);
     } else if (selectedTool === 'group') {
-      // Create new group
-      const newGroup = {
-        id: `group-${Date.now()}`,
-        label: '',
-        x: x - 220, // Center the group on click position
-        y: y - 30,  // Account for group header height
-        isSelected: false,
-      };
-      setGroups(prevGroups => [...prevGroups, newGroup]);
+      setGroups(prev => [...prev, createGroup(x, y)]);
     }
   };
 
@@ -178,7 +161,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
             onSelect={() => handleSelect(group.id, 'group')}
           />
         ))}
-        
+
         {/* Cards */}
         {cards.map(card => (
           <Card

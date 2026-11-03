@@ -1,0 +1,208 @@
+import { useState } from 'react';
+import { DndContext, DragEndEvent } from '@dnd-kit/core';
+import Card from './Card.js';
+import Group from './Group.js';
+import { Card as CardType } from '../../types/Card';
+import { Group as GroupType } from '../../types/Group';
+
+// Helper functions for model operations (client-side only)
+const createDefaultCard = (x: number, y: number): CardType => {
+  return {
+    id: `card-${Date.now()}`,
+    text: '',
+    x: x - 100, // Center the card on the click position
+    y: y - 30,  // Account for card header height
+    width: 200,
+    height: 60
+  };
+};
+
+const createDefaultGroup = (x: number, y: number): GroupType => {
+  return {
+    id: `group-${Date.now()}`,
+    label: '',
+    x: x - 220, // Center the group on the click position
+    y: y - 30,  // Account for group header height
+    width: 440,
+    height: 440
+  };
+};
+
+
+interface BoardViewProps {
+  selectedTool: 'select' | 'card' | 'group';
+}
+
+export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
+  const [cards, setCards] = useState<CardType[]>([
+    {
+      id: 'card-1',
+      text: 'This is a sample card with some text that should wrap to multiple lines based on the character limit.',
+      x: 50,
+      y: 100,
+      width: 200,
+      height: 80,
+      isSelected: false,
+    },
+    {
+      id: 'card-2',
+      text: 'Short text',
+      x: 300,
+      y: 100,
+      width: 200,
+      height: 60,
+      isSelected: false,
+    },
+    {
+      id: 'card-3',
+      text: 'Another card with a very long text that should demonstrate the word wrapping functionality properly when rendered.',
+      x: 50,
+      y: 300,
+      width: 200,
+      height: 80,
+      isSelected: false,
+    }
+  ]);
+
+  const [groups, setGroups] = useState<GroupType[]>([
+    {
+      id: 'group-1',
+      label: 'Sample Group',
+      x: 400,
+      y: 50,
+      width: 440,
+      height: 440,
+      isSelected: false,
+    },
+      id: 'group-2',
+      label: 'Another Group with a Longer Label',
+      x: 400,
+      y: 300,
+      isSelected: false,
+    }
+  ]);
+
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, delta } = event;
+
+    if (active.data.current?.type === 'card') {
+      setCards(prevCards => prevCards.map(card => {
+        if (card.id === active.id) {
+          return {
+            ...card,
+            x: card.x + delta.x,
+            y: card.y + delta.y,
+          };
+        }
+        return card;
+      }));
+    } else if (active.data.current?.type === 'group') {
+      setGroups(prevGroups => prevGroups.map(group => {
+        if (group.id === active.id) {
+          return {
+            ...group,
+            x: group.x + delta.x,
+            y: group.y + delta.y,
+          };
+        }
+        return group;
+      }));
+    }
+  };
+
+  const handleCardTextChange = (id: string, newText: string) => {
+    setCards(prevCards => prevCards.map(card => {
+      if (card.id === id) {
+        return { ...card, text: newText };
+      }
+      return card;
+    }));
+  };
+
+  const handleGroupLabelChange = (id: string, newLabel: string) => {
+    setGroups(prevGroups => prevGroups.map(group => {
+      if (group.id === id) {
+        return { ...group, label: newLabel };
+      }
+      return group;
+    }));
+  };
+
+  const handleSelect = (id: string, type: 'card' | 'group') => {
+    setSelectedItems(prev => {
+      // Toggle selection
+      if (prev.includes(id)) {
+        return prev.filter(item => item !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
+  const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Deselect all when clicking on empty space
+    setSelectedItems([]);
+    
+    // Handle tool-specific actions
+    if (selectedTool === 'select') {
+      // Do nothing for select tool
+      return;
+    }
+    
+    // Get click position relative to board
+    const boardRect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - boardRect.left;
+    const y = e.clientY - boardRect.top;
+    
+    if (selectedTool === 'card') {
+      // Create new card using client-side helper
+      const newCard = createDefaultCard(x, y);
+      setCards(prevCards => [...prevCards, newCard]);
+    } else if (selectedTool === 'group') {
+      // Create new group using client-side helper
+      const newGroup = createDefaultGroup(x, y);
+      setGroups(prevGroups => [...prevGroups, newGroup]);
+    }
+  };
+
+  return (
+    <DndContext onDragEnd={handleDragEnd}>
+      <div
+        className="relative w-full h-full bg-gray-100 overflow-auto"
+        onClick={handleBoardClick}
+      >
+        {/* Groups */}
+        {groups.map(group => (
+          <Group
+            key={group.id}
+            id={group.id}
+            label={group.label}
+            x={group.x}
+            y={group.y}
+            isSelected={selectedItems.includes(group.id)}
+            onLabelChange={handleGroupLabelChange}
+            onSelect={() => handleSelect(group.id, 'group')}
+          />
+        ))}
+        
+        {/* Cards */}
+        {cards.map(card => (
+          <Card
+            key={card.id}
+            id={card.id}
+            text={card.text}
+            x={card.x}
+            y={card.y}
+            isSelected={selectedItems.includes(card.id)}
+            onTextChange={handleCardTextChange}
+            onSelect={() => handleSelect(card.id, 'card')}
+          />
+        ))}
+      </div>
+    </DndContext>
+  );
+};
+
+export default BoardView;

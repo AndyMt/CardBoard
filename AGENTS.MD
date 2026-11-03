@@ -8,4 +8,3 @@
 
 - **Git**: when using ACT mode, don't stage any changes, unless explicitly stated in the prompt.
 - **Git**: when using ACT mode, don't commit any changes, unless explicitly stated in the prompt.
-- **Coding**: Check for errors and warnings before claiming a task as complete.
