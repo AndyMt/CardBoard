@@ -86,14 +86,14 @@ export const Group: React.FC<GroupProps> = ({
       style={style}
       className={`
         absolute
-        border border-dashed ${isSelected ? 'border-blue-500' : 'border-gray-400'}
+        border-[1.33px] border-dashed ${isSelected ? 'border-blue-500' : 'border-gray-400'}
         rounded-lg
         bg-white
         overflow-hidden
       `}
       onClick={handleClick}
     >
-      {/* Header with 8px blue bar and label */}
+      {/* Header with 8px blue bar and centered label */}
       <div className="flex flex-col">
         {/* 8px high blue bar - this is the drag handle */}
         <div
@@ -102,8 +102,8 @@ export const Group: React.FC<GroupProps> = ({
           className="h-2 w-full bg-blue-500 cursor-move"
         ></div>
         
-        {/* Label area - positioned right below the blue bar */}
-        <div className="px-2 py-1">
+        {/* Label area - centered */}
+        <div className="px-2 py-1 flex justify-center">
           {isEditing ? (
             <input
               ref={inputRef}
@@ -112,13 +112,13 @@ export const Group: React.FC<GroupProps> = ({
               onChange={(e) => handleLabelChange(e.target.value)}
               onBlur={handleInputBlur}
               onKeyDown={handleInputKeyDown}
-              className="outline-none text-sm font-medium w-full bg-blue-50 rounded px-1 py-0.5"
+              className="outline-none text-sm font-medium text-center bg-blue-50 rounded px-1 py-0.5"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
             <div
               onClick={handleLabelClick}
-              className="text-sm font-medium cursor-text hover:bg-gray-50 rounded px-1 py-0.5"
+              className="text-sm font-medium cursor-text hover:bg-gray-50 rounded px-1 py-0.5 text-center"
             >
               {groupLabel || 'Group'}
             </div>
