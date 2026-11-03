@@ -20,6 +20,8 @@
   border-left: 6px solid rgba(59, 130, 246, 0.2);
   border-right: 6px solid rgba(59, 130, 246, 0.2);
   border-bottom: 6px solid rgba(59, 130, 246, 0.2);
+  /* Show 14px top selection zone (8px dragging bar + 6px below) */
+  border-top: 14px solid rgba(59, 130, 246, 0.2);
   pointer-events: none;
   z-index: -1;
 }

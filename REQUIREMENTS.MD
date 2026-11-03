@@ -45,7 +45,9 @@ The application shall have the following features:
 ## Select and moving elements
 
 - Clicking on an empty space shall deselect all selected items.
-- Clicking on an element while holding down the Ctrl key shall toggle that item into the selected items
+- The top 6px of the top border of an element are the dragging bar.
+- The dragging bar and 6px area inside of an element border shall trigger a selection of that element.
+- Clicking on an elements while holding down the Ctrl key shall toggle that item into the selected items
 - Dragging any selected item shall move all selected items to the position of the mouse cursor.
 - Pressing the delete key shall delete all selected items.
 

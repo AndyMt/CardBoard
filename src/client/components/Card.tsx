@@ -32,6 +32,7 @@ export const Card: React.FC<CardProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(20);
+  const isDraggingRef = useRef(false);
 
   // Measure text height and update both elements
   const updateHeight = () => {
@@ -62,6 +63,40 @@ export const Card: React.FC<CardProps> = ({
     if (textareaRef.current) updateHeight();
   }, [textareaRef.current]);
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDraggingRef.current = false;
+
+    // Get the bounding rectangle of the card
+    const rect = e.currentTarget.getBoundingClientRect();
+
+    // Calculate click position relative to the card
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Check if click is in the drag handle (8px blue bar)
+    const isInDragHandle = clickY < 8;
+
+    // Check if click is in the 6px selection zone inside the border
+    const isInSelectionZone =
+      clickX < 6 ||                     // Left selection zone (6px)
+      clickX > rect.width - 6 ||        // Right selection zone (6px)
+      clickY < 14 ||                    // Top selection zone (8px dragging bar + 6px below)
+      clickY > rect.height - 6;         // Bottom selection zone (6px)
+
+    // Only trigger selection if the mouse has not moved (i.e., it's a click, not a drag)
+    if ((isInDragHandle || isInSelectionZone) && !isDraggingRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (onSelect) {
+        onSelect(id);
+      }
+    }
+  };
+
+  const handleMouseMove = () => {
+    isDraggingRef.current = true;
+  };
+
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
     data: { type: 'card' }
@@ -82,37 +117,7 @@ export const Card: React.FC<CardProps> = ({
     }
   };
 
-  const handleClick = (e: React.MouseEvent) => {
-    // Get the bounding rectangle of the card
-    const rect = e.currentTarget.getBoundingClientRect();
-    
-    // Calculate click position relative to the card
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-    
-    // Check if click is in the drag handle (blue bar)
-    const isInDragHandle = clickY < 8; // Blue bar is 8px tall
-    
-    // Check if click is in the 6px selection zone inside the border
-    // For left, right, and bottom borders
-    const isInSelectionZone =
-      clickX < 6 ||                     // Left selection zone (6px)
-      clickX > rect.width - 6 ||        // Right selection zone (6px)
-      clickY > rect.height - 6;         // Bottom selection zone (6px)
-    
-    if (isInDragHandle || isInSelectionZone) {
-      e.stopPropagation();
-      e.preventDefault();
-      if (onSelect) {
-        onSelect(id);
-      } else {
-      }
-      return;
-    }
-    
-    // For content area, proceed with normal click handling
-    // (which will trigger text editing)
-  };
+
 
   const handleContentClick = () => {
     // Start editing on single click
@@ -138,7 +143,8 @@ export const Card: React.FC<CardProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      onClick={handleClick}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
       className={`absolute border-2 border-solid border-gray-800 rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}
     >
       {/* Drag handle - 8px blue bar at top */}

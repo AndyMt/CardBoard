@@ -32,6 +32,13 @@ export const Group: React.FC<GroupProps> = ({
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const isDraggingRef = useRef(false);
+
+
+
+  const handleMouseMove = () => {
+    isDraggingRef.current = true;
+  };
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
@@ -55,32 +62,32 @@ export const Group: React.FC<GroupProps> = ({
     }
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleMouseDownSelection = (e: React.MouseEvent) => {
     // Get the bounding rectangle of the group
     const rect = e.currentTarget.getBoundingClientRect();
-    
+
     // Calculate click position relative to the group
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
-    
-    // Check if click is in the drag handle (blue bar)
-    const isInDragHandle = clickY < 8; // Blue bar is 8px tall
-    
+
+    // Check if click is in the drag handle (8px blue bar)
+    const isInDragHandle = clickY < 8;
+
     // Check if click is in the 6px selection zone inside the border
-    // For left, right, and bottom borders
     const isInSelectionZone =
       clickX < 6 ||                     // Left selection zone (6px)
       clickX > rect.width - 6 ||        // Right selection zone (6px)
+      clickY < 14 ||                    // Top selection zone (8px dragging bar + 6px below)
       clickY > rect.height - 6;         // Bottom selection zone (6px)
-    
-    if (isInDragHandle || isInSelectionZone) {
+
+    // Only trigger selection if the mouse has not moved (i.e., it's a click, not a drag)
+    if ((isInDragHandle || isInSelectionZone) && !isDraggingRef.current) {
       e.stopPropagation();
       e.preventDefault();
       if (onSelect) {
         onSelect(id);
-      } else {
       }
-      return;
+      
     }
     
     // For content area, proceed with normal click handling
@@ -120,7 +127,8 @@ export const Group: React.FC<GroupProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      onClick={handleClick}
+      onMouseDown={handleMouseDownSelection}
+      onMouseMove={handleMouseMove}
       className={`absolute border-[1.33px] border-dashed border-gray-400 rounded-lg bg-white overflow-hidden group-component ${isSelected ? 'selected' : ''}`}
     >
       {/* Header with 8px blue bar and centered label */}
