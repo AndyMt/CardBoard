@@ -1,0 +1,166 @@
+import { useState } from 'react';
+import { DndContext, DragEndEvent } from '@dnd-kit/core';
+import Card from './Card';
+import Group from './Group';
+
+interface BoardViewProps {
+  // Define props if needed
+}
+
+export const BoardView: React.FC<BoardViewProps> = () => {
+  const [cards, setCards] = useState<{
+    id: string;
+    text: string;
+    x: number;
+    y: number;
+    isSelected: boolean;
+  }[]>([
+    {
+      id: 'card-1',
+      text: 'This is a sample card with some text that should wrap to multiple lines based on the character limit.',
+      x: 50,
+      y: 100,
+      isSelected: false,
+    },
+    {
+      id: 'card-2',
+      text: 'Short text',
+      x: 300,
+      y: 100,
+      isSelected: false,
+    },
+    {
+      id: 'card-3',
+      text: 'Another card with a very long text that should demonstrate the word wrapping functionality properly when rendered.',
+      x: 50,
+      y: 300,
+      isSelected: false,
+    }
+  ]);
+
+  const [groups, setGroups] = useState<{
+    id: string;
+    label: string;
+    x: number;
+    y: number;
+    isSelected: boolean;
+  }[]>([
+    {
+      id: 'group-1',
+      label: 'Sample Group',
+      x: 400,
+      y: 50,
+      isSelected: false,
+    },
+    {
+      id: 'group-2',
+      label: 'Another Group with a Longer Label',
+      x: 400,
+      y: 300,
+      isSelected: false,
+    }
+  ]);
+
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, delta } = event;
+
+    if (active.data.current?.type === 'card') {
+      setCards(prevCards => prevCards.map(card => {
+        if (card.id === active.id) {
+          return {
+            ...card,
+            x: card.x + delta.x,
+            y: card.y + delta.y,
+          };
+        }
+        return card;
+      }));
+    } else if (active.data.current?.type === 'group') {
+      setGroups(prevGroups => prevGroups.map(group => {
+        if (group.id === active.id) {
+          return {
+            ...group,
+            x: group.x + delta.x,
+            y: group.y + delta.y,
+          };
+        }
+        return group;
+      }));
+    }
+  };
+
+  const handleCardTextChange = (id: string, newText: string) => {
+    setCards(prevCards => prevCards.map(card => {
+      if (card.id === id) {
+        return { ...card, text: newText };
+      }
+      return card;
+    }));
+  };
+
+  const handleGroupLabelChange = (id: string, newLabel: string) => {
+    setGroups(prevGroups => prevGroups.map(group => {
+      if (group.id === id) {
+        return { ...group, label: newLabel };
+      }
+      return group;
+    }));
+  };
+
+  const handleSelect = (id: string, type: 'card' | 'group') => {
+    setSelectedItems(prev => {
+      // Toggle selection
+      if (prev.includes(id)) {
+        return prev.filter(item => item !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
+  const handleBoardClick = () => {
+    // Deselect all when clicking on empty space
+    setSelectedItems([]);
+  };
+
+  return (
+    <DndContext onDragEnd={handleDragEnd}>
+      <div
+        className="relative w-full h-[800px] bg-gray-100 overflow-auto"
+        onClick={handleBoardClick}
+      >
+        {/* Groups */}
+        {groups.map(group => (
+          <Group
+            key={group.id}
+            id={group.id}
+            label={group.label}
+            x={group.x}
+            y={group.y}
+            isSelected={selectedItems.includes(group.id)}
+            onLabelChange={handleGroupLabelChange}
+            onSelect={() => handleSelect(group.id, 'group')}
+          />
+        ))}
+        
+        {/* Cards */}
+        {cards.map(card => (
+          <Card
+            key={card.id}
+            id={card.id}
+            text={card.text}
+            x={card.x}
+            y={card.y}
+            isSelected={selectedItems.includes(card.id)}
+            onTextChange={handleCardTextChange}
+            onSelect={() => handleSelect(card.id, 'card')}
+          />
+        ))}
+      </div>
+    </DndContext>
+  );
+};
+
+export default BoardView;
