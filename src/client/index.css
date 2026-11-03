@@ -2,6 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Selection glow effect */
+.card-component.selected,
+.group-component.selected {
+  box-shadow: 0 0 6px 3px rgba(59, 130, 246, 0.5);
+  transition: box-shadow 0.2s ease;
+}
+
+/* Ensure cards and groups have position for absolute positioning */
+.card-component,
+.group-component {
+  position: absolute;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',

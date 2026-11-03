@@ -19,7 +19,9 @@ export const Card: React.FC<CardProps> = ({
   text,
   x,
   y,
-  isSelected,
+  width = 200,
+  height = 60,
+  isSelected = false,
   onTextChange,
   onSelect
 }) => {
@@ -67,7 +69,8 @@ export const Card: React.FC<CardProps> = ({
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     left: `${x}px`,
     top: `${y}px`,
-    width: `${CARD_WIDTH}px`,
+    width: `${width}px`,
+    minHeight: `${height}px`,
   };
 
   const handleTextChange = (newText: string) => {
@@ -111,11 +114,13 @@ export const Card: React.FC<CardProps> = ({
       onClick={handleClick}
       className={`
         absolute
-        border-2 border-solid ${isSelected ? 'border-blue-500' : 'border-gray-800'}
+        border-2 border-solid border-gray-800
         rounded-lg
         bg-white
         flex flex-col
         overflow-hidden
+        card-component
+        ${isSelected ? 'selected' : ''}
       `}
     >
       {/* Drag handle - 8px blue bar at top */}

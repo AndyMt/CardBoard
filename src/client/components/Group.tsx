@@ -21,7 +21,9 @@ export const Group: React.FC<GroupProps> = ({
   label,
   x,
   y,
-  isSelected,
+  width = DEFAULT_WIDTH,
+  height = DEFAULT_HEIGHT,
+  isSelected = false,
   onLabelChange,
   onSelect
 }) => {
@@ -38,8 +40,8 @@ export const Group: React.FC<GroupProps> = ({
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
     left: `${x}px`,
     top: `${y}px`,
-    width: `${DEFAULT_WIDTH}px`,
-    height: `${DEFAULT_HEIGHT}px`,
+    width: `${width}px`,
+    height: `${height}px`,
     minWidth: `${MIN_WIDTH}px`,
     minHeight: `${MIN_HEIGHT}px`,
   };

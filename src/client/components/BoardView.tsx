@@ -161,13 +161,22 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
     }));
   };
 
-  const handleSelect = (id: string, type: 'card' | 'group') => {
+  const handleSelect = (id: string, e: React.MouseEvent) => {
+    // Check if Ctrl/Cmd key is pressed for multi-select
+    const isMultiSelect = e.ctrlKey || e.metaKey;
+    
     setSelectedItems(prev => {
-      // Toggle selection
-      if (prev.includes(id)) {
-        return prev.filter(item => item !== id);
-      } else {
-        return [...prev, id];
+      // If Ctrl/Cmd is pressed, toggle selection of this item
+      if (isMultiSelect) {
+        if (prev.includes(id)) {
+          return prev.filter(item => item !== id);
+        } else {
+          return [...prev, id];
+        }
+      }
+      // If no modifier key, select only this item
+      else {
+        return [id];
       }
     });
   };
@@ -228,9 +237,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
             label={group.label}
             x={group.x}
             y={group.y}
+            width={group.width || 440}
+            height={group.height || 440}
             isSelected={selectedItems.includes(group.id)}
             onLabelChange={handleGroupLabelChange}
-            onSelect={() => handleSelect(group.id, 'group')}
+            onSelect={(id, e) => handleSelect(id, e)}
           />
         ))}
         
@@ -242,9 +253,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
             text={card.text}
             x={card.x}
             y={card.y}
+            width={card.width || 200}
+            height={card.height || 60}
             isSelected={selectedItems.includes(card.id)}
             onTextChange={handleCardTextChange}
-            onSelect={() => handleSelect(card.id, 'card')}
+            onSelect={(id, e) => handleSelect(id, e)}
           />
         ))}
       </div>
