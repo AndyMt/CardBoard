@@ -271,8 +271,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
     <DndContext onDragEnd={handleDragEnd}>
       <div
         className="relative w-full h-full bg-gray-100 overflow-auto board-container"
-        onClick={() => {
-          handleBoardClick();
+        onClick={(e) => {
+          handleBoardClick(e);
           handleBoardFocus();
         }}
         onKeyDown={handleKeyDown}
