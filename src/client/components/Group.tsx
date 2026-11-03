@@ -16,13 +16,6 @@ interface GroupProps {
   onSelect?: (id: string) => void;
 }
 
-const formatTextWithLineBreaks = (text: string): string => {
-  if (!text) return '';
-  // For group labels, we'll just ensure they fit in the width
-  // Groups have a fixed width, so we'll truncate if needed
-  return text.length > 30 ? text.substring(0, 27) + '...' : text;
-};
-
 export const Group: React.FC<GroupProps> = ({
   id,
   label,
@@ -33,14 +26,8 @@ export const Group: React.FC<GroupProps> = ({
   onSelect
 }) => {
   const [groupLabel, setGroupLabel] = useState(label);
-  const [formattedLabel, setFormattedLabel] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // Format label
-  useEffect(() => {
-    setFormattedLabel(formatTextWithLineBreaks(groupLabel));
-  }, [groupLabel]);
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
@@ -65,14 +52,12 @@ export const Group: React.FC<GroupProps> = ({
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    // Only select if clicking on the border (not content)
-    if (e.target === e.currentTarget && onSelect) {
+    if (onSelect) {
       onSelect(id);
     }
   };
 
   const handleLabelClick = () => {
-    // Start editing on single click
     setIsEditing(true);
   };
 
@@ -99,28 +84,22 @@ export const Group: React.FC<GroupProps> = ({
     <div
       ref={setNodeRef}
       style={style}
-      onClick={handleClick}
       className={`
         absolute
         border border-dashed ${isSelected ? 'border-blue-500' : 'border-gray-400'}
         rounded-lg
-        bg-gray-50
-        flex flex-col
+        bg-white
         overflow-hidden
       `}
+      onClick={handleClick}
     >
-      {/* Drag handle - top bar */}
-      <div
-        {...listeners}
-        {...attributes}
-        className="h-4 w-full cursor-move mb-1 flex justify-center"
-      >
-        <div className="h-1 w-12 bg-gray-400 rounded"></div>
-      </div>
-      
-      {/* Label area - white background that breaks the border */}
-      <div className="relative -mt-3 self-start">
-        <div className="bg-white px-2 py-1 rounded border border-dashed border-gray-400">
+      {/* Make entire group draggable */}
+      <div {...listeners} {...attributes} className="w-full h-full">
+        {/* 8px high bar across entire width */}
+        <div className="h-2 w-full bg-blue-500"></div>
+        
+        {/* Label area */}
+        <div className="p-2">
           {isEditing ? (
             <input
               ref={inputRef}
@@ -129,22 +108,22 @@ export const Group: React.FC<GroupProps> = ({
               onChange={(e) => handleLabelChange(e.target.value)}
               onBlur={handleInputBlur}
               onKeyDown={handleInputKeyDown}
-              className="outline-none text-sm font-medium min-w-[50px] bg-blue-50 rounded p-1"
+              className="outline-none text-sm font-medium w-full bg-blue-50 rounded px-1 py-0.5"
             />
           ) : (
             <div
               onClick={handleLabelClick}
-              className="text-sm font-medium cursor-text hover:bg-gray-50 rounded p-1"
+              className="text-sm font-medium cursor-text hover:bg-gray-50 rounded px-1 py-0.5"
             >
-              {formattedLabel || 'Group'}
+              {groupLabel || 'Group'}
             </div>
           )}
         </div>
-      </div>
-      
-      {/* Content area */}
-      <div className="flex-1 p-2">
-        {/* This is where cards will be placed */}
+        
+        {/* Content area */}
+        <div className="flex-1 p-2 pt-0">
+          {/* This is where cards will be placed */}
+        </div>
       </div>
     </div>
   );
