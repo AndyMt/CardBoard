@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { DndContext, DragEndEvent } from '@dnd-kit/core';
-import Card from './Card';
-import Group from './Group';
+import Card from './Card.js';
+import Group from './Group.js';
+
 
 interface BoardViewProps {
   // Define props if needed
