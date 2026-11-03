@@ -135,6 +135,48 @@ class BoardService {
       throw error;
     }
   }
+
+  async deleteCard(cardId: string): Promise<{ cards: Card[]; groups: Group[] }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/board/card/${cardId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete card: ${response.statusText}`);
+      }
+      
+      const board = await response.json();
+      return {
+        cards: board.cards || [],
+        groups: board.groups || []
+      };
+    } catch (error) {
+      console.error('Failed to delete card:', error);
+      throw error;
+    }
+  }
+
+  async deleteGroup(groupId: string): Promise<{ cards: Card[]; groups: Group[] }> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/board/group/${groupId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Failed to delete group: ${response.statusText}`);
+      }
+      
+      const board = await response.json();
+      return {
+        cards: board.cards || [],
+        groups: board.groups || []
+      };
+    } catch (error) {
+      console.error('Failed to delete group:', error);
+      throw error;
+    }
+  }
 }
 
 export default BoardService;

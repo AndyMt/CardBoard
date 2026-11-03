@@ -185,6 +185,45 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
     });
   };
 
+  const handleKeyDown = async (e: KeyboardEvent) => {
+    console.log('Key pressed:', e.key); // Debug: Log the pressed key
+    if (e.key === 'Delete' && selectedItems.length > 0) {
+      console.log('Delete key pressed. Selected items:', selectedItems); // Debug: Log selected items
+      e.preventDefault();
+      
+      // Delete all selected cards and groups
+      try {
+        const boardService = BoardService.getInstance();
+        
+        // Delete selected cards and groups
+        for (const id of selectedItems) {
+          const isCard = cards.some(card => card.id === id);
+          const isGroup = groups.some(group => group.id === id);
+          
+          if (isCard) {
+            await boardService.deleteCard(id);
+          } else if (isGroup) {
+            await boardService.deleteGroup(id);
+          }
+        }
+        
+        // Update state
+        setCards(prevCards => prevCards.filter(card => !selectedItems.includes(card.id)));
+        setGroups(prevGroups => prevGroups.filter(group => !selectedItems.includes(group.id)));
+        setSelectedItems([]);
+      } catch (err) {
+        console.error('Failed to delete selected items:', err);
+      }
+    }
+  };
+
+  const handleBoardFocus = () => {
+    const boardElement = document.querySelector('.board-container');
+    if (boardElement) {
+      boardElement.focus();
+    }
+  };
+
   const handleBoardClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     setSelectedItems([]);
     
@@ -231,8 +270,13 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
   return (
     <DndContext onDragEnd={handleDragEnd}>
       <div
-        className="relative w-full h-full bg-gray-100 overflow-auto"
-        onClick={handleBoardClick}
+        className="relative w-full h-full bg-gray-100 overflow-auto board-container"
+        onClick={() => {
+          handleBoardClick();
+          handleBoardFocus();
+        }}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
       >
         {/* Debug: Show selected items count */}
         <div className="absolute top-4 left-4 bg-white p-2 rounded shadow z-50">
