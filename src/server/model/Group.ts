@@ -1,4 +1,4 @@
-import { Group as GroupInterface } from '@/types/Group';
+import { Group as GroupInterface } from '../../types/Group.js';
 
 export class Group implements GroupInterface {
   id: string;

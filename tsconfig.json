@@ -6,7 +6,7 @@
     "jsx": "react-jsx",
     "strict": true,
     "moduleResolution": "NodeNext",
-    "verbatimModuleSyntax": true,
+    "verbatimModuleSyntax": false,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {

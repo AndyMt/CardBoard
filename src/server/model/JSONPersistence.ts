@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import lockfile from 'lockfile';
-import { Board } from '@/types/Board';
+import { Board } from '../../types/Board.js';
 
 export class JSONPersistence {
   private filePath: string;
@@ -22,7 +22,7 @@ export class JSONPersistence {
 
   async write(board: Board): Promise<void> {
     await new Promise<void>((resolve, reject) => {
-      lockfile.lock(this.lockPath, (err) => {
+      lockfile.lock(this.lockPath, (err: Error | null) => {
         if (err) reject(err);
         else resolve();
       });

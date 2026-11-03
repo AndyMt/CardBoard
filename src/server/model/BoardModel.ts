@@ -1,6 +1,6 @@
-import { Card } from './Card';
-import { Group } from './Group';
-import { Board } from '@/types/Board';
+import { Card } from './Card.js';
+import { Group } from './Group.js';
+import { Board } from '../../types/Board.js';
 
 export class BoardModel implements Board {
   cards: Card[];
