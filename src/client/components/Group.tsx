@@ -63,6 +63,7 @@ export const Group: React.FC<GroupProps> = ({
   };
 
   const handleMouseDownSelection = (e: React.MouseEvent) => {
+    isDraggingRef.current = false;
     // Get the bounding rectangle of the group
     const rect = e.currentTarget.getBoundingClientRect();
 
