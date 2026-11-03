@@ -1,0 +1,10 @@
+## Plan Mode Rules
+
+- Maximum 3 steps per plan.
+- Each step must modify at most ONE file.
+- Each step must include the exact file path and a concrete description of the change (not "refactor" or "improve" — say "add function X at line Y that does Z").
+- Do not include architectural decisions, multi-file refactors, or "consider alternatives" steps.
+- If the task requires more than 3 steps, produce the first 3 and note "remaining steps in next plan."
+- Each step must be independently executable without understanding the other steps.
+- When modifying an existing file, insert new code at a specific location. Do not restructure, reorder, or rewrite existing code.
+- Only create a new file if the task is genuinely a new module. Otherwise, edit in place.
