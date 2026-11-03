@@ -74,3 +74,9 @@ debug.log
 
 # Local development
 *.local
+
+# Data directory for persistence
+/data/
+/data/*
+!/data/.gitkeep
+nul

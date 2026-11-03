@@ -11,6 +11,15 @@ export default defineConfig(({ mode }): UserConfig => {
         '@': fileURLToPath(new URL('./src', import.meta.url)),
       },
     },
+    server: {
+      proxy: {
+        '/api': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+          // No rewrite needed as we're using the same path
+        }
+      }
+    },
     // Production optimizations
     build: {
       sourcemap: mode === 'development',
