@@ -34,7 +34,7 @@ export const Group: React.FC<GroupProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  console.log(`Group ${id}: Rendering, isSelected=${isSelected}`);
+  logger.group(`Rendering group ${id}, isSelected=${isSelected}`);
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
@@ -59,31 +59,55 @@ export const Group: React.FC<GroupProps> = ({
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    logger.group(`Click on group ${id}`);
-    e.stopPropagation();
+    // Get the bounding rectangle of the group
+    const rect = e.currentTarget.getBoundingClientRect();
     
-    if (onSelect) {
-      logger.group(`Calling onSelect for ${id}`);
-      onSelect(id);
-    } else {
-      logger.group(`onSelect handler not defined for ${id}`);
+    // Calculate click position relative to the group
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    
+    // Check if click is in the drag handle (blue bar)
+    const isInDragHandle = clickY < 8; // Blue bar is 8px tall
+    
+    // Check if click is in the 6px selection zone inside the border
+    // For left, right, and bottom borders
+    const isInSelectionZone =
+      clickX < 6 ||                     // Left selection zone (6px)
+      clickX > rect.width - 6 ||        // Right selection zone (6px)
+      clickY > rect.height - 6;         // Bottom selection zone (6px)
+    
+    logger.group(`Click on group ${id} at (${clickX}, ${clickY}), drag handle: ${isInDragHandle}, selection zone: ${isInSelectionZone}`);
+    
+    if (isInDragHandle || isInSelectionZone) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (onSelect) {
+        logger.group(`Calling onSelect for ${id} from ${isInDragHandle ? 'drag handle' : 'selection zone'}`);
+        onSelect(id);
+      } else {
+        logger.group(`onSelect handler not defined for ${id}`);
+      }
+      return;
     }
+    
+    // For content area, proceed with normal click handling
+    logger.group(`Click in content area of group ${id}`);
   };
 
   const handleLabelClick = () => {
-    console.log(`Group ${id}: Label click, entering edit mode`);
+    logger.group(`Label click on group ${id}, entering edit mode`);
     setIsEditing(true);
   };
 
   const handleInputBlur = () => {
-    console.log(`Group ${id}: Input blur, exiting edit mode`);
+    logger.group(`Input blur in group ${id}, exiting edit mode`);
     setIsEditing(false);
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      console.log(`Group ${id}: Enter pressed, exiting edit mode`);
+      logger.group(`Enter pressed in group ${id}, exiting edit mode`);
       setIsEditing(false);
     }
   };
@@ -91,7 +115,7 @@ export const Group: React.FC<GroupProps> = ({
   // Auto-enter edit mode when group is created with empty label
   useEffect(() => {
     if (groupLabel === '' && !isEditing) {
-      console.log(`Group ${id}: Empty label, auto-entering edit mode`);
+      logger.group(`Empty label in group ${id}, auto-entering edit mode`);
       setIsEditing(true);
     }
   }, [groupLabel]);
@@ -99,7 +123,7 @@ export const Group: React.FC<GroupProps> = ({
   // Auto-focus when editing starts
   useEffect(() => {
     if (isEditing && inputRef.current) {
-      console.log(`Group ${id}: Editing mode, focusing input`);
+      logger.group(`Editing mode in group ${id}, focusing input`);
       inputRef.current.focus();
       inputRef.current.select();
     }
@@ -112,23 +136,13 @@ export const Group: React.FC<GroupProps> = ({
       onClick={handleClick}
       className={`absolute border-[1.33px] border-dashed border-gray-400 rounded-lg bg-white overflow-hidden group-component ${isSelected ? 'selected' : ''}`}
     >
-
-      
       {/* Header with 8px blue bar and centered label */}
       <div className="flex flex-col">
         {/* 8px high blue bar - this is the drag handle */}
         <div
           {...listeners}
           {...attributes}
-          className="h-2 w-full bg-blue-500 cursor-move"
-          onClick={(e) => {
-            logger.group(`Drag handle click on group ${id}`);
-            e.stopPropagation();
-            if (onSelect) {
-              logger.group(`Calling onSelect from drag handle for ${id}`);
-              onSelect(id);
-            }
-          }}
+          className="h-2 w-full bg-blue-500 cursor-move drag-handle-area"
         ></div>
         
         {/* Label area - centered */}
@@ -156,7 +170,7 @@ export const Group: React.FC<GroupProps> = ({
       </div>
       
       {/* Content area */}
-      <div className="flex-1 p-2 pt-0">
+      <div className="flex-1" style={{ padding: '0.5rem', paddingTop: '0' }}>
         {/* This is where cards will be placed */}
       </div>
     </div>

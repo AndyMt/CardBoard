@@ -10,6 +10,33 @@
   z-index: 10;
 }
 
+/* Selection zone visualization on hover */
+.card-component:hover::before,
+.group-component:hover::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Show 6px selection zones inside the border */
+  border-left: 6px solid rgba(59, 130, 246, 0.2);
+  border-right: 6px solid rgba(59, 130, 246, 0.2);
+  border-bottom: 6px solid rgba(59, 130, 246, 0.2);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Special visualization for drag handle */
+.card-component:hover .drag-handle-area::after,
+.group-component:hover .drag-handle-area::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background-color: rgba(59, 130, 246, 0.2);
+  pointer-events: none;
+}
+
 /* Ensure cards and groups have position for absolute positioning */
 .card-component,
 .group-component {

@@ -34,7 +34,7 @@ export const Card: React.FC<CardProps> = ({
   const textRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(20);
 
-  console.log(`Card ${id}: Rendering, isSelected=${isSelected}`);
+  logger.card(`Rendering card ${id}, isSelected=${isSelected}`);
 
   // Measure text height and update both elements
   const updateHeight = () => {
@@ -86,19 +86,44 @@ export const Card: React.FC<CardProps> = ({
   };
 
   const handleClick = (e: React.MouseEvent) => {
-    logger.card(`Click on card ${id}`);
-    e.stopPropagation();
+    // Get the bounding rectangle of the card
+    const rect = e.currentTarget.getBoundingClientRect();
     
-    if (onSelect) {
-      logger.card(`Calling onSelect for ${id}`);
-      onSelect(id);
-    } else {
-      logger.card(`onSelect handler not defined for ${id}`);
+    // Calculate click position relative to the card
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    
+    // Check if click is in the drag handle (blue bar)
+    const isInDragHandle = clickY < 8; // Blue bar is 8px tall
+    
+    // Check if click is in the 6px selection zone inside the border
+    // For left, right, and bottom borders
+    const isInSelectionZone =
+      clickX < 6 ||                     // Left selection zone (6px)
+      clickX > rect.width - 6 ||        // Right selection zone (6px)
+      clickY > rect.height - 6;         // Bottom selection zone (6px)
+    
+    logger.card(`Click on card ${id} at (${clickX}, ${clickY}), drag handle: ${isInDragHandle}, selection zone: ${isInSelectionZone}`);
+    
+    if (isInDragHandle || isInSelectionZone) {
+      e.stopPropagation();
+      e.preventDefault();
+      if (onSelect) {
+        logger.card(`Calling onSelect for ${id} from ${isInDragHandle ? 'drag handle' : 'selection zone'}`);
+        onSelect(id);
+      } else {
+        logger.card(`onSelect handler not defined for ${id}`);
+      }
+      return;
     }
+    
+    // For content area, proceed with normal click handling
+    // (which will trigger text editing)
+    logger.card(`Click in content area of card ${id}`);
   };
 
   const handleContentClick = () => {
-    console.log(`Card ${id}: Content click, entering edit mode`);
+    logger.card(`Content click on card ${id}, entering edit mode`);
     // Start editing on single click
     setIsEditing(true);
   };
@@ -106,7 +131,7 @@ export const Card: React.FC<CardProps> = ({
   // Auto-enter edit mode when card is created with empty text
   useEffect(() => {
     if (cardText === '' && !isEditing) {
-      console.log(`Card ${id}: Empty text, auto-entering edit mode`);
+      logger.card(`Empty text in card ${id}, auto-entering edit mode`);
       setIsEditing(true);
     }
   }, [cardText]);
@@ -114,7 +139,7 @@ export const Card: React.FC<CardProps> = ({
   // Auto-focus and select all text when editing starts
   useEffect(() => {
     if (isEditing && textareaRef.current) {
-      console.log(`Card ${id}: Editing mode, focusing textarea`);
+      logger.card(`Editing mode in card ${id}, focusing textarea`);
       textareaRef.current.focus();
       textareaRef.current.select();
     }
@@ -127,25 +152,15 @@ export const Card: React.FC<CardProps> = ({
       onClick={handleClick}
       className={`absolute border-2 border-solid border-gray-800 rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}
     >
-
-      
       {/* Drag handle - 8px blue bar at top */}
       <div
         {...listeners}
         {...attributes}
-        className="h-2 w-full bg-blue-500 cursor-move"
-        onClick={(e) => {
-          logger.card(`Drag handle click on card ${id}`);
-          e.stopPropagation();
-          if (onSelect) {
-            logger.card(`Calling onSelect from drag handle for ${id}`);
-            onSelect(id);
-          }
-        }}
+        className="h-2 w-full bg-blue-500 cursor-move drag-handle-area"
       ></div>
       
       {/* Content area */}
-      <div className="flex-1 p-2">
+      <div className="flex-1" style={{ padding: '0.5rem' }}>
         {isEditing ? (
           <textarea
             ref={textareaRef}
@@ -156,13 +171,13 @@ export const Card: React.FC<CardProps> = ({
               setTimeout(updateHeight, 0);
             }}
             onBlur={() => {
-              console.log(`Card ${id}: Editing blur, exiting edit mode`);
+              logger.card(`Editing blur in card ${id}, exiting edit mode`);
               setIsEditing(false);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                console.log(`Card ${id}: Enter pressed, exiting edit mode`);
+                logger.card(`Enter pressed in card ${id}, exiting edit mode`);
                 setIsEditing(false);
               }
             }}
