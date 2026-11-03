@@ -5,10 +5,10 @@ import Group from './Group.js';
 
 
 interface BoardViewProps {
-  // Define props if needed
+  selectedTool: 'select' | 'card' | 'group';
 }
 
-export const BoardView: React.FC<BoardViewProps> = () => {
+export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
   const [cards, setCards] = useState<{
     id: string;
     text: string;
@@ -121,9 +121,42 @@ export const BoardView: React.FC<BoardViewProps> = () => {
     });
   };
 
-  const handleBoardClick = () => {
+  const handleBoardClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Deselect all when clicking on empty space
     setSelectedItems([]);
+    
+    // Handle tool-specific actions
+    if (selectedTool === 'select') {
+      // Do nothing for select tool
+      return;
+    }
+    
+    // Get click position relative to board
+    const boardRect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - boardRect.left;
+    const y = e.clientY - boardRect.top;
+    
+    if (selectedTool === 'card') {
+      // Create new card
+      const newCard = {
+        id: `card-${Date.now()}`,
+        text: '',
+        x: x - 100, // Center the card on click position
+        y: y - 30,  // Account for card height
+        isSelected: false,
+      };
+      setCards(prevCards => [...prevCards, newCard]);
+    } else if (selectedTool === 'group') {
+      // Create new group
+      const newGroup = {
+        id: `group-${Date.now()}`,
+        label: '',
+        x: x - 220, // Center the group on click position
+        y: y - 30,  // Account for group header height
+        isSelected: false,
+      };
+      setGroups(prevGroups => [...prevGroups, newGroup]);
+    }
   };
 
   return (

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 
 // Define tool types
-type ToolType = 'select' | 'card' | 'group';
+export type ToolType = 'select' | 'card' | 'group';
 
-const Toolbar: React.FC = () => {
-  // State for currently selected tool
-  const [selectedTool, setSelectedTool] = useState<ToolType>('select');
+interface ToolbarProps {
+  onToolSelect: (tool: ToolType) => void;
+  selectedTool: ToolType;
+}
+
+const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, selectedTool }) => {
   // State for user count (static for now)
   const [userCount] = useState<number>(1);
 
@@ -40,7 +43,7 @@ const Toolbar: React.FC = () => {
           {tools.map((tool) => (
             <button
               key={tool.type}
-              onClick={() => setSelectedTool(tool.type)}
+              onClick={() => onToolSelect(tool.type)}
               className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 ${
                 selectedTool === tool.type
                   ? 'bg-blue-500 text-white'

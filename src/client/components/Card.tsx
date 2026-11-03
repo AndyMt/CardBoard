@@ -89,6 +89,13 @@ export const Card: React.FC<CardProps> = ({
     setIsEditing(true);
   };
 
+  // Auto-enter edit mode when card is created with empty text
+  useEffect(() => {
+    if (cardText === '' && !isEditing) {
+      setIsEditing(true);
+    }
+  }, [cardText]);
+
   // Auto-focus and select all text when editing starts
   useEffect(() => {
     if (isEditing && textareaRef.current) {
