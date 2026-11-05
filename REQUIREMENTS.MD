@@ -45,7 +45,6 @@ The application shall have the following features:
 - the toolbar shall show the number of known users in the to right corner.
 - hovering over the number of users shall show the list of known users in a tooltip.
 
-
 ## Card element
 
 - default size is 200 pixels or approx 30 characters wide.
