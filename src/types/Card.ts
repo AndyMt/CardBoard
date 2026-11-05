@@ -1,10 +1,7 @@
-export interface Card {
-  id: string;
+import { Element } from './Element';
+
+export interface Card extends Element {
   text: string;
-  x: number;
-  y: number;
-  width?: number;
-  height?: number;
   isSelected: boolean;
   groupId?: string;
 }

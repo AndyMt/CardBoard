@@ -1,37 +1,31 @@
 import { Group } from '../../types/Group';
+import { ElementModel } from './ElementModel';
 
-const DEFAULT_WIDTH = 440; // 2x2 cards + padding
+const DEFAULT_WIDTH = 440;
 const DEFAULT_HEIGHT = 440;
-const MIN_WIDTH = 220; // 1x1 card + padding
+const MIN_WIDTH = 220;
 const MIN_HEIGHT = 220;
 
-export class GroupModel {
+export class GroupModel extends ElementModel {
   static createDefault(x: number, y: number): Group {
+    const base = super.createBase(x - DEFAULT_WIDTH / 2, y - 30, DEFAULT_WIDTH, DEFAULT_HEIGHT);
     return {
       id: `group-${Date.now()}`,
       label: '',
-      x: x - DEFAULT_WIDTH / 2, // Center the group on the click position
-      y: y - 30, // Account for group header height
-      width: DEFAULT_WIDTH,
-      height: DEFAULT_HEIGHT
+      ...base,
     };
   }
-  
+
   static createFromData(data: Partial<Group>): Group {
+    const base = super.createBase(data.x || 0, data.y || 0, data.width || DEFAULT_WIDTH, data.height || DEFAULT_HEIGHT);
     return {
       id: data.id || `group-${Date.now()}`,
       label: data.label || '',
-      x: data.x || 0,
-      y: data.y || 0,
-      width: data.width || DEFAULT_WIDTH,
-      height: data.height || DEFAULT_HEIGHT
+      ...base,
     };
   }
-  
-  static getMinSize(): { width: number, height: number } {
-    return {
-      width: MIN_WIDTH,
-      height: MIN_HEIGHT
-    };
+
+  static getMinSize(): { width: number; height: number } {
+    return { width: MIN_WIDTH, height: MIN_HEIGHT };
   }
 }

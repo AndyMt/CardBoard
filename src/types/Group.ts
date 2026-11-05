@@ -1,9 +1,6 @@
-export interface Group {
-  id: string;
+import { Element } from './Element';
+
+export interface Group extends Element {
   label: string;
-  x: number;
-  y: number;
-  width?: number;
-  height?: number;
   isSelected: boolean;
 }
