@@ -14,16 +14,15 @@ export class GroupSelectionController extends ElementSelectionController {
     const memberIds = this.cards
       .filter((card) => card.groupId === id)
       .map((card) => card.id);
-    const ids = [id, ...memberIds];
 
     if (ctrlKey) {
-      const allSelected = ids.every((itemId) => selected.includes(itemId));
-      if (allSelected) {
-        return selected.filter((itemId) => !ids.includes(itemId));
+      // Ctrl+Click toggles only the group itself, matching card behavior.
+      if (selected.includes(id)) {
+        return selected.filter((itemId) => itemId !== id);
       }
-      return [...selected, ...ids.filter((itemId) => !selected.includes(itemId))];
+      return [...selected, id];
     }
 
-    return ids;
+    return [id, ...memberIds];
   }
 }

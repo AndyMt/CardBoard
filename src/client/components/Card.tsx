@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { useElementSelection } from '../hooks/useElementSelection.js';
 
 const CARD_WIDTH = 200; // px
 const LINE_HEIGHT = 20; // px
@@ -36,98 +37,28 @@ export const Card: React.FC<CardProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(20);
-  const isDraggingRef = useRef(false);
+  const { isDraggingRef, handleMouseDown, handleMouseUp, handleMouseMove } = useElementSelection(
+    id,
+    onCardClick,
+    2
+  );
 
-  // Measure text height and update both elements
   const updateHeight = () => {
     if (isEditing && textareaRef.current) {
-      // For textarea, temporarily set to auto height to measure
       textareaRef.current.style.height = 'auto';
       const height = textareaRef.current.scrollHeight;
       setContentHeight(Math.max(height, 20));
       textareaRef.current.style.height = `${height}px`;
     } else if (!isEditing && textRef.current) {
-      // For div, use scrollHeight
       const height = textRef.current.scrollHeight;
       setContentHeight(Math.max(height, 20));
     }
-  };
-
-  // Update height when text or mode changes
-  useEffect(() => {
-    updateHeight();
-  }, [cardText, isEditing]);
-
-  // Also update height when refs become available
-  useEffect(() => {
-    if (textRef.current) updateHeight();
-  }, [textRef.current]);
-
-  useEffect(() => {
-    if (textareaRef.current) updateHeight();
-  }, [textareaRef.current]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    isDraggingRef.current = false;
-
-    // Get the bounding rectangle of the card
-    const rect = e.currentTarget.getBoundingClientRect();
-
-    // Calculate click position relative to the card (includes 2px border)
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-    const border = 2;
-
-    // Check if click is in the drag handle (8px blue bar at top, inside border)
-    const isInDragHandle = clickY >= border && clickY < border + 8;
-
-    // Check if click is in the 6px selection zone inside the element border
-    const innerTop = border;
-    const innerLeft = border;
-    const innerRight = rect.width - border;
-    const innerBottom = rect.height - border;
-    const zone = 6;
-
-    const inInner =
-      clickX >= innerLeft && clickX <= innerRight &&
-      clickY >= innerTop && clickY <= innerBottom;
-    const isInSelectionZone = inInner && (
-      clickX < innerLeft + zone ||               // Left
-      clickX > innerRight - zone ||              // Right
-      clickY < innerTop + 8 + zone ||            // Top (8px bar + 6px)
-      clickY > innerBottom - zone                // Bottom
-    );
-
-    if (isInDragHandle || isInSelectionZone) {
-      e.stopPropagation();
-      (e.currentTarget as any)._pendingSelection = {
-        cardId: id,
-        ctrlKey: e.ctrlKey
-      };
-    }
-  };
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    const pending = (e.currentTarget as any)._pendingSelection;
-    if (pending && !isDraggingRef.current) {
-      e.stopPropagation();
-      e.preventDefault();
-      if (onCardClick) {
-        onCardClick(pending.cardId, pending.ctrlKey);
-      }
-    }
-    delete (e.currentTarget as any)._pendingSelection;
-  };
-
-  const handleMouseMove = () => {
-    isDraggingRef.current = true;
   };
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
     data: { type: 'card', x, y }
   });
-
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : (dragOffset ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` : undefined),
     left: `${x}px`,

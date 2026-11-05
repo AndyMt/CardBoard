@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { useElementSelection } from '../hooks/useElementSelection.js';
 import Card from './Card.js';
 import { Card as CardType } from '../../types/Card.js';
 
@@ -46,13 +47,12 @@ export const Group: React.FC<GroupProps> = ({
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const isDraggingRef = useRef(false);
 
-
-
-  const handleMouseMove = () => {
-    isDraggingRef.current = true;
-  };
+  const { isDraggingRef, handleMouseDown: handleMouseDownSelection, handleMouseUp, handleMouseMove } = useElementSelection(
+    id,
+    onGroupClick,
+    1.33
+  );
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
@@ -75,57 +75,6 @@ export const Group: React.FC<GroupProps> = ({
     if (onLabelChange) {
       onLabelChange(id, newLabel);
     }
-  };
-
-  const handleMouseDownSelection = (e: React.MouseEvent) => {
-    isDraggingRef.current = false;
-    // Get the bounding rectangle of the group
-    const rect = e.currentTarget.getBoundingClientRect();
-
-    // Calculate click position relative to the group (includes border)
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-    const border = 1.33;
-
-    // Check if click is in the drag handle (8px blue bar at top, inside border)
-    const isInDragHandle = clickY >= border && clickY < border + 8;
-
-    // Check if click is in the 6px selection zone inside the element border
-    const innerTop = border;
-    const innerLeft = border;
-    const innerRight = rect.width - border;
-    const innerBottom = rect.height - border;
-    const zone = 6;
-
-    const inInner =
-      clickX >= innerLeft && clickX <= innerRight &&
-      clickY >= innerTop && clickY <= innerBottom;
-    const isInSelectionZone = inInner && (
-      clickX < innerLeft + zone ||               // Left
-      clickX > innerRight - zone ||              // Right
-      clickY < innerTop + 8 + zone ||            // Top (8px bar + 6px)
-      clickY > innerBottom - zone                // Bottom
-    );
-
-    if (isInDragHandle || isInSelectionZone) {
-      e.stopPropagation();
-      (e.currentTarget as any)._pendingGroupSelection = {
-        groupId: id,
-        ctrlKey: e.ctrlKey
-      };
-    }
-  };
-
-  const handleMouseUp = (e: React.MouseEvent) => {
-    const pending = (e.currentTarget as any)._pendingGroupSelection;
-    if (pending && !isDraggingRef.current) {
-      e.stopPropagation();
-      e.preventDefault();
-      if (onGroupClick) {
-        onGroupClick(pending.groupId, pending.ctrlKey);
-      }
-    }
-    delete (e.currentTarget as any)._pendingGroupSelection;
   };
 
   const handleLabelClick = () => {

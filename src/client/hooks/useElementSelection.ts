@@ -1,0 +1,67 @@
+import { useRef } from 'react';
+
+interface PendingSelection {
+  id: string;
+  ctrlKey: boolean;
+}
+
+export function useElementSelection(
+  id: string,
+  onElementClick: ((id: string, ctrlKey: boolean) => void) | undefined,
+  borderThickness: number
+) {
+  const isDraggingRef = useRef(false);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isDraggingRef.current = false;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+    const border = borderThickness;
+
+    const isInDragHandle = clickY >= border && clickY < border + 8;
+
+    const innerTop = border;
+    const innerLeft = border;
+    const innerRight = rect.width - border;
+    const innerBottom = rect.height - border;
+    const zone = 6;
+
+    const inInner =
+      clickX >= innerLeft &&
+      clickX <= innerRight &&
+      clickY >= innerTop &&
+      clickY <= innerBottom;
+    const isInSelectionZone =
+      inInner &&
+      (clickX < innerLeft + zone ||
+        clickX > innerRight - zone ||
+        clickY < innerTop + 8 + zone ||
+        clickY > innerBottom - zone);
+
+    if (isInDragHandle || isInSelectionZone) {
+      e.stopPropagation();
+      (e.currentTarget as any)._pendingSelection = {
+        id,
+        ctrlKey: e.ctrlKey,
+      } satisfies PendingSelection;
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    const pending = (e.currentTarget as any)._pendingSelection as PendingSelection | undefined;
+    if (pending && !isDraggingRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      onElementClick?.(pending.id, pending.ctrlKey);
+    }
+    delete (e.currentTarget as any)._pendingSelection;
+  };
+
+  const handleMouseMove = () => {
+    isDraggingRef.current = true;
+  };
+
+  return { isDraggingRef, handleMouseDown, handleMouseUp, handleMouseMove };
+}
