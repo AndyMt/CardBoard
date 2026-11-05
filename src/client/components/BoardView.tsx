@@ -94,8 +94,15 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     const group = groups.find(g => g.id === card.groupId);
     if (!group) return;
 
-    const boardX = group.x + card.x;
-    const boardY = group.y + card.y;
+    const groupEl = document.querySelector(`[data-group-id="${group.id}"]`) as HTMLElement | null;
+    const contentEl = groupEl?.querySelector('.flex-1') as HTMLElement | null;
+    const groupRect = groupEl?.getBoundingClientRect();
+    const contentRect = contentEl?.getBoundingClientRect();
+    const offsetY = groupRect && contentRect ? contentRect.top - groupRect.top : 36;
+    const offsetX = groupRect && contentRect ? contentRect.left - groupRect.left : 8;
+
+    const boardX = group.x + offsetX + card.x;
+    const boardY = group.y + offsetY + card.y;
 
     setCards(prevCards => prevCards.map(c => (c.id === card.id ? { ...c, groupId: undefined, x: boardX, y: boardY } : c)));
 
@@ -129,9 +136,15 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       let finalX: number;
       let finalY: number;
       if (targetGroup) {
+        const groupEl = document.querySelector(`[data-group-id="${targetGroup.id}"]`) as HTMLElement | null;
+        const contentEl = groupEl?.querySelector('.flex-1') as HTMLElement | null;
+        const groupRect = groupEl?.getBoundingClientRect();
+        const contentRect = contentEl?.getBoundingClientRect();
+        const offsetY = groupRect && contentRect ? contentRect.top - groupRect.top : 36;
+        const offsetX = groupRect && contentRect ? contentRect.left - groupRect.left : 8;
         newGroupId = targetGroup.id;
-        finalX = newBoardX - targetGroup.x;
-        finalY = newBoardY - targetGroup.y;
+        finalX = newBoardX - targetGroup.x - offsetX;
+        finalY = newBoardY - targetGroup.y - offsetY;
       } else {
         newGroupId = undefined;
         finalX = newBoardX;
