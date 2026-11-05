@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { JSONPersistence } = require('./persistence/JSONPersistence.cjs');
 const { UserPersistence } = require('./persistence/UserPersistence.cjs');
 
@@ -198,6 +199,19 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
+
+// Serve static files in production/build
+try {
+  const buildPath = path.resolve(__dirname, '../../build');
+  if (fs.existsSync(buildPath)) {
+    app.use(express.static(buildPath));
+    app.get(/^(?!\/api).*/, (req, res) => {
+      res.sendFile(path.join(buildPath, 'index.html'));
+    });
+  }
+} catch (e) {
+  console.error('Failed to configure static serving:', e);
+}
 
 // Start server
 app.listen(port, () => {
