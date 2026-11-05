@@ -24,6 +24,21 @@ The application shall have the following features:
 - for card or group when clicking into some empty area shall place the element at that position and go right into edit mode.
 - indicator how many users are currently on the board is shown in the toolbar in the top right corner.
 
+## Collaborative working
+- At entering a board the first time, users shall be asked for a name and select a user color.
+- The name and color assignment shall be stored on the server in a json file.
+- the name shall be stored in browser local storage, this way it can be detected if a user already exists.
+- The username shall be displayed in the toolbar at the top right corner together with the user color.
+- Users shall be assigned a color for their cards and groups
+- The list of user colors shall be as follows:
+-- #005599
+-- #558899
+-- #009922
+-- #BB7700
+-- #CC2200
+-- #992299
+-- #662299
+
 ## Card element
 
 - default size is 200 pixels or approx 30 characters wide.
