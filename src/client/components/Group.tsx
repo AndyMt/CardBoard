@@ -25,6 +25,8 @@ interface GroupProps {
   onGroupClick?: (id: string, ctrlKey: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
   onCardTextChange?: (id: string, newText: string) => void;
+  createdBy?: string;
+  createdColor?: string;
 }
 
 export const Group: React.FC<GroupProps> = ({
@@ -42,7 +44,9 @@ export const Group: React.FC<GroupProps> = ({
   onSelect,
   onGroupClick,
   onCardClick,
-  onCardTextChange
+  onCardTextChange,
+  createdBy,
+  createdColor = '#3b82f6',
 }) => {
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
@@ -120,11 +124,12 @@ export const Group: React.FC<GroupProps> = ({
     >
       {/* Header with 8px blue bar and centered label */}
       <div className="flex flex-col">
-        {/* 8px high blue bar - this is the drag handle */}
+        {/* 8px high colored bar - this is the drag handle */}
         <div
           {...listeners}
           {...attributes}
-          className="h-2 w-full bg-blue-500 cursor-move drag-handle-area"
+          className="h-2 w-full cursor-move drag-handle-area"
+          style={{ backgroundColor: createdColor }}
         ></div>
         
         {/* Label area - centered */}

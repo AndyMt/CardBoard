@@ -17,6 +17,8 @@ interface CardProps {
   onTextChange?: (id: string, newText: string) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
+  createdBy?: string;
+  createdColor?: string;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -30,7 +32,9 @@ export const Card: React.FC<CardProps> = ({
   dragOffset = null,
   onTextChange,
   onSelect,
-  onCardClick
+  onCardClick,
+  createdBy,
+  createdColor = '#3b82f6',
 }) => {
   const [cardText, setCardText] = useState(text);
   const [isEditing, setIsEditing] = useState(false);
@@ -108,11 +112,12 @@ export const Card: React.FC<CardProps> = ({
       onClick={(e) => e.stopPropagation()}
       className={`absolute border-2 border-solid border-gray-800 rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}
     >
-      {/* Drag handle - 8px blue bar at top */}
+      {/* Drag handle - 8px colored bar at top */}
       <div
         {...listeners}
         {...attributes}
-        className="h-2 w-full bg-blue-500 cursor-move drag-handle-area"
+        className="h-2 w-full cursor-move drag-handle-area"
+        style={{ backgroundColor: createdColor }}
       ></div>
       
       {/* Content area */}

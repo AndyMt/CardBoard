@@ -4,6 +4,7 @@ import Card from './Card.js';
 import Group from './Group.js';
 import { Card as CardType } from '../../types/Card';
 import { Group as GroupType } from '../../types/Group';
+import { User } from '../../types/User';
 import BoardService from '../services/BoardService';
 import { ElementSelectionController } from '../controller/ElementSelectionController.js';
 import { GroupSelectionController } from '../controller/GroupSelectionController.js';
@@ -12,10 +13,11 @@ interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
   onSelectionChange?: (count: number) => void;
   onToolChange?: (tool: 'select' | 'card' | 'group') => void;
+  currentUser?: User | null;
 }
 
 // Helper functions for model operations (client-side only)
-const createDefaultCard = (x: number, y: number): CardType => {
+const createDefaultCard = (x: number, y: number, createdBy?: string, createdColor?: string): CardType => {
   return {
     id: `card-${Date.now()}`,
     text: '',
@@ -24,10 +26,12 @@ const createDefaultCard = (x: number, y: number): CardType => {
     width: 200, // Default card width
     height: 60, // Default card height
     isSelected: false,
+    createdBy,
+    createdColor,
   };
 };
 
-const createDefaultGroup = (x: number, y: number): GroupType => {
+const createDefaultGroup = (x: number, y: number, createdBy?: string, createdColor?: string): GroupType => {
   return {
     id: `group-${Date.now()}`,
     label: '',
@@ -36,10 +40,12 @@ const createDefaultGroup = (x: number, y: number): GroupType => {
     width: 440, // Default group width
     height: 440, // Default group height
     isSelected: false,
+    createdBy,
+    createdColor,
   };
 };
 
-export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionChange, onToolChange }) => {
+export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionChange, onToolChange, currentUser }) => {
   const [cards, setCards] = useState<CardType[]>([]);
   const [groups, setGroups] = useState<GroupType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -379,7 +385,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     
     if (selectedTool === 'card') {
       // Create new card using client-side helper
-      const newCard = createDefaultCard(x, y);
+      const newCard = createDefaultCard(x, y, currentUser?.name, currentUser?.color);
       
       // Add card to persistence
       try {
@@ -391,7 +397,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       }
     } else if (selectedTool === 'group') {
       // Create new group using client-side helper
-      const newGroup = createDefaultGroup(x, y);
+      const newGroup = createDefaultGroup(x, y, currentUser?.name, currentUser?.color);
       
       // Add group to persistence
       try {
@@ -444,6 +450,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               onCardClick={handleCardClick}
               onSelect={handleSelect}
               onTextChange={handleCardTextChange}
+              createdBy={card.createdBy}
+              createdColor={card.createdColor}
             />
           );
         })}
@@ -469,6 +477,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               onSelect={handleSelect}
               onCardClick={handleCardClick}
               onCardTextChange={handleCardTextChange}
+              createdBy={group.createdBy}
+              createdColor={group.createdColor}
             />
           );
         })}

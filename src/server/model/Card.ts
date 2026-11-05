@@ -6,11 +6,13 @@ const CARD_MIN_HEIGHT = 60;
 const LINE_HEIGHT = 20;
 
 export class CardModel extends ElementModel {
-  static createDefault(x: number, y: number): Card {
+  static createDefault(x: number, y: number, createdBy?: string, createdColor?: string): Card {
     const base = super.createBase(x - CARD_WIDTH / 2, y - 30, CARD_WIDTH, CARD_MIN_HEIGHT);
     return {
       id: `card-${Date.now()}`,
       text: '',
+      createdBy,
+      createdColor,
       ...base,
     };
   }
@@ -20,6 +22,8 @@ export class CardModel extends ElementModel {
     return {
       id: data.id || `card-${Date.now()}`,
       text: data.text || '',
+      createdBy: data.createdBy,
+      createdColor: data.createdColor,
       ...base,
     };
   }
