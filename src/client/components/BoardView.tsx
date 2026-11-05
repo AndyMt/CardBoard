@@ -192,6 +192,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         console.error('Failed to update card position:', err);
       });
     } else if (activeType === 'group') {
+      const containedCards = cards.filter(c => c.groupId === activeId);
       setGroups(prevGroups => prevGroups.map(group => {
         if (group.id === activeId) {
           const updatedGroup = {
@@ -199,19 +200,21 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
             x: Math.max(0, group.x + delta.x),
             y: Math.max(0, group.y + delta.y),
           };
-          
-          // Update group position in persistence
-          boardService.updateGroup(group.id, {
-            x: updatedGroup.x,
-            y: updatedGroup.y
-          }).catch(err => {
+          boardService.updateGroup(group.id, { x: updatedGroup.x, y: updatedGroup.y }).catch(err => {
             console.error('Failed to update group position:', err);
           });
-          
           return updatedGroup;
         }
         return group;
       }));
+      containedCards.forEach(card => {
+        const updatedCard = { ...card, x: Math.max(0, card.x + delta.x), y: Math.max(0, card.y + delta.y) };
+        setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
+        boardService.updateCard(card.id, { x: updatedCard.x, y: updatedCard.y }).catch(err => {
+          console.error('Failed to update card position:', err);
+        });
+      });
+      setSelectedItems([activeId, ...containedCards.map(c => c.id)]);
     }
     setActiveDragId(null);
     setDragDelta(null);
@@ -437,7 +440,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               width={card.width || 200}
               height={card.height || 60}
               isSelected={isCardSelected}
-              dragOffset={isCardSelected && card.id !== activeDragId && dragDelta ? dragDelta : null}
+              dragOffset={(isCardSelected || (activeDragId !== null && cards.find(c => c.id === card.id)?.groupId === activeDragId)) && card.id !== activeDragId && dragDelta ? dragDelta : null}
               onCardClick={handleCardClick}
               onSelect={handleSelect}
               onTextChange={handleCardTextChange}
