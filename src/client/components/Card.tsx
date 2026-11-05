@@ -96,14 +96,25 @@ export const Card: React.FC<CardProps> = ({
       clickY > innerBottom - zone                // Bottom
     );
 
-    // Only trigger selection if the mouse has not moved (i.e., it's a click, not a drag)
-    if ((isInDragHandle || isInSelectionZone) && !isDraggingRef.current) {
+    if (isInDragHandle || isInSelectionZone) {
+      e.stopPropagation();
+      (e.currentTarget as any)._pendingSelection = {
+        cardId: id,
+        ctrlKey: e.ctrlKey
+      };
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    const pending = (e.currentTarget as any)._pendingSelection;
+    if (pending && !isDraggingRef.current) {
       e.stopPropagation();
       e.preventDefault();
       if (onCardClick) {
-        onCardClick(id, e.ctrlKey);
+        onCardClick(pending.cardId, pending.ctrlKey);
       }
     }
+    delete (e.currentTarget as any)._pendingSelection;
   };
 
   const handleMouseMove = () => {
@@ -159,6 +170,7 @@ export const Card: React.FC<CardProps> = ({
       style={style}
       data-card-id={id}
       onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
       onMouseMove={handleMouseMove}
       onClick={(e) => e.stopPropagation()}
       className={`absolute border-2 border-solid border-gray-800 rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}

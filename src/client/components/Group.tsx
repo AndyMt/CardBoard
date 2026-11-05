@@ -105,16 +105,25 @@ export const Group: React.FC<GroupProps> = ({
       clickY > innerBottom - zone                // Bottom
     );
 
-    // Only trigger selection if the mouse has not moved (i.e., it's a click, not a drag)
-    if ((isInDragHandle || isInSelectionZone) && !isDraggingRef.current) {
+    if (isInDragHandle || isInSelectionZone) {
+      e.stopPropagation();
+      (e.currentTarget as any)._pendingGroupSelection = {
+        groupId: id,
+        ctrlKey: e.ctrlKey
+      };
+    }
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    const pending = (e.currentTarget as any)._pendingGroupSelection;
+    if (pending && !isDraggingRef.current) {
       e.stopPropagation();
       e.preventDefault();
       if (onGroupClick) {
-        onGroupClick(id, e.ctrlKey);
+        onGroupClick(pending.groupId, pending.ctrlKey);
       }
     }
-    
-    // For content area, proceed with normal click handling
+    delete (e.currentTarget as any)._pendingGroupSelection;
   };
 
   const handleLabelClick = () => {
@@ -153,6 +162,7 @@ export const Group: React.FC<GroupProps> = ({
       style={style}
       data-group-id={id}
       onMouseDown={handleMouseDownSelection}
+      onMouseUp={handleMouseUp}
       onMouseMove={handleMouseMove}
       onClick={(e) => e.stopPropagation()}
       className={`absolute border-[1.33px] border-dashed border-gray-400 rounded-lg bg-white overflow-hidden group-component ${isSelected ? 'selected' : ''}`}

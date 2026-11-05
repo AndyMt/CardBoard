@@ -90,9 +90,69 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
+    const boardService = BoardService.getInstance();
 
-    if (active.data.current?.type === 'card') {
-      const card = cards.find(c => c.id === active.id);
+    const activeId = active.id as string;
+    const activeType = active.data.current?.type;
+
+    // If the dragged item is part of a multi-selection, move all selected items
+    if (selectedItems.includes(activeId) && selectedItems.length > 1) {
+      // Move all selected cards
+      selectedItems.forEach(itemId => {
+        const card = cards.find(c => c.id === itemId);
+        if (card) {
+          const startBoardX = card.x;
+          const startBoardY = card.y;
+          const newBoardX = Math.max(0, startBoardX + delta.x);
+          const newBoardY = Math.max(0, startBoardY + delta.y);
+
+          // Hit-test whether the card was dropped inside a group
+          const targetGroup = groups.find(g => {
+            const gw = g.width || 440;
+            const gh = g.height || 440;
+            return newBoardX >= g.x && newBoardX <= g.x + gw && newBoardY >= g.y && newBoardY <= g.y + gh;
+          });
+
+          const newGroupId = targetGroup ? targetGroup.id : undefined;
+          const updatedCard = { ...card, x: newBoardX, y: newBoardY, groupId: newGroupId };
+
+          setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
+
+          boardService.updateCard(card.id, {
+            x: updatedCard.x,
+            y: updatedCard.y,
+            groupId: updatedCard.groupId
+          }).catch(err => {
+            console.error('Failed to update card position:', err);
+          });
+        }
+      });
+
+      // Move all selected groups
+      selectedItems.forEach(itemId => {
+        const group = groups.find(g => g.id === itemId);
+        if (group) {
+          const updatedGroup = {
+            ...group,
+            x: Math.max(0, group.x + delta.x),
+            y: Math.max(0, group.y + delta.y),
+          };
+
+          setGroups(prevGroups => prevGroups.map(g => (g.id === group.id ? updatedGroup : g)));
+
+          boardService.updateGroup(group.id, {
+            x: updatedGroup.x,
+            y: updatedGroup.y
+          }).catch(err => {
+            console.error('Failed to update group position:', err);
+          });
+        }
+      });
+      return;
+    }
+
+    if (activeType === 'card') {
+      const card = cards.find(c => c.id === activeId);
       if (!card) return;
 
       const startBoardX = card.x;
@@ -115,7 +175,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
 
       setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
 
-      const boardService = BoardService.getInstance();
       boardService.updateCard(card.id, {
         x: updatedCard.x,
         y: updatedCard.y,
@@ -123,17 +182,16 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       }).catch(err => {
         console.error('Failed to update card position:', err);
       });
-    } else if (active.data.current?.type === 'group') {
+    } else if (activeType === 'group') {
       setGroups(prevGroups => prevGroups.map(group => {
-        if (group.id === active.id) {
+        if (group.id === activeId) {
           const updatedGroup = {
             ...group,
-             x: Math.max(0, group.x + delta.x),
-             y: Math.max(0, group.y + delta.y),
+            x: Math.max(0, group.x + delta.x),
+            y: Math.max(0, group.y + delta.y),
           };
           
           // Update group position in persistence
-          const boardService = BoardService.getInstance();
           boardService.updateGroup(group.id, {
             x: updatedGroup.x,
             y: updatedGroup.y
