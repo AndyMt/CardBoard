@@ -69,19 +69,30 @@ export const Card: React.FC<CardProps> = ({
     // Get the bounding rectangle of the card
     const rect = e.currentTarget.getBoundingClientRect();
 
-    // Calculate click position relative to the card
+    // Calculate click position relative to the card (includes 2px border)
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
+    const border = 2;
 
-    // Check if click is in the drag handle (8px blue bar)
-    const isInDragHandle = clickY < 8;
+    // Check if click is in the drag handle (8px blue bar at top, inside border)
+    const isInDragHandle = clickY >= border && clickY < border + 8;
 
-    // Check if click is in the 6px selection zone inside the border
-    const isInSelectionZone =
-      clickX < 6 ||                     // Left selection zone (6px)
-      clickX > rect.width - 6 ||        // Right selection zone (6px)
-      clickY < 14 ||                    // Top selection zone (8px dragging bar + 6px below)
-      clickY > rect.height - 6;         // Bottom selection zone (6px)
+    // Check if click is in the 6px selection zone inside the element border
+    const innerTop = border;
+    const innerLeft = border;
+    const innerRight = rect.width - border;
+    const innerBottom = rect.height - border;
+    const zone = 6;
+
+    const inInner =
+      clickX >= innerLeft && clickX <= innerRight &&
+      clickY >= innerTop && clickY <= innerBottom;
+    const isInSelectionZone = inInner && (
+      clickX < innerLeft + zone ||               // Left
+      clickX > innerRight - zone ||              // Right
+      clickY < innerTop + 8 + zone ||            // Top (8px bar + 6px)
+      clickY > innerBottom - zone                // Bottom
+    );
 
     // Only trigger selection if the mouse has not moved (i.e., it's a click, not a drag)
     if ((isInDragHandle || isInSelectionZone) && !isDraggingRef.current) {
@@ -145,6 +156,7 @@ export const Card: React.FC<CardProps> = ({
       style={style}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
+      onClick={(e) => e.stopPropagation()}
       className={`absolute border-2 border-solid border-gray-800 rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}
     >
       {/* Drag handle - 8px blue bar at top */}

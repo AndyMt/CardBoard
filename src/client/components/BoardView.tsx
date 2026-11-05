@@ -225,6 +225,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
   };
 
   const handleBoardClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    // Only handle clicks on the board background (empty space)
+    if (e.target !== e.currentTarget) return;
+
     setSelectedItems([]);
     
     // Handle tool-specific actions
