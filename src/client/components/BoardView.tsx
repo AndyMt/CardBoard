@@ -240,10 +240,10 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       return;
     }
     
-    // Get click position relative to board
+    // Get click position relative to board, accounting for scroll
     const boardRect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - boardRect.left;
-    const y = e.clientY - boardRect.top;
+    const x = e.clientX - boardRect.left + e.currentTarget.scrollLeft;
+    const y = e.clientY - boardRect.top + e.currentTarget.scrollTop;
     
     if (selectedTool === 'card') {
       // Create new card using client-side helper
