@@ -5,6 +5,8 @@ import Group from './Group.js';
 import { Card as CardType } from '../../types/Card';
 import { Group as GroupType } from '../../types/Group';
 import BoardService from '../services/BoardService';
+import { ElementSelectionController } from '../controller/ElementSelectionController.js';
+import { GroupSelectionController } from '../controller/GroupSelectionController.js';
 
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
@@ -341,25 +343,15 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
     }
-    handleSelect(id, ctrlKey);
+    setSelectedItems((prev) => new ElementSelectionController().select(prev, id, ctrlKey));
   };
 
   const handleGroupClick = (id: string, ctrlKey: boolean) => {
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
     }
-    setSelectedItems(prev => {
-      const memberIds = cards.filter(c => c.groupId === id).map(c => c.id);
-      const ids = [id, ...memberIds];
-      if (ctrlKey) {
-        const allSelected = ids.every(i => prev.includes(i));
-        if (allSelected) {
-          return prev.filter(i => !ids.includes(i));
-        }
-        return [...prev, ...ids.filter(i => !prev.includes(i))];
-      }
-      return ids;
-    });
+    const groupSelectionController = new GroupSelectionController(cards);
+    setSelectedItems((prev) => groupSelectionController.select(prev, id, ctrlKey));
   };
 
   const handleBoardFocus = () => {

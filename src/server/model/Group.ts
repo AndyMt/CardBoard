@@ -1,5 +1,5 @@
 import { Group } from '../../types/Group';
-import { ElementModel } from './ElementModel';
+import { ElementModel } from './ElementModel.js';
 
 const DEFAULT_WIDTH = 440;
 const DEFAULT_HEIGHT = 440;

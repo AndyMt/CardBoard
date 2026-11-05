@@ -1,4 +1,4 @@
-import { Element } from './Element';
+import { Element } from './Element.js';
 
 export interface Card extends Element {
   text: string;

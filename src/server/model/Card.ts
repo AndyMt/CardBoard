@@ -1,5 +1,5 @@
 import { Card } from '../../types/Card';
-import { ElementModel } from './ElementModel';
+import { ElementModel } from './ElementModel.js';
 
 const CARD_WIDTH = 200;
 const CARD_MIN_HEIGHT = 60;
