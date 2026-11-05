@@ -86,7 +86,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   }
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveDragId(event.active.id as string);
+    const id = event.active.id as string;
+    setActiveDragId(id);
     setDragDelta({ x: 0, y: 0 });
   };
 
