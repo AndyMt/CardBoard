@@ -22,7 +22,7 @@ const SelectionTest: React.FC = () => {
         className="w-32 h-16 border rounded p-2 mb-4 cursor-pointer"
         style={
           isSelected ? {
-            boxShadow: '0 0 0 3px white, 0 0 6px 6px rgba(59, 130, 246, 0.7)',
+            boxShadow: '0 0 6px 6px rgba(59, 130, 246, 0.7)',
             position: 'relative',
             zIndex: 10
           } : {}
