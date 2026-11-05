@@ -8,6 +8,7 @@ import BoardService from '../services/BoardService';
 
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
+  onSelectionChange?: (count: number) => void;
 }
 
 // Helper functions for model operations (client-side only)
@@ -15,8 +16,8 @@ const createDefaultCard = (x: number, y: number): CardType => {
   return {
     id: `card-${Date.now()}`,
     text: '',
-    x: x - 100, // Center the card on click position
-    y: y - 30,  // Account for card height
+    x: Math.max(0, x - 100), // Center the card on click position
+    y: Math.max(0, y - 30),  // Account for card height
     width: 200, // Default card width
     height: 60, // Default card height
     isSelected: false,
@@ -27,20 +28,24 @@ const createDefaultGroup = (x: number, y: number): GroupType => {
   return {
     id: `group-${Date.now()}`,
     label: '',
-    x: x - 220, // Center the group on click position
-    y: y - 30,  // Account for group header height
+    x: Math.max(0, x - 220), // Center the group on click position
+    y: Math.max(0, y - 30),  // Account for group header height
     width: 440, // Default group width
     height: 440, // Default group height
     isSelected: false,
   };
 };
 
-export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
+export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionChange }) => {
   const [cards, setCards] = useState<CardType[]>([]);
   const [groups, setGroups] = useState<GroupType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+
+  useEffect(() => {
+    onSelectionChange?.(selectedItems.length);
+  }, [selectedItems, onSelectionChange]);
 
   // Load board data on component mount
   useEffect(() => {
@@ -85,8 +90,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
         if (card.id === active.id) {
           const updatedCard = {
             ...card,
-            x: card.x + delta.x,
-            y: card.y + delta.y,
+             x: Math.max(0, card.x + delta.x),
+             y: Math.max(0, card.y + delta.y),
           };
           
           // Update card position in persistence
@@ -107,8 +112,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
         if (group.id === active.id) {
           const updatedGroup = {
             ...group,
-            x: group.x + delta.x,
-            y: group.y + delta.y,
+             x: Math.max(0, group.x + delta.x),
+             y: Math.max(0, group.y + delta.y),
           };
           
           // Update group position in persistence
@@ -271,7 +276,16 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
   console.log('Selected items:', selectedItems);
   
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {
+     const data = active?.data?.current as { x?: number; y?: number } | undefined;
+     const x = data?.x ?? 0;
+     const y = data?.y ?? 0;
+     return {
+       ...transform,
+       x: Math.max(-x, transform.x),
+       y: Math.max(-y, transform.y),
+     };
+   }]}>
       <div
         className="relative w-full h-full bg-gray-100 overflow-auto board-container"
         onClick={(e) => {
@@ -281,10 +295,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool }) => {
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
-        {/* Debug: Show selected items count */}
-        <div className="absolute top-4 left-4 bg-white p-2 rounded shadow z-50">
-          Selected: {selectedItems.length} items
-        </div>
         {/* Groups */}
         {groups.map(group => {
           const isGroupSelected = selectedItems.includes(group.id);

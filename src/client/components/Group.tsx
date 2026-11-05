@@ -42,7 +42,7 @@ export const Group: React.FC<GroupProps> = ({
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
-    data: { type: 'group' }
+    data: { type: 'group', x, y }
   });
 
   const style = {

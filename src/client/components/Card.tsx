@@ -110,7 +110,7 @@ export const Card: React.FC<CardProps> = ({
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
-    data: { type: 'card' }
+    data: { type: 'card', x, y }
   });
 
   const style = {

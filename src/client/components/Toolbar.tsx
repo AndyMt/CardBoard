@@ -6,9 +6,10 @@ export type ToolType = 'select' | 'card' | 'group';
 interface ToolbarProps {
   onToolSelect: (tool: ToolType) => void;
   selectedTool: ToolType;
+  selectedCount?: number;
 }
 
-const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, selectedTool }) => {
+const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, selectedTool, selectedCount = 0 }) => {
   // State for user count (static for now)
   const [userCount] = useState<number>(1);
 
@@ -57,15 +58,19 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, selectedTool }) => {
           ))}
         </div>
         
-        {/* User count indicator - right side */}
-        <div className="flex items-center space-x-2">
-          <div className="flex -space-x-1">
-            {/* User avatars - simplified */}
-            <div className="w-6 h-6 rounded-full bg-blue-300 border-2 border-white"></div>
-          </div>
+        {/* Selected indicator + user count - right side */}
+        <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-600">
-            {userCount} {userCount === 1 ? 'user' : 'users'}
+            Selected: {selectedCount} items
           </span>
+          <div className="flex items-center space-x-2">
+            <div className="flex -space-x-1">
+              <div className="w-6 h-6 rounded-full bg-blue-300 border-2 border-white"></div>
+            </div>
+            <span className="text-sm text-gray-600">
+              {userCount} {userCount === 1 ? 'user' : 'users'}
+            </span>
+          </div>
         </div>
       </div>
     </div>
