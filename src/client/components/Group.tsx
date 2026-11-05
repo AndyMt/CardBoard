@@ -16,6 +16,7 @@ interface GroupProps {
   width?: number;
   height?: number;
   isSelected: boolean;
+  dragOffset?: { x: number; y: number } | null;
   cards?: CardType[];
   selectedIds?: string[];
   onLabelChange?: (id: string, newLabel: string) => void;
@@ -33,6 +34,7 @@ export const Group: React.FC<GroupProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   isSelected = false,
+  dragOffset = null,
   cards = [],
   selectedIds = [],
   onLabelChange,
@@ -58,7 +60,7 @@ export const Group: React.FC<GroupProps> = ({
   });
 
   const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : (dragOffset ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` : undefined),
     left: `${x}px`,
     top: `${y}px`,
     width: `${width}px`,

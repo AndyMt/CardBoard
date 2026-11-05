@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DndContext, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-kit/core';
 import Card from './Card.js';
 import Group from './Group.js';
 import { Card as CardType } from '../../types/Card';
@@ -43,6 +43,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     onSelectionChange?.(selectedItems.length);
@@ -84,8 +86,12 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   }
 
   const handleDragStart = (event: DragStartEvent) => {
-    // Cards are always board-absolute; no conversion needed
-    return;
+    setActiveDragId(event.active.id as string);
+    setDragDelta({ x: 0, y: 0 });
+  };
+
+  const handleDragMove = (event: DragMoveEvent) => {
+    setDragDelta({ x: event.delta.x, y: event.delta.y });
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -148,6 +154,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
           });
         }
       });
+      setActiveDragId(null);
+      setDragDelta(null);
       return;
     }
 
@@ -204,6 +212,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         return group;
       }));
     }
+    setActiveDragId(null);
+    setDragDelta(null);
   };
 
   const handleCardTextChange = (id: string, newText: string) => {
@@ -394,7 +404,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   console.log('Selected items:', selectedItems);
 
   return (
-    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {
+    <DndContext onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {
      const data = active?.data?.current as { x?: number; y?: number } | undefined;
      const x = data?.x ?? 0;
      const y = data?.y ?? 0;
@@ -426,6 +436,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               width={card.width || 200}
               height={card.height || 60}
               isSelected={isCardSelected}
+              dragOffset={isCardSelected && card.id !== activeDragId && dragDelta ? dragDelta : null}
               onCardClick={handleCardClick}
               onSelect={handleSelect}
               onTextChange={handleCardTextChange}
@@ -446,6 +457,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               width={group.width || 440}
               height={group.height || 440}
               isSelected={isGroupSelected}
+              dragOffset={isGroupSelected && group.id !== activeDragId && dragDelta ? dragDelta : null}
               cards={[]}
               selectedIds={selectedItems}
               onLabelChange={handleGroupLabelChange}

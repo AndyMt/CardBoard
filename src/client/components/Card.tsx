@@ -12,6 +12,7 @@ interface CardProps {
   width?: number;
   height?: number;
   isSelected: boolean;
+  dragOffset?: { x: number; y: number } | null;
   onTextChange?: (id: string, newText: string) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
@@ -25,6 +26,7 @@ export const Card: React.FC<CardProps> = ({
   width = CARD_WIDTH,
   height = 60,
   isSelected = false,
+  dragOffset = null,
   onTextChange,
   onSelect,
   onCardClick
@@ -127,7 +129,7 @@ export const Card: React.FC<CardProps> = ({
   });
 
   const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : (dragOffset ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` : undefined),
     left: `${x}px`,
     top: `${y}px`,
     width: `${width}px`,
