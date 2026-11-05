@@ -121,6 +121,7 @@ export const Card: React.FC<CardProps> = ({
     top: `${y}px`,
     width: `${width}px`,
     minHeight: `${height}px`,
+    zIndex: 2,
   };
 
   const handleTextChange = (newText: string) => {

@@ -65,6 +65,7 @@ export const Group: React.FC<GroupProps> = ({
     height: `${height}px`,
     minWidth: `${MIN_WIDTH}px`,
     minHeight: `${MIN_HEIGHT}px`,
+    zIndex: 1,
   };
 
   const handleLabelChange = (newLabel: string) => {

@@ -84,32 +84,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   }
 
   const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event;
-
-    if (active.data.current?.type !== 'card') return;
-
-    const card = cards.find(c => c.id === active.id);
-    if (!card || !card.groupId) return;
-
-    const group = groups.find(g => g.id === card.groupId);
-    if (!group) return;
-
-    const groupEl = document.querySelector(`[data-group-id="${group.id}"]`) as HTMLElement | null;
-    const contentEl = groupEl?.querySelector('.flex-1') as HTMLElement | null;
-    const groupRect = groupEl?.getBoundingClientRect();
-    const contentRect = contentEl?.getBoundingClientRect();
-    const offsetY = groupRect && contentRect ? contentRect.top - groupRect.top : 36;
-    const offsetX = groupRect && contentRect ? contentRect.left - groupRect.left : 8;
-
-    const boardX = group.x + offsetX + card.x;
-    const boardY = group.y + offsetY + card.y;
-
-    setCards(prevCards => prevCards.map(c => (c.id === card.id ? { ...c, groupId: undefined, x: boardX, y: boardY } : c)));
-
-    const boardService = BoardService.getInstance();
-    boardService.updateCard(card.id, { groupId: undefined, x: boardX, y: boardY }).catch(err => {
-      console.error('Failed to detach card from group:', err);
-    });
+    // Cards are always board-absolute; no conversion needed
+    return;
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -119,9 +95,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       const card = cards.find(c => c.id === active.id);
       if (!card) return;
 
-      const oldGroup = card.groupId ? groups.find(g => g.id === card.groupId) : undefined;
-      const startBoardX = oldGroup ? oldGroup.x + card.x : card.x;
-      const startBoardY = oldGroup ? oldGroup.y + card.y : card.y;
+      const startBoardX = card.x;
+      const startBoardY = card.y;
       const newBoardX = Math.max(0, startBoardX + delta.x);
       const newBoardY = Math.max(0, startBoardY + delta.y);
 
@@ -132,24 +107,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         return newBoardX >= g.x && newBoardX <= g.x + gw && newBoardY >= g.y && newBoardY <= g.y + gh;
       });
 
-      let newGroupId: string | undefined;
-      let finalX: number;
-      let finalY: number;
-      if (targetGroup) {
-        const groupEl = document.querySelector(`[data-group-id="${targetGroup.id}"]`) as HTMLElement | null;
-        const contentEl = groupEl?.querySelector('.flex-1') as HTMLElement | null;
-        const groupRect = groupEl?.getBoundingClientRect();
-        const contentRect = contentEl?.getBoundingClientRect();
-        const offsetY = groupRect && contentRect ? contentRect.top - groupRect.top : 36;
-        const offsetX = groupRect && contentRect ? contentRect.left - groupRect.left : 8;
-        newGroupId = targetGroup.id;
-        finalX = newBoardX - targetGroup.x - offsetX;
-        finalY = newBoardY - targetGroup.y - offsetY;
-      } else {
-        newGroupId = undefined;
-        finalX = newBoardX;
-        finalY = newBoardY;
-      }
+      const newGroupId = targetGroup ? targetGroup.id : undefined;
+      const finalX = newBoardX;
+      const finalY = newBoardY;
 
       const updatedCard = { ...card, x: finalX, y: finalY, groupId: newGroupId };
 
@@ -271,13 +231,10 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         // Persist ungrouping of member cards belonging to deleted groups
         const deletedGroupIds = selectedItems.filter(id => groups.some(g => g.id === id));
         for (const gid of deletedGroupIds) {
-          const grp = groups.find(g => g.id === gid);
           const members = cards.filter(c => c.groupId === gid && !selectedItems.includes(c.id));
           for (const c of members) {
             await boardService.updateCard(c.id, {
               groupId: undefined,
-              x: (grp?.x ?? 0) + c.x,
-              y: (grp?.y ?? 0) + c.y
             }).catch(err => console.error('Failed to ungroup card:', err));
           }
         }
@@ -285,12 +242,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
           .filter(card => !selectedItems.includes(card.id))
           .map(card => {
             if (card.groupId && deletedGroupIds.includes(card.groupId)) {
-              const grp = groups.find(g => g.id === card.groupId);
               return {
                 ...card,
                 groupId: undefined,
-                x: (grp?.x ?? 0) + card.x,
-                y: (grp?.y ?? 0) + card.y
               };
             }
             return card;
@@ -381,8 +335,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   // Debug: Show selected items
   console.log('Selected items:', selectedItems);
 
-  const boardLevelCards = cards.filter(card => !card.groupId);
-  
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {
      const data = active?.data?.current as { x?: number; y?: number } | undefined;
@@ -403,12 +355,29 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
-        {/* Groups (with their cards placed inside) */}
+       {/* All cards rendered first in DOM (below groups visually via z-index) */}
+        {cards.map(card => {
+          const isCardSelected = selectedItems.includes(card.id);
+          return (
+            <Card
+              key={card.id}
+              id={card.id}
+              text={card.text}
+              x={card.x}
+              y={card.y}
+              width={card.width || 200}
+              height={card.height || 60}
+              isSelected={isCardSelected}
+              onCardClick={handleCardClick}
+              onSelect={handleSelect}
+              onTextChange={handleCardTextChange}
+            />
+          );
+        })}
+
+        {/* Groups rendered after cards in DOM */}
         {groups.map(group => {
           const isGroupSelected = selectedItems.includes(group.id);
-          const groupCards = cards.filter(card => card.groupId === group.id);
-          console.log(`Group ${group.id}: isSelected = ${isGroupSelected}, cards = ${groupCards.length}`);
-          
           return (
             <Group
               key={group.id}
@@ -419,7 +388,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               width={group.width || 440}
               height={group.height || 440}
               isSelected={isGroupSelected}
-              cards={groupCards}
+              cards={[]}
               selectedIds={selectedItems}
               onLabelChange={handleGroupLabelChange}
               onGroupClick={handleGroupClick}
@@ -427,29 +396,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               onCardClick={handleCardClick}
               onCardTextChange={handleCardTextChange}
             />
-          );
-        })}
-        
-        {/* Cards not belonging to any group */}
-        {boardLevelCards.map(card => {
-          const isCardSelected = selectedItems.includes(card.id);
-          console.log(`Card ${card.id}: isSelected = ${isCardSelected}`);
-          
-          return (
-          <Card
-            key={card.id}
-            id={card.id}
-            text={card.text}
-            x={card.x}
-            y={card.y}
-            width={card.width || 200}
-            height={card.height || 60}
-
-            isSelected={isCardSelected}
-            onCardClick={handleCardClick}
-            onSelect={handleSelect}
-            onTextChange={handleCardTextChange}
-          />
           );
         })}
       </div>
