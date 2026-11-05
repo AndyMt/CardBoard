@@ -22,6 +22,7 @@ export default defineConfig(({ mode }): UserConfig => {
     },
     // Production optimizations
     build: {
+      outDir: 'build',
       sourcemap: mode === 'development',
       minify: mode === 'production',
       rollupOptions: {

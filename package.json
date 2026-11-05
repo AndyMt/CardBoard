@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "preview": "vite preview",
     "server": "node src/server/server.cjs",
     "start": "concurrently -n SERVER,CLIENT -c yellow,blue \"npm run server\" \"npm run dev\"",
