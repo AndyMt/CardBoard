@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { User } from '../../types/User.js';
 
 // Define tool types
 export type ToolType = 'select' | 'card' | 'group';
@@ -7,12 +8,10 @@ interface ToolbarProps {
   onToolSelect: (tool: ToolType) => void;
   selectedTool: ToolType;
   selectedCount?: number;
+  user?: User | null;
 }
 
-const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, selectedTool, selectedCount = 0 }) => {
-  // State for user count (static for now)
-  const [userCount] = useState<number>(1);
-
+const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, selectedTool, selectedCount = 0, user = null }) => {
   // Tool button configuration
   const tools: Array<{
     type: ToolType;
@@ -57,20 +56,25 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, selectedTool, selectedC
             </button>
           ))}
         </div>
-        
-        {/* Selected indicator + user count - right side */}
+
+        {/* Selected indicator + user - right side */}
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-600">
             Selected: {selectedCount} items
           </span>
-          <div className="flex items-center space-x-2">
-            <div className="flex -space-x-1">
-              <div className="w-6 h-6 rounded-full bg-blue-300 border-2 border-white"></div>
+          {user ? (
+            <div className="flex items-center space-x-2">
+              <div
+                className="w-6 h-6 rounded-full border-2 border-white"
+                style={{ backgroundColor: user.color }}
+              ></div>
+              <span className="text-sm text-gray-600 font-medium">
+                {user.name}
+              </span>
             </div>
-            <span className="text-sm text-gray-600">
-              {userCount} {userCount === 1 ? 'user' : 'users'}
-            </span>
-          </div>
+          ) : (
+            <span className="text-sm text-gray-600">No user</span>
+          )}
         </div>
       </div>
     </div>

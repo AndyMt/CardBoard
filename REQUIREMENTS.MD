@@ -30,8 +30,6 @@ The application shall have the following features:
 - The name and color assignment shall be stored on the server in a json file.
 - the name shall be stored in browser local storage, this way it can be detected if a user already exists.
 - The username shall be displayed in the toolbar at the top right corner together with the user color.
-- Users shall be assigned a color for their cards and groups
-- the username shall be stored in each card and group.
 - The list of user colors shall be as follows:
 -- #005599
 -- #558899
@@ -41,9 +39,12 @@ The application shall have the following features:
 -- #992299
 -- #662299
 
-- when a user changes a board, their name or their color, the board and toolbar shall update in all sessions.
+- when a user creates a card or group, it shall be assigned the username
+- the top bar of cards or groups shall shown in the users color
+- when a user changes an element on a board, their name or their color, the board and toolbar shall update in all other users sessions.
 - the toolbar shall show the number of known users in the to right corner.
 - hovering over the number of users shall show the list of known users in a tooltip.
+
 
 ## Card element
 

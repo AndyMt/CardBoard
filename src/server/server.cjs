@@ -2,12 +2,14 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { JSONPersistence } = require('./persistence/JSONPersistence.cjs');
+const { UserPersistence } = require('./persistence/UserPersistence.cjs');
 
 const app = express();
 const port = process.env.PORT || 8080;
 
 // Initialize persistence
 const persistence = new JSONPersistence();
+const userPersistence = new UserPersistence();
 
 // Middleware
 app.use(cors());
@@ -136,6 +138,58 @@ app.delete('/api/board/group/:id', async (req, res) => {
   } catch (error) {
     console.error('Failed to delete group:', error);
     res.status(500).json({ error: 'Failed to delete group' });
+  }
+});
+
+// User routes
+app.get('/api/users', async (req, res) => {
+  try {
+    const data = await userPersistence.loadUsers();
+    res.json(data);
+  } catch (error) {
+    console.error('Failed to get users:', error);
+    res.status(500).json({ error: 'Failed to get users' });
+  }
+});
+
+app.get('/api/users/:name', async (req, res) => {
+  try {
+    const name = req.params.name;
+    const user = await userPersistence.findUserByName(name);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Failed to get user:', error);
+    res.status(500).json({ error: 'Failed to get user' });
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  try {
+    const { name, color } = req.body;
+
+    if (!name || typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    const existing = await userPersistence.findUserByName(name.trim());
+    if (existing) {
+      return res.json({ user: existing, created: false });
+    }
+
+    const allUsers = await userPersistence.loadUsers();
+    const colorTaken = allUsers.users.some(u => u.color === color);
+    if (colorTaken) {
+      return res.status(409).json({ error: 'Color already taken' });
+    }
+
+    const result = await userPersistence.createUser(name.trim(), color);
+    res.status(201).json({ user: result.user, created: result.created });
+  } catch (error) {
+    console.error('Failed to create user:', error);
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
