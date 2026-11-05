@@ -35,7 +35,7 @@ const App: React.FC<AppProps> = () => {
       {/* Board view takes remaining space */}
       <div className="flex-1 overflow-hidden pt-12">
         {/* Add pt-12 to account for toolbar height */}
-        <BoardView selectedTool={selectedTool} onSelectionChange={setSelectedCount} />
+        <BoardView selectedTool={selectedTool} onSelectionChange={setSelectedCount} onToolChange={handleToolSelect} />
       </div>
     </div>
   );

@@ -16,6 +16,7 @@ interface GroupProps {
   isSelected: boolean;
   onLabelChange?: (id: string, newLabel: string) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
+  onGroupClick?: (id: string, ctrlKey: boolean) => void;
 }
 
 export const Group: React.FC<GroupProps> = ({
@@ -27,7 +28,8 @@ export const Group: React.FC<GroupProps> = ({
   height = DEFAULT_HEIGHT,
   isSelected = false,
   onLabelChange,
-  onSelect
+  onSelect,
+  onGroupClick
 }) => {
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
@@ -96,8 +98,8 @@ export const Group: React.FC<GroupProps> = ({
     if ((isInDragHandle || isInSelectionZone) && !isDraggingRef.current) {
       e.stopPropagation();
       e.preventDefault();
-      if (onSelect) {
-        onSelect(id, e.ctrlKey);
+      if (onGroupClick) {
+        onGroupClick(id, e.ctrlKey);
       }
     }
     
@@ -138,6 +140,7 @@ export const Group: React.FC<GroupProps> = ({
     <div
       ref={setNodeRef}
       style={style}
+      data-group-id={id}
       onMouseDown={handleMouseDownSelection}
       onMouseMove={handleMouseMove}
       onClick={(e) => e.stopPropagation()}

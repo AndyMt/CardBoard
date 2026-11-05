@@ -9,6 +9,7 @@ import BoardService from '../services/BoardService';
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
   onSelectionChange?: (count: number) => void;
+  onToolChange?: (tool: 'select' | 'card' | 'group') => void;
 }
 
 // Helper functions for model operations (client-side only)
@@ -36,7 +37,7 @@ const createDefaultGroup = (x: number, y: number): GroupType => {
   };
 };
 
-export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionChange }) => {
+export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionChange, onToolChange }) => {
   const [cards, setCards] = useState<CardType[]>([]);
   const [groups, setGroups] = useState<GroupType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -222,6 +223,20 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     }
   };
 
+  const handleCardClick = (id: string, ctrlKey: boolean) => {
+    if (selectedTool === 'card' || selectedTool === 'group') {
+      onToolChange?.('select');
+    }
+    handleSelect(id, ctrlKey);
+  };
+
+  const handleGroupClick = (id: string, ctrlKey: boolean) => {
+    if (selectedTool === 'card' || selectedTool === 'group') {
+      onToolChange?.('select');
+    }
+    handleSelect(id, ctrlKey);
+  };
+
   const handleBoardFocus = () => {
     const boardElement = document.querySelector('.board-container');
     if (boardElement) {
@@ -311,6 +326,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               height={group.height || 440}
               isSelected={isGroupSelected}
               onLabelChange={handleGroupLabelChange}
+              onGroupClick={handleGroupClick}
               onSelect={handleSelect}
             />
           );
@@ -322,19 +338,20 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
           console.log(`Card ${card.id}: isSelected = ${isCardSelected}`);
           
           return (
-            <Card
-              key={card.id}
-              id={card.id}
-              text={card.text}
-              x={card.x}
-              y={card.y}
-              width={card.width || 200}
-              height={card.height || 60}
+          <Card
+            key={card.id}
+            id={card.id}
+            text={card.text}
+            x={card.x}
+            y={card.y}
+            width={card.width || 200}
+            height={card.height || 60}
 
-              isSelected={isCardSelected}
-              onSelect={handleSelect}
-              onTextChange={handleCardTextChange}
-            />
+            isSelected={isCardSelected}
+            onCardClick={handleCardClick}
+            onSelect={handleSelect}
+            onTextChange={handleCardTextChange}
+          />
           );
         })}
       </div>

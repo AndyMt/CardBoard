@@ -14,6 +14,7 @@ interface CardProps {
   isSelected: boolean;
   onTextChange?: (id: string, newText: string) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
+  onCardClick?: (id: string, ctrlKey: boolean) => void;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -25,7 +26,8 @@ export const Card: React.FC<CardProps> = ({
   height = 60,
   isSelected = false,
   onTextChange,
-  onSelect
+  onSelect,
+  onCardClick
 }) => {
   const [cardText, setCardText] = useState(text);
   const [isEditing, setIsEditing] = useState(false);
@@ -98,8 +100,8 @@ export const Card: React.FC<CardProps> = ({
     if ((isInDragHandle || isInSelectionZone) && !isDraggingRef.current) {
       e.stopPropagation();
       e.preventDefault();
-      if (onSelect) {
-        onSelect(id, e.ctrlKey);
+      if (onCardClick) {
+        onCardClick(id, e.ctrlKey);
       }
     }
   };
@@ -154,6 +156,7 @@ export const Card: React.FC<CardProps> = ({
     <div
       ref={setNodeRef}
       style={style}
+      data-card-id={id}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onClick={(e) => e.stopPropagation()}
