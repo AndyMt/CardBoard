@@ -50,6 +50,7 @@ The application shall have the following features:
 - Clicking on an elements while holding down the Ctrl key shall toggle that item into the selected items
 - Dragging any selected item shall move all selected items to the position of the mouse cursor.
 - Pressing the delete key shall delete all selected items.
+- When dragging an element that was not selected, clear other selected items as soon as actual movement occurs during drag. If the element was already selected, preserve existing selection.
 
 ## Text editor
 

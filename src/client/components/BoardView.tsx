@@ -45,6 +45,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
+  const [dragStartedSelected, setDragStartedSelected] = useState<boolean>(false);
 
   useEffect(() => {
     onSelectionChange?.(selectedItems.length);
@@ -89,10 +90,15 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     const id = event.active.id as string;
     setActiveDragId(id);
     setDragDelta({ x: 0, y: 0 });
+    setDragStartedSelected(selectedItems.includes(id));
   };
 
   const handleDragMove = (event: DragMoveEvent) => {
     setDragDelta({ x: event.delta.x, y: event.delta.y });
+    if (!dragStartedSelected && (event.delta.x !== 0 || event.delta.y !== 0)) {
+      const id = event.active.id as string;
+      setSelectedItems([id]);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -157,6 +163,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       });
       setActiveDragId(null);
       setDragDelta(null);
+      setDragStartedSelected(false);
       return;
     }
 
@@ -218,6 +225,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     }
     setActiveDragId(null);
     setDragDelta(null);
+    setDragStartedSelected(false);
   };
 
   const handleCardTextChange = (id: string, newText: string) => {
