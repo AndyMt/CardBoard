@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import Card from './Card.js';
+import { Card as CardType } from '../../types/Card.js';
 
 const DEFAULT_WIDTH = 440; // 2x2 cards + padding
 const DEFAULT_HEIGHT = 440;
@@ -14,9 +16,13 @@ interface GroupProps {
   width?: number;
   height?: number;
   isSelected: boolean;
+  cards?: CardType[];
+  selectedIds?: string[];
   onLabelChange?: (id: string, newLabel: string) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onGroupClick?: (id: string, ctrlKey: boolean) => void;
+  onCardClick?: (id: string, ctrlKey: boolean) => void;
+  onCardTextChange?: (id: string, newText: string) => void;
 }
 
 export const Group: React.FC<GroupProps> = ({
@@ -27,9 +33,13 @@ export const Group: React.FC<GroupProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   isSelected = false,
+  cards = [],
+  selectedIds = [],
   onLabelChange,
   onSelect,
-  onGroupClick
+  onGroupClick,
+  onCardClick,
+  onCardTextChange
 }) => {
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
@@ -180,8 +190,25 @@ export const Group: React.FC<GroupProps> = ({
       </div>
       
       {/* Content area */}
-      <div className="flex-1" style={{ padding: '0.5rem', paddingTop: '0' }}>
-        {/* This is where cards will be placed */}
+      <div className="flex-1" style={{ padding: '0.5rem', paddingTop: '0', position: 'relative' }}>
+        {cards.map(card => {
+          const isCardSelected = selectedIds.includes(card.id);
+          return (
+            <Card
+              key={card.id}
+              id={card.id}
+              text={card.text}
+              x={card.x}
+              y={card.y}
+              width={card.width || 200}
+              height={card.height || 60}
+              isSelected={isCardSelected}
+              onCardClick={onCardClick}
+              onSelect={onSelect}
+              onTextChange={onCardTextChange}
+            />
+          );
+        })}
       </div>
     </div>
   );

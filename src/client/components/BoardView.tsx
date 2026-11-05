@@ -87,27 +87,47 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     const { active, delta } = event;
 
     if (active.data.current?.type === 'card') {
-      setCards(prevCards => prevCards.map(card => {
-        if (card.id === active.id) {
-          const updatedCard = {
-            ...card,
-             x: Math.max(0, card.x + delta.x),
-             y: Math.max(0, card.y + delta.y),
-          };
-          
-          // Update card position in persistence
-          const boardService = BoardService.getInstance();
-          boardService.updateCard(card.id, {
-            x: updatedCard.x,
-            y: updatedCard.y
-          }).catch(err => {
-            console.error('Failed to update card position:', err);
-          });
-          
-          return updatedCard;
-        }
-        return card;
-      }));
+      const card = cards.find(c => c.id === active.id);
+      if (!card) return;
+
+      const oldGroup = card.groupId ? groups.find(g => g.id === card.groupId) : undefined;
+      const startBoardX = oldGroup ? oldGroup.x + card.x : card.x;
+      const startBoardY = oldGroup ? oldGroup.y + card.y : card.y;
+      const newBoardX = Math.max(0, startBoardX + delta.x);
+      const newBoardY = Math.max(0, startBoardY + delta.y);
+
+      // Hit-test whether the card was dropped inside a group
+      const targetGroup = groups.find(g => {
+        const gw = g.width || 440;
+        const gh = g.height || 440;
+        return newBoardX >= g.x && newBoardX <= g.x + gw && newBoardY >= g.y && newBoardY <= g.y + gh;
+      });
+
+      let newGroupId: string | undefined;
+      let finalX: number;
+      let finalY: number;
+      if (targetGroup) {
+        newGroupId = targetGroup.id;
+        finalX = newBoardX - targetGroup.x;
+        finalY = newBoardY - targetGroup.y;
+      } else {
+        newGroupId = undefined;
+        finalX = newBoardX;
+        finalY = newBoardY;
+      }
+
+      const updatedCard = { ...card, x: finalX, y: finalY, groupId: newGroupId };
+
+      setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
+
+      const boardService = BoardService.getInstance();
+      boardService.updateCard(card.id, {
+        x: updatedCard.x,
+        y: updatedCard.y,
+        groupId: updatedCard.groupId
+      }).catch(err => {
+        console.error('Failed to update card position:', err);
+      });
     } else if (active.data.current?.type === 'group') {
       setGroups(prevGroups => prevGroups.map(group => {
         if (group.id === active.id) {
@@ -212,9 +232,34 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
             await boardService.deleteGroup(id);
           }
         }
-        
-        // Update state
-        setCards(prevCards => prevCards.filter(card => !selectedItems.includes(card.id)));
+
+        // Persist ungrouping of member cards belonging to deleted groups
+        const deletedGroupIds = selectedItems.filter(id => groups.some(g => g.id === id));
+        for (const gid of deletedGroupIds) {
+          const grp = groups.find(g => g.id === gid);
+          const members = cards.filter(c => c.groupId === gid && !selectedItems.includes(c.id));
+          for (const c of members) {
+            await boardService.updateCard(c.id, {
+              groupId: undefined,
+              x: (grp?.x ?? 0) + c.x,
+              y: (grp?.y ?? 0) + c.y
+            }).catch(err => console.error('Failed to ungroup card:', err));
+          }
+        }
+        setCards(prevCards => prevCards
+          .filter(card => !selectedItems.includes(card.id))
+          .map(card => {
+            if (card.groupId && deletedGroupIds.includes(card.groupId)) {
+              const grp = groups.find(g => g.id === card.groupId);
+              return {
+                ...card,
+                groupId: undefined,
+                x: (grp?.x ?? 0) + card.x,
+                y: (grp?.y ?? 0) + card.y
+              };
+            }
+            return card;
+          }));
         setGroups(prevGroups => prevGroups.filter(group => !selectedItems.includes(group.id)));
         setSelectedItems([]);
       } catch (err) {
@@ -234,7 +279,18 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
     }
-    handleSelect(id, ctrlKey);
+    setSelectedItems(prev => {
+      const memberIds = cards.filter(c => c.groupId === id).map(c => c.id);
+      const ids = [id, ...memberIds];
+      if (ctrlKey) {
+        const allSelected = ids.every(i => prev.includes(i));
+        if (allSelected) {
+          return prev.filter(i => !ids.includes(i));
+        }
+        return [...prev, ...ids.filter(i => !prev.includes(i))];
+      }
+      return ids;
+    });
   };
 
   const handleBoardFocus = () => {
@@ -289,6 +345,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
 
   // Debug: Show selected items
   console.log('Selected items:', selectedItems);
+
+  const boardLevelCards = cards.filter(card => !card.groupId);
   
   return (
     <DndContext onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {
@@ -310,10 +368,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         onKeyDown={handleKeyDown}
         tabIndex={0}
       >
-        {/* Groups */}
+        {/* Groups (with their cards placed inside) */}
         {groups.map(group => {
           const isGroupSelected = selectedItems.includes(group.id);
-          console.log(`Group ${group.id}: isSelected = ${isGroupSelected}`);
+          const groupCards = cards.filter(card => card.groupId === group.id);
+          console.log(`Group ${group.id}: isSelected = ${isGroupSelected}, cards = ${groupCards.length}`);
           
           return (
             <Group
@@ -325,15 +384,19 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               width={group.width || 440}
               height={group.height || 440}
               isSelected={isGroupSelected}
+              cards={groupCards}
+              selectedIds={selectedItems}
               onLabelChange={handleGroupLabelChange}
               onGroupClick={handleGroupClick}
               onSelect={handleSelect}
+              onCardClick={handleCardClick}
+              onCardTextChange={handleCardTextChange}
             />
           );
         })}
         
-        {/* Cards */}
-        {cards.map(card => {
+        {/* Cards not belonging to any group */}
+        {boardLevelCards.map(card => {
           const isCardSelected = selectedItems.includes(card.id);
           console.log(`Card ${card.id}: isSelected = ${isCardSelected}`);
           
