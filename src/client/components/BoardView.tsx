@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DndContext, DragEndEvent } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import Card from './Card.js';
 import Group from './Group.js';
 import { Card as CardType } from '../../types/Card';
@@ -82,6 +82,28 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       </div>
     );
   }
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+
+    if (active.data.current?.type !== 'card') return;
+
+    const card = cards.find(c => c.id === active.id);
+    if (!card || !card.groupId) return;
+
+    const group = groups.find(g => g.id === card.groupId);
+    if (!group) return;
+
+    const boardX = group.x + card.x;
+    const boardY = group.y + card.y;
+
+    setCards(prevCards => prevCards.map(c => (c.id === card.id ? { ...c, groupId: undefined, x: boardX, y: boardY } : c)));
+
+    const boardService = BoardService.getInstance();
+    boardService.updateCard(card.id, { groupId: undefined, x: boardX, y: boardY }).catch(err => {
+      console.error('Failed to detach card from group:', err);
+    });
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
@@ -349,7 +371,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   const boardLevelCards = cards.filter(card => !card.groupId);
   
   return (
-    <DndContext onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {
+    <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {
      const data = active?.data?.current as { x?: number; y?: number } | undefined;
      const x = data?.x ?? 0;
      const y = data?.y ?? 0;
