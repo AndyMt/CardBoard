@@ -1,10 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
+import type { Card } from '../types/Card.js';
+import type { Group } from '../types/Group.js';
 import { JSONPersistence } from './persistence/JSONPersistence.js';
 import { BoardModel } from './model/BoardModel';
-import { Card } from './model/Card';
-import { Group } from './model/Group';
 import { UserPersistence } from './persistence/UserPersistence.js';
 
 const app = express();

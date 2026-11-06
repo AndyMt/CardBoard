@@ -1,7 +1,7 @@
 import { JSONPersistence } from '../persistence/JSONPersistence';
 import { BoardModelManager, BoardModel, createDefaultBoard } from '../model/BoardModel';
-import { Card } from '../model/Card';
-import { Group } from '../model/Group';
+import type { Card } from '../../types/Card.js';
+import type { Group } from '../../types/Group.js';
 
 export class BoardController {
   private persistence: JSONPersistence;

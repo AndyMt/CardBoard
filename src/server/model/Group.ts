@@ -14,6 +14,7 @@ export class GroupModel extends ElementModel {
       label: '',
       createdBy,
       createdColor,
+      isSelected: false,
       ...base,
     };
   }
@@ -25,6 +26,7 @@ export class GroupModel extends ElementModel {
       label: data.label || '',
       createdBy: data.createdBy,
       createdColor: data.createdColor,
+      isSelected: false,
       ...base,
     };
   }

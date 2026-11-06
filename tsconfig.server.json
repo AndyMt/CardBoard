@@ -4,13 +4,14 @@
     "module": "CommonJS",
     "lib": ["ES2020"],
     "strict": true,
+    "useUnknownInCatchVariables": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "Node",
-    "outDir": "dist/server",
-    "rootDir": "src/server"
+    "outDir": "dist",
+    "rootDir": "src"
   },
-  "include": ["src/server/**/*"],
+  "include": ["src/server/**/*", "src/types/**/*"],
   "exclude": ["node_modules"]
 }

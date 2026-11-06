@@ -13,6 +13,7 @@ export class CardModel extends ElementModel {
       text: '',
       createdBy,
       createdColor,
+      isSelected: false,
       ...base,
     };
   }
@@ -24,6 +25,7 @@ export class CardModel extends ElementModel {
       text: data.text || '',
       createdBy: data.createdBy,
       createdColor: data.createdColor,
+      isSelected: false,
       ...base,
     };
   }

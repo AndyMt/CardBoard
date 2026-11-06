@@ -1,5 +1,5 @@
-import { Card } from './Card';
-import { Group } from './Group';
+import type { Card } from '../../types/Card.js';
+import type { Group } from '../../types/Group.js';
 
 export interface BoardModel {
   cards: Card[];

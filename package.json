@@ -6,8 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:server": "tsc -p tsconfig.server.json && node -e \"require('fs').writeFileSync('dist/server/package.json', JSON.stringify({type:'commonjs'}, null, 2) + '\\n')\"",
+    "build:all": "npm run build:server && npm run build",
     "preview": "vite preview",
-    "server": "node src/server/server.cjs",
+    "server": "node dist/server/server.js",
     "start": "concurrently -n SERVER,CLIENT -c yellow,blue \"npm run server\" \"npm run dev\"",
     "start:bash": "concurrently -n SERVER,CLIENT -c yellow,blue \"npm run server\" \"npm run dev\" "
   },
