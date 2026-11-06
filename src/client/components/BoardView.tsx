@@ -74,9 +74,38 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         setIsLoading(false);
       }
     };
-    
+
     loadBoard();
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = async (e: globalThis.KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (e.key !== 'Delete' || selectedItems.length === 0) return;
+      e.preventDefault();
+      try {
+        const boardService = BoardService.getInstance();
+        for (const id of selectedItems) {
+          if (cards.some(card => card.id === id)) await boardService.deleteCard(id);
+          else if (groups.some(group => group.id === id)) await boardService.deleteGroup(id);
+        }
+        const deletedGroupIds = selectedItems.filter(id => groups.some(g => g.id === id));
+        for (const gid of deletedGroupIds) {
+          for (const c of cards.filter(c => c.groupId === gid && !selectedItems.includes(c.id))) {
+            await boardService.updateCard(c.id, { groupId: undefined }).catch((err: unknown) => console.error('Failed to ungroup card:', err));
+          }
+        }
+        setCards(prev => prev.filter(card => !selectedItems.includes(card.id)).map(card => card.groupId && deletedGroupIds.includes(card.groupId) ? { ...card, groupId: undefined } : card));
+        setGroups(prev => prev.filter(group => !selectedItems.includes(group.id)));
+        setSelectedItems([]);
+      } catch (err) {
+        console.error('Failed to delete selected items:', err);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedItems, cards, groups]);
 
   if (isLoading) {
     return (
@@ -294,57 +323,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     });
   };
 
-  const handleKeyDown = async (e: KeyboardEvent) => {
-    console.log('Key pressed:', e.key); // Debug: Log the pressed key
-    if (e.key === 'Delete' && selectedItems.length > 0) {
-      console.log('Delete key pressed. Selected items:', selectedItems); // Debug: Log selected items
-      e.preventDefault();
-      
-      // Delete all selected cards and groups
-      try {
-        const boardService = BoardService.getInstance();
-        
-        // Delete selected cards and groups
-        for (const id of selectedItems) {
-          const isCard = cards.some(card => card.id === id);
-          const isGroup = groups.some(group => group.id === id);
-          
-          if (isCard) {
-            await boardService.deleteCard(id);
-          } else if (isGroup) {
-            await boardService.deleteGroup(id);
-          }
-        }
-
-        // Persist ungrouping of member cards belonging to deleted groups
-        const deletedGroupIds = selectedItems.filter(id => groups.some(g => g.id === id));
-        for (const gid of deletedGroupIds) {
-          const members = cards.filter(c => c.groupId === gid && !selectedItems.includes(c.id));
-          for (const c of members) {
-            await boardService.updateCard(c.id, {
-              groupId: undefined,
-            }).catch(err => console.error('Failed to ungroup card:', err));
-          }
-        }
-        setCards(prevCards => prevCards
-          .filter(card => !selectedItems.includes(card.id))
-          .map(card => {
-            if (card.groupId && deletedGroupIds.includes(card.groupId)) {
-              return {
-                ...card,
-                groupId: undefined,
-              };
-            }
-            return card;
-          }));
-        setGroups(prevGroups => prevGroups.filter(group => !selectedItems.includes(group.id)));
-        setSelectedItems([]);
-      } catch (err) {
-        console.error('Failed to delete selected items:', err);
-      }
-    }
-  };
-
   const handleCardClick = (id: string, ctrlKey: boolean) => {
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
@@ -430,7 +408,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
           handleBoardClick(e);
           handleBoardFocus();
         }}
-        onKeyDown={handleKeyDown}
         tabIndex={0}
       >
        {/* All cards rendered first in DOM (below groups visually via z-index) */}

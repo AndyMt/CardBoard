@@ -106,6 +106,45 @@ app.put('/api/board/group/:id', async (req, res) => {
   }
 });
 
+app.delete('/api/board/card/:id', async (req, res) => {
+  try {
+    const cardId = req.params.id;
+    const board = await persistence.loadBoard();
+
+    const cardIndex = board.cards.findIndex(card => card.id === cardId);
+    if (cardIndex === -1) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
+    board.cards.splice(cardIndex, 1);
+    await persistence.saveBoard(board);
+    res.json(board);
+  } catch (error) {
+    console.error('Failed to delete card:', error);
+    res.status(500).json({ error: 'Failed to delete card' });
+  }
+});
+
+app.delete('/api/board/group/:id', async (req, res) => {
+  try {
+    const groupId = req.params.id;
+    const board = await persistence.loadBoard();
+
+    const groupIndex = board.groups.findIndex(group => group.id === groupId);
+    if (groupIndex === -1) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+
+    board.groups.splice(groupIndex, 1);
+    board.cards = board.cards.map(card => (card.groupId === groupId ? { ...card, groupId: undefined } : card));
+    await persistence.saveBoard(board);
+    res.json(board);
+  } catch (error) {
+    console.error('Failed to delete group:', error);
+    res.status(500).json({ error: 'Failed to delete group' });
+  }
+});
+
 // User routes
 app.get('/api/users', async (req, res) => {
   try {
