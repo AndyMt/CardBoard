@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DndContext, DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-kit/core';
 import Card from './Card.js';
 import Group from './Group.js';
@@ -6,6 +6,7 @@ import { Card as CardType } from '../../types/Card';
 import { Group as GroupType } from '../../types/Group';
 import { User } from '../../types/User';
 import BoardService from '../services/BoardService';
+import WebSocketService from '../services/WebSocketService.js';
 import { ElementSelectionController } from '../controller/ElementSelectionController.js';
 import { GroupSelectionController } from '../controller/GroupSelectionController.js';
 
@@ -54,6 +55,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
   const [dragStartedSelected, setDragStartedSelected] = useState<boolean>(false);
+  // Tracks the last known board version so we can ignore stale broadcasts
+  const lastBoardVersionRef = useRef<string | null>(null);
+  // While the current user is dragging, ignore full-board broadcasts from
+  // ourselves to avoid fighting the local optimistic state.
+  const isLocallyDraggingRef = useRef(false);
 
   useEffect(() => {
     onSelectionChange?.(selectedItems.length);
@@ -107,6 +113,68 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedItems, cards, groups]);
 
+  // Subscribe to real-time board updates from other users.
+  // The WebSocket is connected by App.tsx; here we only subscribe to events.
+  useEffect(() => {
+    const ws = WebSocketService.getInstance();
+
+    const unsubscribeBoard = ws.onBoardUpdate((payload) => {
+      console.log('[BoardView] board:update received', payload);
+      // Ignore our own updates while dragging to keep local optimistic state
+      if (isLocallyDraggingRef.current) return;
+      const serverBoard = payload.board;
+      if (!serverBoard) return;
+
+      // Avoid applying stale updates by comparing lastUpdated timestamps
+      const serverVersion = serverBoard.lastUpdated || '';
+      if (serverVersion && serverVersion <= (lastBoardVersionRef.current || '')) return;
+      lastBoardVersionRef.current = serverVersion;
+
+      setCards(serverBoard.cards || []);
+      setGroups(serverBoard.groups || []);
+      // Clear selection since the board state changed remotely
+      setSelectedItems([]);
+    });
+
+    const unsubscribeLive = ws.onLiveUpdate((payload) => {
+      console.log('[BoardView] board:live-update received', payload);
+      if (isLocallyDraggingRef.current) return;
+      if (!payload) return;
+
+      // Apply other users' live drag positions as an overlay
+      setCards(prev => prev.map(c => {
+        const live = payload.cards.find((lc) => lc.id === c.id);
+        return live ? { ...c, x: live.x, y: live.y } : c;
+      }));
+      setGroups(prev => prev.map(g => {
+        const live = payload.groups.find((lg) => lg.id === g.id);
+        return live ? { ...g, x: live.x, y: live.y } : g;
+      }));
+    });
+
+    return () => {
+      unsubscribeBoard();
+      unsubscribeLive();
+    };
+  }, []);
+
+  // Listen for the custom event fired by App.tsx when a remote mutation
+  // completes, so we re-fetch the authoritative board.
+  useEffect(() => {
+    const handleChanged = async () => {
+      try {
+        const boardService = BoardService.getInstance();
+        const { cards, groups } = await boardService.getBoard();
+        setCards(cards);
+        setGroups(groups);
+      } catch (err) {
+        console.error('Failed to refresh board after remote change:', err);
+      }
+    };
+    window.addEventListener('board:changed', handleChanged);
+    return () => window.removeEventListener('board:changed', handleChanged);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="relative w-full h-full bg-gray-100 overflow-auto flex items-center justify-center">
@@ -128,6 +196,10 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     setActiveDragId(id);
     setDragDelta({ x: 0, y: 0 });
     setDragStartedSelected(selectedItems.includes(id));
+    // We are now the active dragger; ignore our own server echoes
+    isLocallyDraggingRef.current = true;
+    // Emit a live preview so other users see the drag start immediately
+    emitLivePreview();
   };
 
   const handleDragMove = (event: DragMoveEvent) => {
@@ -135,6 +207,40 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     if (!dragStartedSelected && (event.delta.x !== 0 || event.delta.y !== 0)) {
       const id = event.active.id as string;
       setSelectedItems([id]);
+    }
+    // Broadcast live positions to other users (throttled server-side)
+    emitLivePreview();
+  };
+
+  const emitLivePreview = () => {
+    const ws = WebSocketService.getInstance();
+    if (!ws.isConnected()) return;
+
+    const delta = dragDelta;
+    const activeId = activeDragId;
+    if (!activeId || !delta) return;
+
+    const movedCards: { id: string; x: number; y: number }[] = [];
+    const movedGroups: { id: string; x: number; y: number }[] = [];
+
+    // Determine which items are moving (the active item, or all selected items)
+    const movingIds = selectedItems.includes(activeId) && selectedItems.length > 0
+      ? selectedItems
+      : [activeId];
+
+    cards.forEach((c) => {
+      if (movingIds.includes(c.id)) {
+        movedCards.push({ id: c.id, x: Math.max(0, c.x + delta.x), y: Math.max(0, c.y + delta.y) });
+      }
+    });
+    groups.forEach((g) => {
+      if (movingIds.includes(g.id)) {
+        movedGroups.push({ id: g.id, x: Math.max(0, g.x + delta.x), y: Math.max(0, g.y + delta.y) });
+      }
+    });
+
+    if (movedCards.length > 0 || movedGroups.length > 0) {
+      ws.emitLiveDrag({ cards: movedCards, groups: movedGroups });
     }
   };
 
@@ -387,9 +493,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       }
     }
   };
-
-  // Debug: Show selected items
-  console.log('Selected items:', selectedItems);
 
   return (
     <DndContext onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {

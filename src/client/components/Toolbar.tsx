@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../../types/User.js';
+import UserService from '../services/UserService.js';
 
 // Define tool types
 export type ToolType = 'select' | 'card' | 'group';
@@ -9,9 +10,16 @@ interface ToolbarProps {
   selectedTool: ToolType;
   selectedCount?: number;
   user?: User | null;
+  connectedUsers?: number;
 }
 
-const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, selectedTool, selectedCount = 0, user = null }) => {
+const Toolbar: React.FC<ToolbarProps> = ({
+  onToolSelect,
+  selectedTool,
+  selectedCount = 0,
+  user = null,
+  connectedUsers = 0,
+}) => {
   // Tool button configuration
   const tools: Array<{
     type: ToolType;
@@ -34,6 +42,25 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, selectedTool, selectedC
       icon: '📁',
     },
   ];
+
+  const [showUserList, setShowUserList] = useState(false);
+  const [knownUsers, setKnownUsers] = useState<User[]>([]);
+
+  const fetchUsers = useCallback(async () => {
+    try {
+      const users = await UserService.getInstance().getUsers();
+      setKnownUsers(users);
+    } catch (err) {
+      console.error('Failed to fetch users for tooltip:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+    // Refresh the known-user list periodically so the tooltip stays current
+    const interval = setInterval(fetchUsers, 5000);
+    return () => clearInterval(interval);
+  }, [fetchUsers]);
 
   return (
     <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
@@ -62,6 +89,45 @@ const Toolbar: React.FC<ToolbarProps> = ({ onToolSelect, selectedTool, selectedC
           <span className="text-sm text-gray-600">
             Selected: {selectedCount} items
           </span>
+
+          {/* Connected users indicator with tooltip */}
+          <div className="relative">
+            <button
+              type="button"
+              className="flex items-center space-x-1 text-sm text-gray-600 hover:text-gray-900"
+              onMouseEnter={() => {
+                setShowUserList(true);
+                fetchUsers();
+              }}
+              onMouseLeave={() => setShowUserList(false)}
+              title={`${connectedUsers} user(s) online`}
+            >
+              <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+              <span className="font-medium">{connectedUsers}</span>
+            </button>
+
+            {showUserList && (
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
+                {knownUsers.length === 0 ? (
+                  <div className="px-3 py-2 text-sm text-gray-500">No users</div>
+                ) : (
+                  knownUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      className="flex items-center space-x-2 px-3 py-1.5 text-sm"
+                    >
+                      <span
+                        className="w-4 h-4 rounded-full border border-white"
+                        style={{ backgroundColor: u.color }}
+                      />
+                      <span className="text-gray-700">{u.name}</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
           {user ? (
             <div className="flex items-center space-x-2">
               <div

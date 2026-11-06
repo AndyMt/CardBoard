@@ -17,7 +17,15 @@ export default defineConfig(({ mode }): UserConfig => {
           target: 'http://localhost:8080',
           changeOrigin: true,
           // No rewrite needed as we're using the same path
-        }
+        },
+        // Forward the Socket.IO WebSocket handshake to the backend so
+        // real-time updates work in dev mode (the client connects to the
+        // page origin, which is the Vite dev server).
+        '/socket.io': {
+          target: 'http://localhost:8080',
+          changeOrigin: true,
+          ws: true,
+        },
       }
     },
     // Production optimizations

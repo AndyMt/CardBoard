@@ -1,11 +1,14 @@
 import express from 'express';
 import cors from 'cors';
+import { createServer } from 'http';
+import { Server as SocketServer } from 'socket.io';
 import path from 'path';
 import type { Card } from '../types/Card.js';
 import type { Group } from '../types/Group.js';
 import { JSONPersistence } from './persistence/JSONPersistence.js';
 import { BoardModel } from './model/BoardModel';
 import { UserPersistence } from './persistence/UserPersistence.js';
+import { WebSocketController } from './controller/WebSocketController.js';
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -13,6 +16,26 @@ const port = process.env.PORT || 8080;
 // Initialize persistence
 const persistence = new JSONPersistence();
 const userPersistence = new UserPersistence();
+
+// Create HTTP server and Socket.IO server for real-time updates
+const httpServer = createServer(app);
+const io = new SocketServer(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
+const wsController = new WebSocketController(io);
+
+// Helper to broadcast the current board to all other clients after a mutation
+async function broadcastBoard(excludeSocketId?: string): Promise<void> {
+  try {
+    const board = await persistence.loadBoard();
+    wsController.broadcastBoardUpdate(board, excludeSocketId);
+  } catch (err) {
+    console.error('Failed to broadcast board update:', err);
+  }
+}
 
 // Middleware
 app.use(cors());
@@ -46,6 +69,8 @@ app.post('/api/board/card', async (req, res) => {
     const board = await persistence.loadBoard();
     board.cards.push(card);
     await persistence.saveBoard(board);
+    // Notify all other users of the change
+    await broadcastBoard();
     res.json(board);
   } catch (error) {
     console.error('Failed to add card:', error);
@@ -59,6 +84,8 @@ app.post('/api/board/group', async (req, res) => {
     const board = await persistence.loadBoard();
     board.groups.push(group);
     await persistence.saveBoard(board);
+    // Notify all other users of the change
+    await broadcastBoard();
     res.json(board);
   } catch (error) {
     console.error('Failed to add group:', error);
@@ -79,6 +106,8 @@ app.put('/api/board/card/:id', async (req, res) => {
     
     board.cards[cardIndex] = { ...board.cards[cardIndex], ...updates };
     await persistence.saveBoard(board);
+    // Notify all other users of the change
+    await broadcastBoard();
     res.json(board);
   } catch (error) {
     console.error('Failed to update card:', error);
@@ -99,6 +128,8 @@ app.put('/api/board/group/:id', async (req, res) => {
     
     board.groups[groupIndex] = { ...board.groups[groupIndex], ...updates };
     await persistence.saveBoard(board);
+    // Notify all other users of the change
+    await broadcastBoard();
     res.json(board);
   } catch (error) {
     console.error('Failed to update group:', error);
@@ -118,6 +149,8 @@ app.delete('/api/board/card/:id', async (req, res) => {
 
     board.cards.splice(cardIndex, 1);
     await persistence.saveBoard(board);
+    // Notify all other users of the change
+    await broadcastBoard();
     res.json(board);
   } catch (error) {
     console.error('Failed to delete card:', error);
@@ -138,6 +171,8 @@ app.delete('/api/board/group/:id', async (req, res) => {
     board.groups.splice(groupIndex, 1);
     board.cards = board.cards.map(card => (card.groupId === groupId ? { ...card, groupId: undefined } : card));
     await persistence.saveBoard(board);
+    // Notify all other users of the change
+    await broadcastBoard();
     res.json(board);
   } catch (error) {
     console.error('Failed to delete group:', error);
@@ -203,9 +238,10 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// Start server
-app.listen(port, () => {
+// Start server (HTTP server is shared with Socket.IO for real-time updates)
+httpServer.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });
 
 export default app;
+export { wsController };

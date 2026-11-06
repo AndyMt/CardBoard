@@ -10,6 +10,10 @@ export const createDefaultBoard = (): BoardModel => ({
   lastUpdated: new Date().toISOString()
 });
 
+/** Lock files older than this are considered stale (e.g. from a killed process). */
+const STALE_LOCK_MS = 5000;
+const LOCK_WAIT_MS = 5000;
+
 export class JSONPersistence {
   private filePath: string;
   private lockPath: string;
@@ -23,6 +27,45 @@ export class JSONPersistence {
     this.ensureDataDirectory();
   }
 
+  /**
+   * Remove a lock file that is older than the stale threshold. This keeps the
+   * server alive after a hard kill (e.g. Ctrl+C mid-write) instead of blocking
+   * on a lock that will never be released.
+   */
+  private clearStaleLock(): void {
+    try {
+      if (!fs.existsSync(this.lockPath)) return;
+      const stats = fs.statSync(this.lockPath);
+      const ageMs = Date.now() - stats.mtimeMs;
+      if (ageMs > STALE_LOCK_MS) {
+        fs.removeSync(this.lockPath);
+      }
+    } catch {
+      // Best-effort; ignore errors
+    }
+  }
+
+  private async acquireLock(): Promise<void> {
+    this.clearStaleLock();
+    await new Promise<void>((resolve, reject) => {
+      lockfile.lock(this.lockPath, { wait: LOCK_WAIT_MS }, (lockErr) => {
+        if (lockErr) {
+          reject(new Error(`Could not acquire lock: ${lockErr.message}`));
+          return;
+        }
+        resolve();
+      });
+    });
+  }
+
+  private releaseLock(): void {
+    try {
+      lockfile.unlockSync(this.lockPath);
+    } catch (unlockErr) {
+      console.error(`Failed to release lock: ${(unlockErr as Error).message}`);
+    }
+  }
+
   private ensureDataDirectory(): void {
     try {
       // Ensure data directory exists
@@ -30,7 +73,7 @@ export class JSONPersistence {
       if (!fs.existsSync(dataDir)) {
         fs.mkdirSync(dataDir, { recursive: true });
       }
-      
+
       // Ensure backup directory exists
       if (!fs.existsSync(this.backupDir)) {
         fs.mkdirSync(this.backupDir, { recursive: true });
@@ -41,81 +84,56 @@ export class JSONPersistence {
   }
 
   async saveBoard(board: BoardModel): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      // Acquire lock with 5 second timeout
-      lockfile.lock(this.lockPath, { wait: 5000 }, async (lockErr) => {
-        if (lockErr) {
-          console.error(`Could not acquire lock for saving board: ${lockErr.message}`);
-          reject(new Error(`Could not acquire lock for saving board: ${lockErr.message}`));
-          return;
-        }
-        
-        try {
-          // Update lastUpdated timestamp
-          const boardToSave = {
-            ...board,
-            lastUpdated: new Date().toISOString()
-          };
-          
-          // Save the board data
-          await fs.writeJson(this.filePath, boardToSave, { spaces: 2 });
-          resolve();
-        } catch (writeErr) {
-          console.error(`Failed to save board: ${writeErr.message}`);
-          reject(new Error(`Failed to save board: ${writeErr.message}`));
-        } finally {
-          // Always release the lock
-          try {
-            lockfile.unlockSync(this.lockPath);
-          } catch (unlockErr) {
-            console.error(`Failed to release lock: ${unlockErr.message}`);
-          }
-        }
-      });
-    });
+    try {
+      await this.acquireLock();
+      try {
+        // Update lastUpdated timestamp
+        const boardToSave = {
+          ...board,
+          lastUpdated: new Date().toISOString()
+        };
+
+        // Save the board data
+        await fs.writeJson(this.filePath, boardToSave, { spaces: 2 });
+      } finally {
+        this.releaseLock();
+      }
+    } catch (err) {
+      console.error(`Failed to save board: ${(err as Error).message}`);
+      throw err;
+    }
   }
 
   async loadBoard(): Promise<BoardModel> {
-    return new Promise<BoardModel>((resolve, reject) => {
-      // Acquire lock with 5 second timeout
-      lockfile.lock(this.lockPath, { wait: 5000 }, async (lockErr) => {
-        if (lockErr) {
-          console.error(`Could not acquire lock for loading board: ${lockErr.message}`);
-          reject(new Error(`Could not acquire lock for loading board: ${lockErr.message}`));
-          return;
-        }
-        
-        try {
-          // Check if file exists
-          if (!await fs.pathExists(this.filePath)) {
-            // Return default board if file doesn't exist
-            const defaultBoard = createDefaultBoard();
-            // Save the default board for future use
-            await this.saveBoard(defaultBoard);
-            resolve(defaultBoard);
-            return;
-          }
-          
-          // Load and parse the board data
-          const data = await fs.readJson(this.filePath);
-          resolve(this.createBoardFromData(data));
-        } catch (readErr) {
-          console.error(`Failed to load board: ${readErr.message}`);
-          // If there's an error reading, return default board
+    try {
+      await this.acquireLock();
+      try {
+        // Check if file exists
+        if (!await fs.pathExists(this.filePath)) {
+          // Return default board if file doesn't exist
           const defaultBoard = createDefaultBoard();
           // Save the default board for future use
           await this.saveBoard(defaultBoard);
-          resolve(defaultBoard);
-        } finally {
-          // Always release the lock
-          try {
-            lockfile.unlockSync(this.lockPath);
-          } catch (unlockErr) {
-            console.error(`Failed to release lock: ${unlockErr.message}`);
-          }
+          return defaultBoard;
         }
-      });
-    });
+
+        // Load and parse the board data
+        const data = await fs.readJson(this.filePath);
+        return this.createBoardFromData(data);
+      } finally {
+        this.releaseLock();
+      }
+    } catch (readErr) {
+      console.error(`Failed to load board: ${(readErr as Error).message}`);
+      // If there's an error reading, return default board
+      const defaultBoard = createDefaultBoard();
+      try {
+        await this.saveBoard(defaultBoard);
+      } catch {
+        // ignore
+      }
+      return defaultBoard;
+    }
   }
 
   async createBackup(): Promise<void> {
@@ -123,7 +141,7 @@ export class JSONPersistence {
       // Generate timestamp for backup file
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = path.join(this.backupDir, `board-${timestamp}.json`);
-      
+
       // Check if the main file exists before creating backup
       if (await fs.pathExists(this.filePath)) {
         // Copy current board file to backup location
@@ -131,7 +149,7 @@ export class JSONPersistence {
       }
     } catch (backupErr) {
       // If backup fails, just log the error but don't fail the operation
-      console.error(`Failed to create backup: ${backupErr.message}`);
+      console.error(`Failed to create backup: ${(backupErr as Error).message}`);
     }
   }
 

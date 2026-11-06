@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import BoardView from './components/BoardView.js';
 import Toolbar from './components/Toolbar.js';
 import UserPicker from './components/UserPicker.js';
 import ToolService, { ToolType } from './services/ToolService.js';
 import UserService from './services/UserService.js';
+import WebSocketService from './services/WebSocketService.js';
 import { User } from '../types/User.js';
 
 export interface AppProps {
@@ -21,6 +22,7 @@ const App: React.FC<AppProps> = () => {
   const [selectedCount, setSelectedCount] = useState<number>(0);
   const [user, setUser] = useState<User | null>(null);
   const [userInitialized, setUserInitialized] = useState<boolean>(false);
+  const [connectedUsers, setConnectedUsers] = useState<number>(0);
 
   // Handle tool selection through service
   const handleToolSelect = (tool: ToolType) => {
@@ -33,6 +35,28 @@ const App: React.FC<AppProps> = () => {
     const storedUser = UserService.getInstance().getStoredUser();
     setUser(storedUser);
     setUserInitialized(true);
+  }, []);
+
+  // Connect to the WebSocket and subscribe to real-time updates
+  useEffect(() => {
+    const ws = WebSocketService.getInstance();
+    ws.connect();
+
+    const unsubscribeBoard = ws.onBoardUpdate(() => {
+      console.log('[APP] board:update received -> triggering board refresh');
+      // Remote mutation: let BoardView re-fetch the authoritative board
+      window.dispatchEvent(new CustomEvent('board:changed'));
+    });
+
+    const unsubscribeUsers = ws.onUsersUpdate((payload) => {
+      console.log('[APP] users:update received', payload);
+      setConnectedUsers(payload.count);
+    });
+
+    return () => {
+      unsubscribeBoard();
+      unsubscribeUsers();
+    };
   }, []);
 
   // When a user is confirmed via the picker, persist and show the app
@@ -62,12 +86,18 @@ const App: React.FC<AppProps> = () => {
         onToolSelect={handleToolSelect}
         selectedCount={selectedCount}
         user={user}
+        connectedUsers={connectedUsers}
       />
 
       {/* Board view takes remaining space */}
       <div className="flex-1 overflow-hidden pt-12">
         {/* Add pt-12 to account for toolbar height */}
-        <BoardView selectedTool={selectedTool} onSelectionChange={setSelectedCount} onToolChange={handleToolSelect} currentUser={user} />
+        <BoardView
+          selectedTool={selectedTool}
+          onSelectionChange={setSelectedCount}
+          onToolChange={handleToolSelect}
+          currentUser={user}
+        />
       </div>
     </div>
   );
