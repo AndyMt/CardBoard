@@ -21,10 +21,14 @@ interface GroupProps {
   cards?: CardType[];
   selectedIds?: string[];
   onLabelChange?: (id: string, newLabel: string) => void;
+  onLabelCommit?: (id: string, newLabel: string) => void;
+  onEditingChange?: (id: string, editing: boolean) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onGroupClick?: (id: string, ctrlKey: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
   onCardTextChange?: (id: string, newText: string) => void;
+  onCardTextCommit?: (id: string, newText: string) => void;
+  onCardEditingChange?: (id: string, editing: boolean) => void;
   createdBy?: string;
   createdColor?: string;
 }
@@ -41,16 +45,21 @@ export const Group: React.FC<GroupProps> = ({
   cards = [],
   selectedIds = [],
   onLabelChange,
+  onLabelCommit,
+  onEditingChange,
   onSelect,
   onGroupClick,
   onCardClick,
   onCardTextChange,
+  onCardTextCommit,
+  onCardEditingChange,
   createdBy,
   createdColor = '#3b82f6',
 }) => {
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const lastCommittedLabelRef = useRef(label);
 
   const { isDraggingRef, handleMouseDown: handleMouseDownSelection, handleMouseUp, handleMouseMove } = useElementSelection(
     id,
@@ -74,10 +83,26 @@ export const Group: React.FC<GroupProps> = ({
     zIndex: 1,
   };
 
+  useEffect(() => {
+    if (!isEditing && label !== groupLabel) {
+      setGroupLabel(label);
+      lastCommittedLabelRef.current = label;
+    }
+  }, [label, isEditing, groupLabel]);
+
   const handleLabelChange = (newLabel: string) => {
     setGroupLabel(newLabel);
     if (onLabelChange) {
       onLabelChange(id, newLabel);
+    }
+  };
+
+  const commitLabel = () => {
+    if (groupLabel !== lastCommittedLabelRef.current) {
+      lastCommittedLabelRef.current = groupLabel;
+      if (onLabelCommit) {
+        onLabelCommit(id, groupLabel);
+      }
     }
   };
 
@@ -86,12 +111,14 @@ export const Group: React.FC<GroupProps> = ({
   };
 
   const handleInputBlur = () => {
+    commitLabel();
     setIsEditing(false);
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
+      commitLabel();
       setIsEditing(false);
     }
   };
@@ -101,7 +128,11 @@ export const Group: React.FC<GroupProps> = ({
     if (groupLabel === '' && !isEditing) {
       setIsEditing(true);
     }
-  }, [groupLabel]);
+  }, [groupLabel, isEditing]);
+
+  useEffect(() => {
+    onEditingChange?.(id, isEditing);
+  }, [id, isEditing, onEditingChange]);
 
   // Auto-focus when editing starts
   useEffect(() => {
@@ -173,6 +204,8 @@ export const Group: React.FC<GroupProps> = ({
               onCardClick={onCardClick}
               onSelect={onSelect}
               onTextChange={onCardTextChange}
+              onTextCommit={onCardTextCommit}
+              onEditingChange={onCardEditingChange}
             />
           );
         })}

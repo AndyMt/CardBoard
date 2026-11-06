@@ -60,10 +60,34 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   // While the current user is dragging, ignore full-board broadcasts from
   // ourselves to avoid fighting the local optimistic state.
   const isLocallyDraggingRef = useRef(false);
+  const editingCardIdsRef = useRef<Set<string>>(new Set());
+  const editingGroupIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     onSelectionChange?.(selectedItems.length);
   }, [selectedItems, onSelectionChange]);
+
+  const mergeBoard = (serverBoard: { cards?: CardType[]; groups?: GroupType[]; lastUpdated?: string }) => {
+    const serverCards = serverBoard.cards || [];
+    const serverGroups = serverBoard.groups || [];
+    setCards(prev => serverCards.map(card => {
+      if (editingCardIdsRef.current.has(card.id)) {
+        const local = prev.find(c => c.id === card.id);
+        return local ? { ...card, text: local.text } : card;
+      }
+      return card;
+    }));
+    setGroups(prev => serverGroups.map(group => {
+      if (editingGroupIdsRef.current.has(group.id)) {
+        const local = prev.find(g => g.id === group.id);
+        return local ? { ...group, label: local.label } : group;
+      }
+      return group;
+    }));
+    if (serverBoard.lastUpdated) {
+      lastBoardVersionRef.current = serverBoard.lastUpdated;
+    }
+  };
 
   // Load board data on component mount
   useEffect(() => {
@@ -128,10 +152,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       // Avoid applying stale updates by comparing lastUpdated timestamps
       const serverVersion = serverBoard.lastUpdated || '';
       if (serverVersion && serverVersion <= (lastBoardVersionRef.current || '')) return;
-      lastBoardVersionRef.current = serverVersion;
 
-      setCards(serverBoard.cards || []);
-      setGroups(serverBoard.groups || []);
+      mergeBoard(serverBoard);
       // Clear selection since the board state changed remotely
       setSelectedItems([]);
     });
@@ -164,9 +186,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     const handleChanged = async () => {
       try {
         const boardService = BoardService.getInstance();
-        const { cards, groups } = await boardService.getBoard();
-        setCards(cards);
-        setGroups(groups);
+        const serverBoard = await boardService.getBoard();
+        mergeBoard(serverBoard);
       } catch (err) {
         console.error('Failed to refresh board after remote change:', err);
       }
@@ -307,6 +328,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       setActiveDragId(null);
       setDragDelta(null);
       setDragStartedSelected(false);
+      isLocallyDraggingRef.current = false;
       return;
     }
 
@@ -369,40 +391,49 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     setActiveDragId(null);
     setDragDelta(null);
     setDragStartedSelected(false);
+    isLocallyDraggingRef.current = false;
   };
 
   const handleCardTextChange = (id: string, newText: string) => {
     setCards(prevCards => prevCards.map(card => {
       if (card.id === id) {
-        const updatedCard = { ...card, text: newText };
-        
-        // Update card text in persistence
-        const boardService = BoardService.getInstance();
-        boardService.updateCard(id, { text: newText }).catch(err => {
-          console.error('Failed to update card text:', err);
-        });
-        
-        return updatedCard;
+        return { ...card, text: newText };
       }
       return card;
     }));
   };
 
+  const handleCardTextCommit = (id: string, newText: string) => {
+    const boardService = BoardService.getInstance();
+    boardService.updateCard(id, { text: newText }).catch(err => {
+      console.error('Failed to update card text:', err);
+    });
+  };
+
+  const handleCardEditingChange = (id: string, editing: boolean) => {
+    if (editing) editingCardIdsRef.current.add(id);
+    else editingCardIdsRef.current.delete(id);
+  };
+
   const handleGroupLabelChange = (id: string, newLabel: string) => {
     setGroups(prevGroups => prevGroups.map(group => {
       if (group.id === id) {
-        const updatedGroup = { ...group, label: newLabel };
-        
-        // Update group label in persistence
-        const boardService = BoardService.getInstance();
-        boardService.updateGroup(id, { label: newLabel }).catch(err => {
-          console.error('Failed to update group label:', err);
-        });
-        
-        return updatedGroup;
+        return { ...group, label: newLabel };
       }
       return group;
     }));
+  };
+
+  const handleGroupLabelCommit = (id: string, newLabel: string) => {
+    const boardService = BoardService.getInstance();
+    boardService.updateGroup(id, { label: newLabel }).catch(err => {
+      console.error('Failed to update group label:', err);
+    });
+  };
+
+  const handleGroupEditingChange = (id: string, editing: boolean) => {
+    if (editing) editingGroupIdsRef.current.add(id);
+    else editingGroupIdsRef.current.delete(id);
   };
 
   const handleSelect = (id: string, ctrlKey: boolean = false) => {
@@ -530,6 +561,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               onCardClick={handleCardClick}
               onSelect={handleSelect}
               onTextChange={handleCardTextChange}
+              onTextCommit={handleCardTextCommit}
+              onEditingChange={handleCardEditingChange}
               createdBy={card.createdBy}
               createdColor={card.createdColor}
             />
@@ -553,10 +586,14 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
               cards={[]}
               selectedIds={selectedItems}
               onLabelChange={handleGroupLabelChange}
+              onLabelCommit={handleGroupLabelCommit}
+              onEditingChange={handleGroupEditingChange}
               onGroupClick={handleGroupClick}
               onSelect={handleSelect}
               onCardClick={handleCardClick}
               onCardTextChange={handleCardTextChange}
+              onCardTextCommit={handleCardTextCommit}
+              onCardEditingChange={handleCardEditingChange}
               createdBy={group.createdBy}
               createdColor={group.createdColor}
             />

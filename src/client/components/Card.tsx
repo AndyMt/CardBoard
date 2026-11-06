@@ -15,6 +15,8 @@ interface CardProps {
   isSelected: boolean;
   dragOffset?: { x: number; y: number } | null;
   onTextChange?: (id: string, newText: string) => void;
+  onTextCommit?: (id: string, newText: string) => void;
+  onEditingChange?: (id: string, editing: boolean) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
   createdBy?: string;
@@ -31,6 +33,8 @@ export const Card: React.FC<CardProps> = ({
   isSelected = false,
   dragOffset = null,
   onTextChange,
+  onTextCommit,
+  onEditingChange,
   onSelect,
   onCardClick,
   createdBy,
@@ -41,6 +45,7 @@ export const Card: React.FC<CardProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(20);
+  const lastCommittedTextRef = useRef(text);
   const { isDraggingRef, handleMouseDown, handleMouseUp, handleMouseMove } = useElementSelection(
     id,
     onCardClick,
@@ -72,6 +77,13 @@ export const Card: React.FC<CardProps> = ({
     zIndex: 2,
   };
 
+  useEffect(() => {
+    if (!isEditing && text !== cardText) {
+      setCardText(text);
+      lastCommittedTextRef.current = text;
+    }
+  }, [text, isEditing, cardText]);
+
   const handleTextChange = (newText: string) => {
     setCardText(newText);
     if (onTextChange) {
@@ -79,7 +91,14 @@ export const Card: React.FC<CardProps> = ({
     }
   };
 
-
+  const commitText = () => {
+    if (cardText !== lastCommittedTextRef.current) {
+      lastCommittedTextRef.current = cardText;
+      if (onTextCommit) {
+        onTextCommit(id, cardText);
+      }
+    }
+  };
 
   const handleContentClick = () => {
     // Start editing on single click
@@ -91,7 +110,11 @@ export const Card: React.FC<CardProps> = ({
     if (cardText === '' && !isEditing) {
       setIsEditing(true);
     }
-  }, [cardText]);
+  }, [cardText, isEditing]);
+
+  useEffect(() => {
+    onEditingChange?.(id, isEditing);
+  }, [id, isEditing, onEditingChange]);
 
   // Auto-focus and select all text when editing starts
   useEffect(() => {
@@ -132,11 +155,13 @@ export const Card: React.FC<CardProps> = ({
               setTimeout(updateHeight, 0);
             }}
             onBlur={() => {
+              commitText();
               setIsEditing(false);
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
+                commitText();
                 setIsEditing(false);
               }
             }}
