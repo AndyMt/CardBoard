@@ -30,7 +30,7 @@ export class UserPersistence {
 
   async loadUsers(): Promise<{ users: User[] }> {
     return new Promise<{ users: User[] }>((resolve, reject) => {
-      lockfile.lock(this.lockPath, { wait: 5000 }, async (lockErr) => {
+      lockfile.lock(this.lockPath, { wait: 0 }, async (lockErr) => {
         if (lockErr) {
           console.error(`Could not acquire lock for loading users: ${lockErr.message}`);
           reject(new Error(`Could not acquire lock for loading users: ${lockErr.message}`));
@@ -40,20 +40,22 @@ export class UserPersistence {
         try {
           if (!await fs.pathExists(this.filePath)) {
             const defaultUsers = createDefaultUsers();
-            await this.saveUsers(defaultUsers);
+            await fs.writeJson(this.filePath, defaultUsers, { spaces: 2 });
             resolve(defaultUsers);
             return;
           }
 
-          const data = await fs.readJson(this.filePath);
-          resolve({
-            users: Array.isArray(data.users) ? data.users : [],
-          });
-        } catch (readErr) {
-          console.error(`Failed to load users: ${readErr.message}`);
-          const defaultUsers = createDefaultUsers();
-          await this.saveUsers(defaultUsers);
-          resolve(defaultUsers);
+          try {
+            const data = await fs.readJson(this.filePath);
+            resolve({
+              users: Array.isArray(data.users) ? data.users : [],
+            });
+          } catch (readErr) {
+            console.error(`Failed to load users: ${readErr.message}`);
+            const defaultUsers = createDefaultUsers();
+            await fs.writeJson(this.filePath, defaultUsers, { spaces: 2 });
+            resolve(defaultUsers);
+          }
         } finally {
           try {
             lockfile.unlockSync(this.lockPath);
@@ -67,7 +69,7 @@ export class UserPersistence {
 
   async saveUsers(data: { users: User[] }): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      lockfile.lock(this.lockPath, { wait: 5000 }, async (lockErr) => {
+      lockfile.lock(this.lockPath, { wait: 0 }, async (lockErr) => {
         if (lockErr) {
           console.error(`Could not acquire lock for saving users: ${lockErr.message}`);
           reject(new Error(`Could not acquire lock for saving users: ${lockErr.message}`));
