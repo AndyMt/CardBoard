@@ -16,6 +16,7 @@ interface CardProps {
   dragOffset?: { x: number; y: number } | null;
   onTextChange?: (id: string, newText: string) => void;
   onTextCommit?: (id: string, newText: string) => void;
+  onEditingChange?: (id: string, editing: boolean) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
   createdBy?: string;
@@ -33,6 +34,7 @@ export const Card: React.FC<CardProps> = ({
   dragOffset = null,
   onTextChange,
   onTextCommit,
+  onEditingChange,
   onSelect,
   onCardClick,
   createdBy,
@@ -48,6 +50,16 @@ export const Card: React.FC<CardProps> = ({
     onCardClick,
     2
   );
+
+  useEffect(() => {
+    if (!isEditing && text !== cardText) {
+      setCardText(text);
+    }
+  }, [text, isEditing, cardText]);
+
+  useEffect(() => {
+    onEditingChange?.(id, isEditing);
+  }, [id, isEditing, onEditingChange]);
 
   const updateHeight = () => {
     if (isEditing && textareaRef.current) {

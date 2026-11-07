@@ -22,10 +22,13 @@ interface GroupProps {
   selectedIds?: string[];
   onLabelChange?: (id: string, newLabel: string) => void;
   onLabelCommit?: (id: string, newLabel: string) => void;
+  onEditingChange?: (id: string, editing: boolean) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onGroupClick?: (id: string, ctrlKey: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
   onCardTextChange?: (id: string, newText: string) => void;
+  onCardTextCommit?: (id: string, newText: string) => void;
+  onCardEditingChange?: (id: string, editing: boolean) => void;
   createdBy?: string;
   createdColor?: string;
 }
@@ -43,10 +46,13 @@ export const Group: React.FC<GroupProps> = ({
   selectedIds = [],
   onLabelChange,
   onLabelCommit,
+  onEditingChange,
   onSelect,
   onGroupClick,
   onCardClick,
   onCardTextChange,
+  onCardTextCommit,
+  onCardEditingChange,
   createdBy,
   createdColor = '#3b82f6',
 }) => {
@@ -59,6 +65,16 @@ export const Group: React.FC<GroupProps> = ({
     onGroupClick,
     1.33
   );
+
+  useEffect(() => {
+    if (!isEditing && label !== groupLabel) {
+      setGroupLabel(label);
+    }
+  }, [label, isEditing, groupLabel]);
+
+  useEffect(() => {
+    onEditingChange?.(id, isEditing);
+  }, [id, isEditing, onEditingChange]);
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id,
@@ -183,6 +199,8 @@ export const Group: React.FC<GroupProps> = ({
               onCardClick={onCardClick}
               onSelect={onSelect}
               onTextChange={onCardTextChange}
+              onTextCommit={onCardTextCommit}
+              onEditingChange={onCardEditingChange}
             />
           );
         })}
