@@ -107,7 +107,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
               onMouseLeave={() => setShowUserList(false)}
               title={`${connectedUsers} user(s) online`}
             >
-              <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
+              <span className={`material-symbols-outlined text-gray-600`}>
+                {connectedUsers > 1 ? 'group' : 'person'}
+              </span>
               <span className="font-medium">{connectedUsers}</span>
             </button>
 
