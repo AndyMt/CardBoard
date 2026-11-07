@@ -137,7 +137,7 @@ export const Card: React.FC<CardProps> = ({
         {...listeners}
         {...attributes}
         className="h-2 w-full cursor-move drag-handle-area"
-        style={{ backgroundColor: createdColor }}
+        style={{ backgroundColor: createdColor || '#9ca3af' }}
       ></div>
       
       {/* Content area */}

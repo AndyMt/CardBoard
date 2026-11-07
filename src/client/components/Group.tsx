@@ -155,7 +155,7 @@ export const Group: React.FC<GroupProps> = ({
           {...listeners}
           {...attributes}
           className="h-2 w-full cursor-move drag-handle-area"
-          style={{ backgroundColor: createdColor }}
+          style={{ backgroundColor: createdColor || '#9ca3af' }}
         ></div>
         
         {/* Label area - centered */}

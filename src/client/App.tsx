@@ -21,6 +21,7 @@ const App: React.FC<AppProps> = () => {
   );
   const [user, setUser] = useState<User | null>(null);
   const [userInitialized, setUserInitialized] = useState<boolean>(false);
+  const [goodbye, setGoodbye] = useState<boolean>(false);
   const [connectedUsers, setConnectedUsers] = useState<number>(0);
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [suggestedName, setSuggestedName] = useState<string>('');
@@ -107,6 +108,36 @@ const App: React.FC<AppProps> = () => {
     ws.emitUserIdentify({ userId: confirmedUser.id, userName: confirmedUser.name });
   };
 
+  // Delete user: remove from server directory AND clear local storage, then show goodbye screen
+  const handleDeleteUser = async (userToDelete: User) => {
+    if (!window.confirm(`Delete user "${userToDelete.name}" from the directory? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await UserService.getInstance().removeUser(userToDelete.id);
+      UserService.getInstance().clearStoredUser();
+      setGoodbye(true);
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      alert(`Failed to delete user: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  // Logout user: clear local storage only, keep user in directory, then show goodbye screen
+  const handleLogoutUser = (userToLogout: User) => {
+    UserService.getInstance().clearStoredUser();
+    setGoodbye(true);
+  };
+
+  // Goodbye screen after logout or delete
+  if (goodbye) {
+    return (
+      <div className="app h-screen bg-white overflow-hidden flex flex-col items-center justify-center">
+        <h1 className="text-2xl font-medium text-gray-900">CardBoard: Good bye</h1>
+      </div>
+    );
+  }
+
   // Before a user is established, show only the picker modal
   if (!userInitialized) {
     return null;
@@ -114,12 +145,17 @@ const App: React.FC<AppProps> = () => {
 
   if (!user) {
     return (
-      <div className="app h-screen bg-gray-100 overflow-hidden flex flex-col">
-        <UserPicker
-          onConfirm={handleUserConfirm}
-          initialName={suggestedName}
-          initialColor={suggestedColor}
-        />
+      <div className="app h-screen bg-white overflow-hidden flex flex-col">
+        <header className="px-6 py-4 text-lg font-medium text-gray-900 border-b border-gray-200">
+          Welcome to CoardBoard
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <UserPicker
+            onConfirm={handleUserConfirm}
+            initialName={suggestedName}
+            initialColor={suggestedColor}
+          />
+        </div>
       </div>
     );
   }
@@ -133,6 +169,8 @@ const App: React.FC<AppProps> = () => {
         user={user}
         connectedUsers={connectedUsers}
         onlineUserIds={onlineUserIds}
+        onDeleteUser={handleDeleteUser}
+        onLogoutUser={handleLogoutUser}
       />
 
       {/* Board view takes remaining space */}

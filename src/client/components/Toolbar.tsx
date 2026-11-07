@@ -12,6 +12,8 @@ interface ToolbarProps {
   user?: User | null;
   connectedUsers?: number;
   onlineUserIds?: string[];
+  onDeleteUser?: (user: User) => void;
+  onLogoutUser?: (user: User) => void;
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -20,6 +22,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   user = null,
   connectedUsers = 0,
   onlineUserIds = [],
+  onDeleteUser,
+  onLogoutUser,
 }) => {
   // Tool button configuration
   const tools: Array<{
@@ -46,6 +50,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   const [showUserList, setShowUserList] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const [knownUsers, setKnownUsers] = useState<User[]>([]);
   const [exportError, setExportError] = useState<string | null>(null);
   const onlineIds = new Set(onlineUserIds);
@@ -81,7 +86,10 @@ const Toolbar: React.FC<ToolbarProps> = ({
   }, [fetchUsers]);
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+    <div
+      className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm"
+      onClick={() => setShowUserMenu(false)}
+    >
       <div className="flex items-center justify-between px-4 py-2">
         {/* Tool buttons - left side */}
         <div className="flex space-x-2">
@@ -191,14 +199,49 @@ const Toolbar: React.FC<ToolbarProps> = ({
           </div>
 
           {user ? (
-            <div className="flex items-center space-x-2">
-              <div
-                className="w-6 h-6 rounded-full border-2 border-white"
-                style={{ backgroundColor: user.color }}
-              ></div>
-              <span className="text-sm text-gray-600 font-medium">
-                {user.name}
-              </span>
+            <div
+              className="relative"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowUserMenu((prev) => !prev);
+              }}
+            >
+              <div className="flex items-center space-x-2 cursor-pointer">
+                <div
+                  className="w-6 h-6 rounded-full border-2 border-white"
+                  style={{ backgroundColor: user.color }}
+                ></div>
+                <span className="text-sm text-gray-600 font-medium">
+                  {user.name}
+                </span>
+              </div>
+
+              {showUserMenu && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowUserMenu(false);
+                      onDeleteUser?.(user);
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 hover:text-red-800"
+                  >
+                    Delete user
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowUserMenu(false);
+                      onLogoutUser?.(user);
+                    }}
+                    className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Logout user
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <span className="text-sm text-gray-600">No user</span>
