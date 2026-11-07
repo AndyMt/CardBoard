@@ -162,14 +162,16 @@ onClick={(e) => {
       }}
       className={`absolute border-[1.33px] border-dashed border-gray-400 rounded-lg bg-white overflow-hidden group-component ${isSelected ? 'selected' : ''}`}
     >
-      {/* Header with 8px blue bar and centered label */}
+      {/* Header with 8px visible bar and centered label; active drag area extends 6px below bar */}
       <div className="flex flex-col">
-        {/* 10px high colored bar - this is the drag handle */}
+        {/* 8px visible colored bar, 14px active drag handle */}
         <div
           {...listeners}
           {...attributes}
-          className="h-[10px] w-full cursor-move drag-handle-area"
-          style={{ backgroundColor: createdColor || UNKNOWN_USER_COLOR }}
+          className="h-[14px] w-full cursor-move drag-handle-area"
+          style={{
+            background: `linear-gradient(to bottom, ${createdColor || UNKNOWN_USER_COLOR} 8px, transparent 8px)`
+          }}
         ></div>
         
         {/* Label area - centered */}

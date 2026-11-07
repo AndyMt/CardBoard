@@ -133,12 +133,14 @@ export const Card: React.FC<CardProps> = ({
       onClick={(e) => e.stopPropagation()}
       className={`absolute border-2 border-solid border-gray-800 rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}
     >
-      {/* Drag handle - 10px colored bar at top */}
+      {/* Drag handle - 8px visible bar, 14px active area */}
       <div
         {...listeners}
         {...attributes}
-        className="h-[10px] w-full cursor-move drag-handle-area"
-        style={{ backgroundColor: createdColor || UNKNOWN_USER_COLOR }}
+        className="h-[14px] w-full cursor-move drag-handle-area"
+        style={{
+          background: `linear-gradient(to bottom, ${createdColor || UNKNOWN_USER_COLOR} 8px, transparent 8px)`
+        }}
       ></div>
       
       {/* Content area */}

@@ -20,7 +20,7 @@ export function useElementSelection(
     const clickY = e.clientY - rect.top;
     const border = borderThickness;
 
-    const isInDragHandle = clickY >= border && clickY < border + 10;
+    const isInDragHandle = clickY >= border && clickY < border + 14;
 
     const innerTop = border;
     const innerLeft = border;
@@ -37,7 +37,7 @@ export function useElementSelection(
       inInner &&
       (clickX < innerLeft + zone ||
         clickX > innerRight - zone ||
-        clickY < innerTop + 10 + zone ||
+        clickY < innerTop + 14 + zone ||
         clickY > innerBottom - zone);
 
     if (isInDragHandle || isInSelectionZone) {
