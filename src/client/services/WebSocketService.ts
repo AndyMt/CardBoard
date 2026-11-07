@@ -118,7 +118,6 @@ class WebSocketService {
 
   /** Send a live drag position preview to the server (throttled server-side). */
   emitLiveDrag(payload: LiveUpdatePayload): void {
-    console.log('[WS] emitting live:drag', payload);
     if (!this.socket) return;
     this.socket.emit(LIVE_DRAG_EVENT, payload);
   }

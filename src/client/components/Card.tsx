@@ -15,6 +15,7 @@ interface CardProps {
   isSelected: boolean;
   dragOffset?: { x: number; y: number } | null;
   onTextChange?: (id: string, newText: string) => void;
+  onTextCommit?: (id: string, newText: string) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
   createdBy?: string;
@@ -31,6 +32,7 @@ export const Card: React.FC<CardProps> = ({
   isSelected = false,
   dragOffset = null,
   onTextChange,
+  onTextCommit,
   onSelect,
   onCardClick,
   createdBy,
@@ -76,6 +78,12 @@ export const Card: React.FC<CardProps> = ({
     setCardText(newText);
     if (onTextChange) {
       onTextChange(id, newText);
+    }
+  };
+
+  const commitText = () => {
+    if (onTextCommit) {
+      onTextCommit(id, cardText);
     }
   };
 
@@ -133,11 +141,13 @@ export const Card: React.FC<CardProps> = ({
             }}
             onBlur={() => {
               setIsEditing(false);
+              commitText();
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 setIsEditing(false);
+                commitText();
               }
             }}
             className="outline-none w-full bg-blue-50 rounded resize-none"

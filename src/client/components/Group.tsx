@@ -21,6 +21,7 @@ interface GroupProps {
   cards?: CardType[];
   selectedIds?: string[];
   onLabelChange?: (id: string, newLabel: string) => void;
+  onLabelCommit?: (id: string, newLabel: string) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onGroupClick?: (id: string, ctrlKey: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
@@ -41,6 +42,7 @@ export const Group: React.FC<GroupProps> = ({
   cards = [],
   selectedIds = [],
   onLabelChange,
+  onLabelCommit,
   onSelect,
   onGroupClick,
   onCardClick,
@@ -81,18 +83,26 @@ export const Group: React.FC<GroupProps> = ({
     }
   };
 
+  const commitLabel = () => {
+    if (onLabelCommit) {
+      onLabelCommit(id, groupLabel);
+    }
+  };
+
   const handleLabelClick = () => {
     setIsEditing(true);
   };
 
   const handleInputBlur = () => {
     setIsEditing(false);
+    commitLabel();
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault();
       setIsEditing(false);
+      commitLabel();
     }
   };
 
