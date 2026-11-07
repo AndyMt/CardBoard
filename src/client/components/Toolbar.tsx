@@ -96,7 +96,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               }`}
               title={tool.label}
             >
-              <span className="material-symbols-outlined">{tool.icon}</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '1.8em' }}>{tool.icon}</span>
               <span>{tool.label}</span>
             </button>
           ))}
@@ -107,7 +107,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               className="px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
               title="Download"
             >
-              <span className="material-symbols-outlined">download</span>
+              <span className="material-symbols-outlined" style={{ fontSize: '1.8em' }}>download</span>
               <span>Download</span>
             </button>
             {showDownload && (
@@ -157,7 +157,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               onMouseLeave={() => setShowUserList(false)}
               title={`${connectedUsers} user(s) online`}
             >
-              <span className={`material-symbols-outlined text-gray-600`}>
+              <span className={`material-symbols-outlined text-gray-600`} style={{ fontSize: '1.8em' }}>
                 {connectedUsers > 1 ? 'group' : 'person'}
               </span>
               <span className="font-medium">{connectedUsers}</span>

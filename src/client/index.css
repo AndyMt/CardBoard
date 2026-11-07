@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  font-size: 80%;
+}
+
 /* Selection glow effect - more visible */
 .card-component.selected,
 .group-component.selected {
