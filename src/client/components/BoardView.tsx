@@ -154,8 +154,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       if (serverVersion && serverVersion <= (lastBoardVersionRef.current || '')) return;
 
       mergeBoard(serverBoard);
-      // Clear selection since the board state changed remotely
-      setSelectedItems([]);
+      // Keep current selection; do not clear on remote board update
     });
 
     const unsubscribeLive = ws.onLiveUpdate((payload) => {
