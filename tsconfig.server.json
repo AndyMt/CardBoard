@@ -12,6 +12,7 @@
     "outDir": "dist",
     "rootDir": "src"
   },
-  "include": ["src/server/**/*", "src/types/**/*"],
+  "include": ["src/server/**/*", "src/types/**/*", "src/shared/**/*"],
+
   "exclude": ["node_modules"]
 }

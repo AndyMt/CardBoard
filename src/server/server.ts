@@ -10,6 +10,7 @@ import { JSONPersistence } from './persistence/JSONPersistence.js';
 import { BoardModel } from './model/BoardModel';
 import { UserService } from './services/UserService.js';
 import { WebSocketController } from './controller/WebSocketController.js';
+import { quantizeGeometry, quantizeGeometryUpdates } from '../shared/geometry.js';
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -75,7 +76,7 @@ app.post('/api/board', async (req, res) => {
 
 app.post('/api/board/card', async (req, res) => {
   try {
-    const card: Card = req.body;
+    const card: Card = quantizeGeometry(req.body);
     const board = await persistence.loadBoard();
     board.cards.push(card);
     await persistence.saveBoard(board);
@@ -90,7 +91,7 @@ app.post('/api/board/card', async (req, res) => {
 
 app.post('/api/board/group', async (req, res) => {
   try {
-    const group: Group = req.body;
+    const group: Group = quantizeGeometry(req.body);
     const board = await persistence.loadBoard();
     board.groups.push(group);
     await persistence.saveBoard(board);
@@ -106,14 +107,14 @@ app.post('/api/board/group', async (req, res) => {
 app.put('/api/board/card/:id', async (req, res) => {
   try {
     const cardId = req.params.id;
-    const updates: Partial<Card> = req.body;
+    const updates: Partial<Card> = quantizeGeometryUpdates(req.body);
     const board = await persistence.loadBoard();
-    
+
     const cardIndex = board.cards.findIndex(card => card.id === cardId);
     if (cardIndex === -1) {
       return res.status(404).json({ error: 'Card not found' });
     }
-    
+
     board.cards[cardIndex] = { ...board.cards[cardIndex], ...updates };
     await persistence.saveBoard(board);
     // Notify all other users of the change
@@ -128,14 +129,14 @@ app.put('/api/board/card/:id', async (req, res) => {
 app.put('/api/board/group/:id', async (req, res) => {
   try {
     const groupId = req.params.id;
-    const updates: Partial<Group> = req.body;
+    const updates: Partial<Group> = quantizeGeometryUpdates(req.body);
     const board = await persistence.loadBoard();
-    
+
     const groupIndex = board.groups.findIndex(group => group.id === groupId);
     if (groupIndex === -1) {
       return res.status(404).json({ error: 'Group not found' });
     }
-    
+
     board.groups[groupIndex] = { ...board.groups[groupIndex], ...updates };
     await persistence.saveBoard(board);
     // Notify all other users of the change

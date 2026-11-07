@@ -2,6 +2,7 @@ import { JSONPersistence } from '../persistence/JSONPersistence';
 import { BoardModelManager, BoardModel, createDefaultBoard } from '../model/BoardModel';
 import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
+import { quantizeScalar } from '../../shared/geometry.js';
 
 export class BoardController {
   private persistence: JSONPersistence;
@@ -53,13 +54,13 @@ export class BoardController {
   }
 
   async moveCard(cardId: string, x: number, y: number): Promise<BoardModel> {
-    this.boardManager.moveCard(cardId, x, y);
+    this.boardManager.moveCard(cardId, quantizeScalar(x), quantizeScalar(y));
     await this.saveBoard();
     return this.boardManager.getBoard();
   }
 
   async moveGroup(groupId: string, x: number, y: number): Promise<BoardModel> {
-    this.boardManager.moveGroup(groupId, x, y);
+    this.boardManager.moveGroup(groupId, quantizeScalar(x), quantizeScalar(y));
     await this.saveBoard();
     return this.boardManager.getBoard();
   }

@@ -2,6 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import type { Card } from '../../types/Card';
 import type { Group } from '../../types/Group';
 import type { User } from '../../types/User.js';
+import { quantizeScalar } from '../../shared/geometry.js';
 
 /**
  * WebSocketService wraps the socket.io-client connection to the server.
@@ -125,7 +126,10 @@ class WebSocketService {
   /** Send a live drag position preview to the server (throttled server-side). */
   emitLiveDrag(payload: LiveUpdatePayload): void {
     if (!this.socket) return;
-    this.socket.emit(LIVE_DRAG_EVENT, payload);
+    this.socket.emit(LIVE_DRAG_EVENT, {
+      cards: payload.cards.map((card) => ({ ...card, x: quantizeScalar(card.x), y: quantizeScalar(card.y) })),
+      groups: payload.groups.map((group) => ({ ...group, x: quantizeScalar(group.x), y: quantizeScalar(group.y) })),
+    });
   }
 
   onBoardUpdate(handler: BoardUpdateHandler): () => void {

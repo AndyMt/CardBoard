@@ -1,4 +1,7 @@
 import { WebSocketService } from './WebSocketService';
+import type { Card } from '../../types/Card';
+import type { Group } from '../../types/Group';
+import { quantizeGeometry, quantizeGeometryUpdates } from '../../shared/geometry.js';
 
 // API configuration
 const API_BASE_URL = '/api';
@@ -48,13 +51,13 @@ class BoardService {
         headers: { ...socketHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(card),
+        body: JSON.stringify(quantizeGeometry(card)),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to add card: ${response.statusText}`);
       }
-      
+
       const board = await response.json();
       return {
         cards: board.cards || [],
@@ -74,13 +77,13 @@ class BoardService {
         headers: { ...socketHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(group),
+        body: JSON.stringify(quantizeGeometry(group)),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to add group: ${response.statusText}`);
       }
-      
+
       const board = await response.json();
       return {
         cards: board.cards || [],
@@ -100,13 +103,13 @@ class BoardService {
         headers: { ...socketHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(quantizeGeometryUpdates(updates)),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to update card: ${response.statusText}`);
       }
-      
+
       const board = await response.json();
       return {
         cards: board.cards || [],
@@ -126,13 +129,13 @@ class BoardService {
         headers: { ...socketHeaders(),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(quantizeGeometryUpdates(updates)),
       });
-      
+
       if (!response.ok) {
         throw new Error(`Failed to update group: ${response.statusText}`);
       }
-      
+
       const board = await response.json();
       return {
         cards: board.cards || [],

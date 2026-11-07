@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import lockfile from 'lockfile';
 import path from 'path';
 import { BoardModel } from '../model/BoardModel';
+import { quantizeGeometry } from '../../shared/geometry.js';
 
 // Define the default board structure
 export const createDefaultBoard = (): BoardModel => ({
@@ -154,9 +155,11 @@ export class JSONPersistence {
   }
 
   private createBoardFromData(data: any): BoardModel {
+    const cards = Array.isArray(data.cards) ? data.cards.map((card: any) => quantizeGeometry(card)) : [];
+    const groups = Array.isArray(data.groups) ? data.groups.map((group: any) => quantizeGeometry(group)) : [];
     return {
-      cards: Array.isArray(data.cards) ? data.cards : [],
-      groups: Array.isArray(data.groups) ? data.groups : [],
+      cards,
+      groups,
       lastUpdated: data.lastUpdated || new Date().toISOString()
     };
   }

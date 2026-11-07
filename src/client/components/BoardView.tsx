@@ -8,6 +8,7 @@ import { User } from '../../types/User';
 import BoardService from '../services/BoardService';
 import WebSocketService from '../services/WebSocketService.js';
 import { ElementSelectionController } from '../controller/ElementSelectionController.js';
+import { quantizeGeometry, quantizeNonNegative, quantizeScalar } from '../../shared/geometry.js';
 
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
@@ -18,7 +19,7 @@ interface BoardViewProps {
 
 // Helper functions for model operations (client-side only)
 const createDefaultCard = (x: number, y: number, createdBy?: string, createdColor?: string): CardType => {
-  return {
+  return quantizeGeometry({
     id: `card-${Date.now()}`,
     text: '',
     x: Math.max(0, x - 100), // Center the card on click position
@@ -28,11 +29,11 @@ const createDefaultCard = (x: number, y: number, createdBy?: string, createdColo
     isSelected: false,
     createdBy,
     createdColor,
-  };
+  });
 };
 
 const createDefaultGroup = (x: number, y: number, createdBy?: string, createdColor?: string): GroupType => {
-  return {
+  return quantizeGeometry({
     id: `group-${Date.now()}`,
     label: '',
     x: Math.max(0, x - 220), // Center the group on click position
@@ -42,7 +43,7 @@ const createDefaultGroup = (x: number, y: number, createdBy?: string, createdCol
     isSelected: false,
     createdBy,
     createdColor,
-  };
+  });
 };
 
 export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionChange, onToolChange, currentUser }) => {
@@ -70,18 +71,20 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     const serverCards = serverBoard.cards || [];
     const serverGroups = serverBoard.groups || [];
     setCards(prev => serverCards.map(card => {
+      const normalized = quantizeGeometry(card);
       if (editingCardIdsRef.current.has(card.id)) {
         const local = prev.find(c => c.id === card.id);
-        return local ? { ...card, text: local.text } : card;
+        return local ? { ...normalized, text: local.text } : normalized;
       }
-      return card;
+      return normalized;
     }));
     setGroups(prev => serverGroups.map(group => {
+      const normalized = quantizeGeometry(group);
       if (editingGroupIdsRef.current.has(group.id)) {
         const local = prev.find(g => g.id === group.id);
-        return local ? { ...group, label: local.label } : group;
+        return local ? { ...normalized, label: local.label } : normalized;
       }
-      return group;
+      return normalized;
     }));
     if (serverBoard.lastUpdated) {
       lastBoardVersionRef.current = serverBoard.lastUpdated;
@@ -163,11 +166,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       // Apply other users' live drag positions as an overlay
       setCards(prev => prev.map(c => {
         const live = payload.cards.find((lc) => lc.id === c.id);
-        return live ? { ...c, x: live.x, y: live.y } : c;
+        return live ? { ...c, x: quantizeScalar(live.x), y: quantizeScalar(live.y) } : c;
       }));
       setGroups(prev => prev.map(g => {
         const live = payload.groups.find((lg) => lg.id === g.id);
-        return live ? { ...g, x: live.x, y: live.y } : g;
+        return live ? { ...g, x: quantizeScalar(live.x), y: quantizeScalar(live.y) } : g;
       }));
     });
 
@@ -250,12 +253,12 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
 
     cards.forEach((c) => {
       if (movingIds.includes(c.id)) {
-        movedCards.push({ id: c.id, x: Math.max(0, c.x + delta.x), y: Math.max(0, c.y + delta.y) });
+        movedCards.push({ id: c.id, x: quantizeNonNegative(c.x + delta.x), y: quantizeNonNegative(c.y + delta.y) });
       }
     });
     groups.forEach((g) => {
       if (movingIds.includes(g.id)) {
-        movedGroups.push({ id: g.id, x: Math.max(0, g.x + delta.x), y: Math.max(0, g.y + delta.y) });
+        movedGroups.push({ id: g.id, x: quantizeNonNegative(g.x + delta.x), y: quantizeNonNegative(g.y + delta.y) });
       }
     });
 
@@ -267,7 +270,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         if (c.groupId && movedGroupIds.includes(c.groupId)) {
           const group = groups.find(g => g.id === c.groupId);
           if (group && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 440)) {
-            movedCards.push({ id: c.id, x: Math.max(0, c.x + delta.x), y: Math.max(0, c.y + delta.y) });
+            movedCards.push({ id: c.id, x: quantizeNonNegative(c.x + delta.x), y: quantizeNonNegative(c.y + delta.y) });
           }
         }
       });
@@ -293,8 +296,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         if (card) {
           const startBoardX = card.x;
           const startBoardY = card.y;
-          const newBoardX = Math.max(0, startBoardX + delta.x);
-          const newBoardY = Math.max(0, startBoardY + delta.y);
+          const newBoardX = quantizeNonNegative(startBoardX + delta.x);
+          const newBoardY = quantizeNonNegative(startBoardY + delta.y);
 
           // Hit-test whether the card was dropped inside a group
           const targetGroup = groups.find(g => {
@@ -326,8 +329,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
           movedGroupIds.push(group.id);
           const updatedGroup = {
             ...group,
-            x: Math.max(0, group.x + delta.x),
-            y: Math.max(0, group.y + delta.y),
+            x: quantizeNonNegative(group.x + delta.x),
+            y: quantizeNonNegative(group.y + delta.y),
           };
 
           setGroups(prevGroups => prevGroups.map(g => (g.id === group.id ? updatedGroup : g)));
@@ -355,7 +358,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
           if (card.groupId !== groupId) return;
           if (card.x < group.x || card.x > group.x + (group.width || 440) || card.y < group.y || card.y > group.y + (group.height || 440)) return;
           movedCardIds.add(card.id);
-          const updatedCard = { ...card, x: Math.max(0, card.x + delta.x), y: Math.max(0, card.y + delta.y) };
+          const updatedCard = { ...card, x: quantizeNonNegative(card.x + delta.x), y: quantizeNonNegative(card.y + delta.y) };
           setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
           boardService.updateCard(card.id, { x: updatedCard.x, y: updatedCard.y }).catch(err => {
             console.error('Failed to update card position:', err);
@@ -376,8 +379,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
 
       const startBoardX = card.x;
       const startBoardY = card.y;
-      const newBoardX = Math.max(0, startBoardX + delta.x);
-      const newBoardY = Math.max(0, startBoardY + delta.y);
+      const newBoardX = quantizeNonNegative(startBoardX + delta.x);
+      const newBoardY = quantizeNonNegative(startBoardY + delta.y);
 
       // Hit-test whether the card was dropped inside a group
       const targetGroup = groups.find(g => {
@@ -394,11 +397,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
 
       setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
 
-       boardService.updateCard(card.id, {
-         x: updatedCard.x,
-         y: updatedCard.y,
-         groupId: updatedCard.groupId ?? null
-       }).catch(err => {
+      boardService.updateCard(card.id, {
+        x: updatedCard.x,
+        y: updatedCard.y,
+        groupId: updatedCard.groupId ?? null
+      }).catch(err => {
         console.error('Failed to update card position:', err);
       });
     } else if (activeType === 'group') {
@@ -409,8 +412,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         if (g.id === activeId) {
           const updatedGroup = {
             ...group,
-            x: Math.max(0, group.x + delta.x),
-            y: Math.max(0, group.y + delta.y),
+            x: quantizeNonNegative(group.x + delta.x),
+            y: quantizeNonNegative(group.y + delta.y),
           };
           boardService.updateGroup(group.id, { x: updatedGroup.x, y: updatedGroup.y }).catch(err => {
             console.error('Failed to update group position:', err);
@@ -420,7 +423,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         return g;
       }));
       containedCards.forEach(card => {
-        const updatedCard = { ...card, x: Math.max(0, card.x + delta.x), y: Math.max(0, card.y + delta.y) };
+        const updatedCard = { ...card, x: quantizeNonNegative(card.x + delta.x), y: quantizeNonNegative(card.y + delta.y) };
         setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
         boardService.updateCard(card.id, { x: updatedCard.x, y: updatedCard.y }).catch(err => {
           console.error('Failed to update card position:', err);

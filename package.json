@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:server": "tsc -p tsconfig.server.json && node -e \"require('fs').writeFileSync('dist/server/package.json', JSON.stringify({type:'commonjs'}, null, 2) + '\\n')\"",
+    "build:server": "tsc -p tsconfig.server.json && node -e \"require('fs').writeFileSync('dist/package.json', JSON.stringify({type:'commonjs'}, null, 2) + '\\n')\"",
     "build:all": "npm run build:server && npm run build",
     "preview": "vite preview",
     "server": "npm run build:server && node dist/server/server.js",

@@ -1,5 +1,6 @@
 import { Group } from '../../types/Group';
 import { ElementModel } from './ElementModel.js';
+import { quantizeScalar } from '../../shared/geometry.js';
 
 const DEFAULT_WIDTH = 440;
 const DEFAULT_HEIGHT = 440;
@@ -20,7 +21,12 @@ export class GroupModel extends ElementModel {
   }
 
   static createFromData(data: Partial<Group>): Group {
-    const base = super.createBase(data.x || 0, data.y || 0, data.width || DEFAULT_WIDTH, data.height || DEFAULT_HEIGHT);
+    const base = super.createBase(
+      quantizeScalar(data.x ?? 0),
+      quantizeScalar(data.y ?? 0),
+      quantizeScalar(data.width ?? DEFAULT_WIDTH),
+      quantizeScalar(data.height ?? DEFAULT_HEIGHT)
+    );
     return {
       id: data.id || `group-${Date.now()}`,
       label: data.label || '',
