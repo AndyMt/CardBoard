@@ -153,6 +153,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
         {/* Selected indicator + user - right side */}
         <div className="flex items-center space-x-4">
+          <span className="text-gray-400 whitespace-nowrap" style={{ fontSize: '8px' }} title={`v${__APP_VERSION__} build ${__BUILD_NUMBER__}`}>
+            {__BUILD_NUMBER__}
+          </span>
           {/* Connected users indicator with tooltip */}
           <div className="relative">
             <button
