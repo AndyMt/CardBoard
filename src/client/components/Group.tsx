@@ -164,11 +164,11 @@ onClick={(e) => {
     >
       {/* Header with 8px blue bar and centered label */}
       <div className="flex flex-col">
-        {/* 8px high colored bar - this is the drag handle */}
+        {/* 10px high colored bar - this is the drag handle */}
         <div
           {...listeners}
           {...attributes}
-          className="h-2 w-full cursor-move drag-handle-area"
+          className="h-[10px] w-full cursor-move drag-handle-area"
           style={{ backgroundColor: createdColor || UNKNOWN_USER_COLOR }}
         ></div>
         
