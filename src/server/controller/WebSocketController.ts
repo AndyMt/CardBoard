@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { BoardModel } from '../model/BoardModel';
+import type { User } from '../../types/User.js';
 
 /**
  * WebSocketController manages real-time synchronization of board state
@@ -17,6 +18,7 @@ export const BOARD_ROOM = 'board';
 export const BOARD_UPDATE_EVENT = 'board:update';
 export const BOARD_LIVE_UPDATE_EVENT = 'board:live-update';
 export const USERS_UPDATE_EVENT = 'users:update';
+export const USERS_DIRECTORY_UPDATE_EVENT = 'users:directory';
 export const LIVE_DRAG_EVENT = 'live:drag';
 
 export interface LiveUpdatePayload {
@@ -30,6 +32,10 @@ export interface BoardUpdatePayload {
 
 export interface UsersUpdatePayload {
   count: number;
+}
+
+export interface UserDirectoryUpdatePayload {
+  users: User[];
 }
 
 export interface LiveDragPayload {
@@ -109,6 +115,12 @@ export class WebSocketController {
     const count = this.connectedSockets.size;
     const payload: UsersUpdatePayload = { count };
     this.io.to(BOARD_ROOM).emit(USERS_UPDATE_EVENT, payload);
+  }
+
+  /** Broadcast the full user directory to all clients. */
+  broadcastUsersDirectory(users: User[]): void {
+    const payload: UserDirectoryUpdatePayload = { users };
+    this.io.to(BOARD_ROOM).emit(USERS_DIRECTORY_UPDATE_EVENT, payload);
   }
 
   /** Number of currently connected clients. */

@@ -25,6 +25,11 @@ const UserPicker: React.FC<UserPickerProps> = ({ onConfirm }) => {
 
   useEffect(() => {
     fetchUsers();
+    // Keep color availability in sync with directory changes.
+    const unsubscribe = UserService.getInstance().onUsersDirectoryUpdate((users) => {
+      setTakenColors(new Set(users.map(u => u.color)));
+    });
+    return () => unsubscribe();
   }, [fetchUsers]);
 
   const isColorTaken = (c: string) => takenColors.has(c);

@@ -57,9 +57,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   useEffect(() => {
     fetchUsers();
-    // Refresh the known-user list periodically so the tooltip stays current
-    const interval = setInterval(fetchUsers, 5000);
-    return () => clearInterval(interval);
+    // Keep the directory in sync with server pushes instead of polling.
+    const unsubscribe = UserService.getInstance().onUsersDirectoryUpdate((users) => {
+      setKnownUsers(users);
+    });
+    return () => unsubscribe();
   }, [fetchUsers]);
 
   return (

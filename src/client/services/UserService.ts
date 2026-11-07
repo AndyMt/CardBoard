@@ -43,14 +43,50 @@ class UserService {
     }
   }
 
+  // ---- Cached directory -------------------------------------------------
+
+  private cachedUsers: User[] | null = null;
+  private usersSubscribers = new Set<(users: User[]) => void>();
+
+  /** Returns the cached directory, fetching from the server on first access. */
   async getUsers(): Promise<User[]> {
+    if (this.cachedUsers) {
+      return this.cachedUsers;
+    }
+    return this.refreshUsers();
+  }
+
+  /** Fetch the directory from the server, update the cache, and notify subscribers. */
+  async refreshUsers(): Promise<User[]> {
     const response = await fetch(`${API_BASE_URL}/users`);
     if (!response.ok) {
       throw new Error(`Failed to fetch users: ${response.statusText}`);
     }
     const data = await response.json();
-    return data.users || [];
+    const users = data.users || [];
+    this.cachedUsers = users;
+    this.usersSubscribers.forEach((handler) => handler(users));
+    return users;
   }
+
+  /** Clear the cached directory so the next getUsers() re-fetches. */
+  invalidateUsers(): void {
+    this.cachedUsers = null;
+  }
+
+  /** Set the directory directly (e.g. from a WebSocket push) and notify subscribers. */
+  setUsers(users: User[]): void {
+    this.cachedUsers = users;
+    this.usersSubscribers.forEach((handler) => handler(users));
+  }
+
+  /** Subscribe to directory changes. Returns an unsubscribe function. */
+  onUsersDirectoryUpdate(handler: (users: User[]) => void): () => void {
+    this.usersSubscribers.add(handler);
+    return () => this.usersSubscribers.delete(handler);
+  }
+
+  // ---- Single user ------------------------------------------------------
 
   async getUserByName(name: string): Promise<User | null> {
     try {
@@ -94,10 +130,44 @@ class UserService {
     }
 
     const data = await response.json();
+    const { user } = data;
+    this.setStoredUser(user);
+    this.invalidateUsers();
+
     return {
       user: data.user,
       created: data.created ?? false,
     };
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User> {
+    const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update user: ${response.statusText}`);
+    }
+
+    const user = await response.json();
+    this.invalidateUsers();
+    return user;
+  }
+
+  async removeUser(id: string): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete user: ${response.statusText}`);
+    }
+
+    this.invalidateUsers();
   }
 }
 

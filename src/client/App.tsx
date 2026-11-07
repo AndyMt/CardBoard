@@ -53,9 +53,15 @@ const App: React.FC<AppProps> = () => {
       setConnectedUsers(payload.count);
     });
 
+    const unsubscribeDirectory = ws.onUsersDirectoryUpdate((payload) => {
+      console.log('[APP] users:directory received', payload);
+      UserService.getInstance().setUsers(payload.users);
+    });
+
     return () => {
       unsubscribeBoard();
       unsubscribeUsers();
+      unsubscribeDirectory();
     };
   }, []);
 

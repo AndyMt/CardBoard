@@ -119,4 +119,36 @@ export class UserPersistence {
 
     return { user, created: true };
   }
+
+  async findUserById(id: string): Promise<User | null> {
+    const data = await this.loadUsers();
+    return data.users.find(user => user.id === id) || null;
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
+    const data = await this.loadUsers();
+    const index = data.users.findIndex(user => user.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const updated = { ...data.users[index], ...updates };
+    data.users[index] = updated;
+    await this.saveUsers(data);
+
+    return updated;
+  }
+
+  async removeUser(id: string): Promise<boolean> {
+    const data = await this.loadUsers();
+    const index = data.users.findIndex(user => user.id === id);
+    if (index === -1) {
+      return false;
+    }
+
+    data.users.splice(index, 1);
+    await this.saveUsers(data);
+
+    return true;
+  }
 }

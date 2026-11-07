@@ -5,9 +5,10 @@ import { Server as SocketServer } from 'socket.io';
 import path from 'path';
 import type { Card } from '../types/Card.js';
 import type { Group } from '../types/Group.js';
+import type { User } from '../types/User.js';
 import { JSONPersistence } from './persistence/JSONPersistence.js';
 import { BoardModel } from './model/BoardModel';
-import { UserPersistence } from './persistence/UserPersistence.js';
+import { UserService } from './services/UserService.js';
 import { WebSocketController } from './controller/WebSocketController.js';
 
 const app = express();
@@ -15,7 +16,16 @@ const port = process.env.PORT || 8080;
 
 // Initialize persistence
 const persistence = new JSONPersistence();
-const userPersistence = new UserPersistence();
+const userService = new UserService({
+  onUsersChanged: async () => {
+    try {
+      const users = await userService.listUsers();
+      wsController.broadcastUsersDirectory(users);
+    } catch (err) {
+      console.error('Failed to broadcast user directory:', err);
+    }
+  },
+});
 
 // Create HTTP server and Socket.IO server for real-time updates
 const httpServer = createServer(app);
@@ -183,8 +193,8 @@ app.delete('/api/board/group/:id', async (req, res) => {
 // User routes
 app.get('/api/users', async (req, res) => {
   try {
-    const data = await userPersistence.loadUsers();
-    res.json(data);
+    const users = await userService.listUsers();
+    res.json({ users });
   } catch (error) {
     console.error('Failed to get users:', error);
     res.status(500).json({ error: 'Failed to get users' });
@@ -194,7 +204,7 @@ app.get('/api/users', async (req, res) => {
 app.get('/api/users/:name', async (req, res) => {
   try {
     const name = req.params.name;
-    const user = await userPersistence.findUserByName(name);
+    const user = await userService.findUserByName(name);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -213,22 +223,51 @@ app.post('/api/users', async (req, res) => {
       return res.status(400).json({ error: 'Name is required' });
     }
 
-    const existing = await userPersistence.findUserByName(name.trim());
+    const existing = await userService.findUserByName(name.trim());
     if (existing) {
       return res.json({ user: existing, created: false });
     }
 
-    const allUsers = await userPersistence.loadUsers();
-    const colorTaken = allUsers.users.some(u => u.color === color);
+    const allUsers = await userService.listUsers();
+    const colorTaken = allUsers.some(u => u.color === color);
     if (colorTaken) {
       return res.status(409).json({ error: 'Color already taken' });
     }
 
-    const result = await userPersistence.createUser(name.trim(), color);
+    const result = await userService.createUser(name.trim(), color);
     res.status(201).json({ user: result.user, created: result.created });
   } catch (error) {
     console.error('Failed to create user:', error);
     res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+app.put('/api/users/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const updates: Partial<User> = req.body;
+    const user = await userService.updateUser(id, updates);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error('Failed to update user:', error);
+    res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const removed = await userService.removeUser(id);
+    if (!removed) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete user:', error);
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 

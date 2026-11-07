@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import type { Card } from '../../types/Card';
 import type { Group } from '../../types/Group';
+import type { User } from '../../types/User.js';
 
 /**
  * WebSocketService wraps the socket.io-client connection to the server.
@@ -15,6 +16,7 @@ import type { Group } from '../../types/Group';
 export const BOARD_UPDATE_EVENT = 'board:update';
 export const BOARD_LIVE_UPDATE_EVENT = 'board:live-update';
 export const USERS_UPDATE_EVENT = 'users:update';
+export const USERS_DIRECTORY_UPDATE_EVENT = 'users:directory';
 export const LIVE_DRAG_EVENT = 'live:drag';
 
 export interface BoardUpdatePayload {
@@ -30,9 +32,14 @@ export interface UsersUpdatePayload {
   count: number;
 }
 
+export interface UserDirectoryUpdatePayload {
+  users: User[];
+}
+
 type BoardUpdateHandler = (payload: BoardUpdatePayload) => void;
 type LiveUpdateHandler = (payload: LiveUpdatePayload) => void;
 type UsersUpdateHandler = (payload: UsersUpdatePayload) => void;
+type UserDirectoryUpdateHandler = (payload: UserDirectoryUpdatePayload) => void;
 
 class WebSocketService {
   private static instance: WebSocketService;
@@ -42,6 +49,7 @@ class WebSocketService {
   private boardUpdateHandlers = new Set<BoardUpdateHandler>();
   private liveUpdateHandlers = new Set<LiveUpdateHandler>();
   private usersUpdateHandlers = new Set<UsersUpdateHandler>();
+  private userDirectoryHandlers = new Set<UserDirectoryUpdateHandler>();
 
   private constructor(url: string = '') {
     // Empty url means use the same origin as the page (works with the Vite proxy)
@@ -91,6 +99,11 @@ class WebSocketService {
       this.usersUpdateHandlers.forEach((handler) => handler(payload));
     });
 
+    this.socket.on(USERS_DIRECTORY_UPDATE_EVENT, (payload: UserDirectoryUpdatePayload) => {
+      console.log('[WS] received users:directory', payload);
+      this.userDirectoryHandlers.forEach((handler) => handler(payload));
+    });
+
     this.socket.on('connect_error', (err: Error) => {
       console.error('[WS] connection error:', err);
     });
@@ -123,6 +136,11 @@ class WebSocketService {
   onUsersUpdate(handler: UsersUpdateHandler): () => void {
     this.usersUpdateHandlers.add(handler);
     return () => this.usersUpdateHandlers.delete(handler);
+  }
+
+  onUsersDirectoryUpdate(handler: UserDirectoryUpdateHandler): () => void {
+    this.userDirectoryHandlers.add(handler);
+    return () => this.userDirectoryHandlers.delete(handler);
   }
 
   /** Disconnect and clean up. */
