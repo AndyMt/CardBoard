@@ -27,9 +27,9 @@ The application shall have the following features:
 ## Collaborative mode
 
 - At entering a board the first time, users shall be asked for a name and select a user color.
-- The name and color assignment shall be stored on the server in a json file.
-- the name shall be stored in browser local storage, this way it can be detected if a user already exists.
-- The username shall be displayed in the toolbar at the top right corner together with the user color.
+- The user name and color assignment shall be stored on the server in a json file.
+- the user name shall be stored in browser local storage, this way it can be detected if a user already exists.
+- The user name shall be displayed in the toolbar at the top right corner together with the user color.
 - The list of user colors shall be as follows:
 -- #005599
 -- #558899
@@ -40,7 +40,8 @@ The application shall have the following features:
 -- #662299
 
 - when a user creates a card or group, it shall be assigned the username
-- the top bar of cards or groups shall shown in the users color
+- each card and group shall show a 8px top bar in the user color, looking up the color in the user directory
+- the top bar of cards or groups shall be shown in the users color
 - when a user changes an element on a board, their name or their color, the board and toolbar shall update in all other users sessions.
 - the toolbar shall show the number of known users in the to right corner.
 - hovering over the number of users shall show the list of known users in a tooltip.
@@ -58,9 +59,8 @@ The application shall have the following features:
 
 - Shall have default size of 2x2 cards plus padding around the cards of 20 pixels.
 - minimum size is 1x1 card plus including padding.
-- border shall be 1px dotted.
+- border shall be 1.33px dotted.
 - Text label to centered on the top border line.
-- Background color of the label shall be white, thus breaking the group border.
 - clicking on the group border shall select the group and all cards within it.
 
 ## Select and moving elements
