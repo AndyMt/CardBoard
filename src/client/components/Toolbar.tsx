@@ -44,6 +44,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   ];
 
   const [showUserList, setShowUserList] = useState(false);
+  const [showDownload, setShowDownload] = useState(false);
   const [knownUsers, setKnownUsers] = useState<User[]>([]);
   const onlineIds = new Set(onlineUserIds);
 
@@ -85,6 +86,42 @@ const Toolbar: React.FC<ToolbarProps> = ({
               <span>{tool.label}</span>
             </button>
           ))}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowDownload((v) => !v)}
+              className="px-3 py-1.5 rounded-md text-sm font-medium flex items-center space-x-1 bg-gray-100 text-gray-700 hover:bg-gray-200"
+              title="Download"
+            >
+              <span className="material-symbols-outlined">download</span>
+              <span>Download</span>
+            </button>
+            {showDownload && (
+              <div className="absolute left-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
+                <button
+                  type="button"
+                  onClick={() => setShowDownload(false)}
+                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Mapping CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDownload(false)}
+                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Cards CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDownload(false)}
+                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  Groups DSV
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Selected indicator + user - right side */}
