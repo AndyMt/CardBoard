@@ -4,11 +4,13 @@ import UserService from '../services/UserService.js';
 
 interface UserPickerProps {
   onConfirm: (user: User) => void;
+  initialName?: string;
+  initialColor?: string | null;
 }
 
-const UserPicker: React.FC<UserPickerProps> = ({ onConfirm }) => {
-  const [name, setName] = useState('');
-  const [color, setColor] = useState<string | null>(null);
+const UserPicker: React.FC<UserPickerProps> = ({ onConfirm, initialName, initialColor }) => {
+  const [name, setName] = useState(initialName ?? '');
+  const [color, setColor] = useState<string | null>(initialColor ?? null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [takenColors, setTakenColors] = useState<Set<string>>(new Set());

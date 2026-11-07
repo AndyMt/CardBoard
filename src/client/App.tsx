@@ -23,6 +23,8 @@ const App: React.FC<AppProps> = () => {
   const [user, setUser] = useState<User | null>(null);
   const [userInitialized, setUserInitialized] = useState<boolean>(false);
   const [connectedUsers, setConnectedUsers] = useState<number>(0);
+  const [suggestedName, setSuggestedName] = useState<string>('');
+  const [suggestedColor, setSuggestedColor] = useState<string | null>(null);
 
   // Handle tool selection through service
   const handleToolSelect = (tool: ToolType) => {
@@ -33,8 +35,26 @@ const App: React.FC<AppProps> = () => {
   // On mount, check localStorage for an existing user
   useEffect(() => {
     const storedUser = UserService.getInstance().getStoredUser();
-    setUser(storedUser);
-    setUserInitialized(true);
+    if (storedUser) {
+      UserService.getInstance()
+        .getUsers()
+        .then((users) => {
+          const exists = users.some((u) => u.name === storedUser.name);
+          if (exists) {
+            setUser(storedUser);
+          } else {
+            setSuggestedName(storedUser.name);
+            setSuggestedColor(storedUser.color ?? null);
+          }
+        })
+        .catch(() => {
+          setSuggestedName(storedUser.name);
+          setSuggestedColor(storedUser.color ?? null);
+        })
+        .finally(() => setUserInitialized(true));
+    } else {
+      setUserInitialized(true);
+    }
   }, []);
 
   // Connect to the WebSocket and subscribe to real-time updates
@@ -78,7 +98,11 @@ const App: React.FC<AppProps> = () => {
   if (!user) {
     return (
       <div className="app h-screen bg-gray-100 overflow-hidden flex flex-col">
-        <UserPicker onConfirm={handleUserConfirm} />
+        <UserPicker
+          onConfirm={handleUserConfirm}
+          initialName={suggestedName}
+          initialColor={suggestedColor}
+        />
       </div>
     );
   }
