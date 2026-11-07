@@ -28,6 +28,7 @@ interface GroupProps {
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onGroupClick?: (id: string, ctrlKey: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
+  onAddCard?: (x: number, y: number, groupId: string) => void;
   onCardTextChange?: (id: string, newText: string) => void;
   onCardTextCommit?: (id: string, newText: string) => void;
   onCardEditingChange?: (id: string, editing: boolean) => void;
@@ -52,6 +53,7 @@ export const Group: React.FC<GroupProps> = ({
   onSelect,
   onGroupClick,
   onCardClick,
+  onAddCard,
   onCardTextChange,
   onCardTextCommit,
   onCardEditingChange,
@@ -156,6 +158,7 @@ onClick={(e) => {
         const boardX = e.clientX - br.left + boardContainer.scrollLeft;
         const boardY = e.clientY - br.top + boardContainer.scrollTop;
         console.log('Group content click (Add Card active)', { x: boardX, y: boardY });
+        onAddCard?.(boardX, boardY, id);
       }}
       className={`absolute border-[1.33px] border-dashed border-gray-400 rounded-lg bg-white overflow-hidden group-component ${isSelected ? 'selected' : ''}`}
     >

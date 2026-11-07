@@ -552,6 +552,18 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     setSelectedItems((prev) => new ElementSelectionController().select(prev, id, ctrlKey));
   };
 
+  const handleAddCardInGroup = async (x: number, y: number, groupId: string) => {
+    const newCard = createDefaultCard(x, y, currentUser?.name, currentUser?.color);
+    newCard.groupId = groupId;
+    try {
+      const boardService = BoardService.getInstance();
+      const { cards } = await boardService.addCard(newCard);
+      setCards(cards);
+    } catch (err) {
+      console.error('Failed to add card:', err);
+    }
+  };
+
   const handleBoardFocus = () => {
     const boardElement = document.querySelector('.board-container');
     if (boardElement) {
@@ -665,8 +677,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
               onLabelChange={handleGroupLabelChange}
               onLabelCommit={handleGroupLabelCommit}
               onEditingChange={handleGroupEditingChange}
-              onGroupClick={handleGroupClick}
-              onSelect={handleSelect}
+onGroupClick={handleGroupClick}
+               onAddCard={handleAddCardInGroup}
+               onSelect={handleSelect}
               onCardClick={handleCardClick}
               onCardTextChange={handleCardTextChange}
               onCardTextCommit={handleCardTextCommit}
