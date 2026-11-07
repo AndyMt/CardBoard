@@ -11,7 +11,8 @@ import { quantizeScalar } from '../../shared/geometry.js';
  * Events emitted by the server:
  *  - board:update        -> full board snapshot (cards + groups)
  *  - board:live-update   -> throttled drag position preview for other users
- *  - users:update        -> number of currently connected users
+ *  - users:update        -> number of currently connected users + ids of online users
+ *  - users:directory     -> full user directory (all known users)
  */
 
 export const BOARD_UPDATE_EVENT = 'board:update';
@@ -31,6 +32,7 @@ export interface LiveUpdatePayload {
 
 export interface UsersUpdatePayload {
   count: number;
+  onlineUserIds: string[];
 }
 
 export interface UserDirectoryUpdatePayload {
@@ -51,6 +53,7 @@ class WebSocketService {
   private liveUpdateHandlers = new Set<LiveUpdateHandler>();
   private usersUpdateHandlers = new Set<UsersUpdateHandler>();
   private userDirectoryHandlers = new Set<UserDirectoryUpdateHandler>();
+  private connectHandlers = new Set<() => void>();
 
   private constructor(url: string = '') {
     // Empty url means use the same origin as the page (works with the Vite proxy)
@@ -77,7 +80,9 @@ class WebSocketService {
       reconnectionDelay: 1000,
     });
 
-    this.socket.on('connect', () => {});
+    this.socket.on('connect', () => {
+      this.connectHandlers.forEach((handler) => handler());
+    });
 
     this.socket.on('disconnect', (reason) => {});
 
@@ -132,6 +137,12 @@ class WebSocketService {
     });
   }
 
+  /** Tell the server this socket is identified as a given user (for online count). */
+  emitUserIdentify(payload: { userId: string; userName: string }): void {
+    if (!this.socket) return;
+    this.socket.emit('user:identify', payload);
+  }
+
   onBoardUpdate(handler: BoardUpdateHandler): () => void {
     this.boardUpdateHandlers.add(handler);
     return () => this.boardUpdateHandlers.delete(handler);
@@ -150,6 +161,11 @@ class WebSocketService {
   onUsersDirectoryUpdate(handler: UserDirectoryUpdateHandler): () => void {
     this.userDirectoryHandlers.add(handler);
     return () => this.userDirectoryHandlers.delete(handler);
+  }
+
+  onConnect(handler: () => void): () => void {
+    this.connectHandlers.add(handler);
+    return () => this.connectHandlers.delete(handler);
   }
 
   /** Disconnect and clean up. */

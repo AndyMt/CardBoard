@@ -23,6 +23,7 @@ const App: React.FC<AppProps> = () => {
   const [user, setUser] = useState<User | null>(null);
   const [userInitialized, setUserInitialized] = useState<boolean>(false);
   const [connectedUsers, setConnectedUsers] = useState<number>(0);
+  const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [suggestedName, setSuggestedName] = useState<string>('');
   const [suggestedColor, setSuggestedColor] = useState<string | null>(null);
 
@@ -71,6 +72,7 @@ const App: React.FC<AppProps> = () => {
 
     const unsubscribeUsers = ws.onUsersUpdate((payload) => {
       setConnectedUsers(payload.count);
+      setOnlineUserIds(payload.onlineUserIds ?? []);
     });
 
     const unsubscribeDirectory = ws.onUsersDirectoryUpdate((payload) => {
@@ -84,10 +86,26 @@ const App: React.FC<AppProps> = () => {
     };
   }, []);
 
+  // Re-identify this socket with the current user whenever (re)connected,
+  // so the server counts this user as online.
+  useEffect(() => {
+    if (!user) return;
+    const ws = WebSocketService.getInstance();
+    const unsubscribeConnect = ws.onConnect(() => {
+      ws.emitUserIdentify({ userId: user.id, userName: user.name });
+    });
+    if (ws.isConnected()) {
+      ws.emitUserIdentify({ userId: user.id, userName: user.name });
+    }
+    return () => unsubscribeConnect();
+  }, [user]);
+
   // When a user is confirmed via the picker, persist and show the app
   const handleUserConfirm = (confirmedUser: User) => {
     UserService.getInstance().setStoredUser(confirmedUser);
     setUser(confirmedUser);
+    const ws = WebSocketService.getInstance();
+    ws.emitUserIdentify({ userId: confirmedUser.id, userName: confirmedUser.name });
   };
 
   // Before a user is established, show only the picker modal
@@ -116,6 +134,7 @@ const App: React.FC<AppProps> = () => {
         selectedCount={selectedCount}
         user={user}
         connectedUsers={connectedUsers}
+        onlineUserIds={onlineUserIds}
       />
 
       {/* Board view takes remaining space */}

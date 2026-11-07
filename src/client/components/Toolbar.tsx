@@ -11,6 +11,7 @@ interface ToolbarProps {
   selectedCount?: number;
   user?: User | null;
   connectedUsers?: number;
+  onlineUserIds?: string[];
 }
 
 const Toolbar: React.FC<ToolbarProps> = ({
@@ -19,6 +20,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   selectedCount = 0,
   user = null,
   connectedUsers = 0,
+  onlineUserIds = [],
 }) => {
   // Tool button configuration
   const tools: Array<{
@@ -45,6 +47,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   const [showUserList, setShowUserList] = useState(false);
   const [knownUsers, setKnownUsers] = useState<User[]>([]);
+  const onlineIds = new Set(onlineUserIds);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -113,18 +116,23 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 {knownUsers.length === 0 ? (
                   <div className="px-3 py-2 text-sm text-gray-500">No users</div>
                 ) : (
-                  knownUsers.map((u) => (
-                    <div
-                      key={u.id}
-                      className="flex items-center space-x-2 px-3 py-1.5 text-sm"
-                    >
-                      <span
-                        className="w-4 h-4 rounded-full border border-white"
-                        style={{ backgroundColor: u.color }}
-                      />
-                      <span className="text-gray-700">{u.name}</span>
-                    </div>
-                  ))
+                  knownUsers.map((u) => {
+                    const isOnline = onlineIds.has(u.id);
+                    return (
+                      <div
+                        key={u.id}
+                        className="flex items-center space-x-2 px-3 py-1.5 text-sm"
+                      >
+                        <span
+                          className={`w-4 h-4 rounded-full border border-white ${isOnline ? '' : 'opacity-50'}`}
+                          style={{ backgroundColor: u.color }}
+                        />
+                        <span className={`text-sm ${isOnline ? 'text-gray-700' : 'text-gray-400'}`}>
+                          {u.name}
+                        </span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
             )}

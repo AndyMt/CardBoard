@@ -33,6 +33,7 @@ export interface BoardUpdatePayload {
 
 export interface UsersUpdatePayload {
   count: number;
+  onlineUserIds: string[];
 }
 
 export interface UserDirectoryUpdatePayload {
@@ -47,6 +48,7 @@ export interface LiveDragPayload {
 export class WebSocketController {
   private io: Server;
   private connectedSockets = new Map<string, Socket>();
+  private connectedUsersMap = new Map<string, { userId: string; userName: string }>();
   private liveUpdateTimer: ReturnType<typeof setTimeout> | null = null;
   private pendingLiveUpdate: LiveUpdatePayload | null = null;
 
@@ -59,6 +61,11 @@ export class WebSocketController {
     this.connectedSockets.set(socket.id, socket);
     socket.join(BOARD_ROOM);
     this.broadcastUserCount();
+
+    socket.on('user:identify', (payload: { userId: string; userName: string }) => {
+      this.connectedUsersMap.set(socket.id, { userId: payload.userId, userName: payload.userName });
+      this.broadcastUserCount();
+    });
 
     // Live drag position preview from a client (throttled broadcast)
     socket.on(LIVE_DRAG_EVENT, (payload: LiveDragPayload) => {
@@ -73,6 +80,7 @@ export class WebSocketController {
 
     socket.on('disconnect', () => {
       this.connectedSockets.delete(socket.id);
+      this.connectedUsersMap.delete(socket.id);
       this.broadcastUserCount();
     });
   }
@@ -111,10 +119,11 @@ export class WebSocketController {
     }, 200);
   }
 
-  /** Broadcast the number of currently connected users. */
+  /** Broadcast the number of currently connected users (identified users). */
   private broadcastUserCount(): void {
-    const count = this.connectedSockets.size;
-    const payload: UsersUpdatePayload = { count };
+    const count = this.connectedUsersMap.size;
+    const onlineUserIds = Array.from(this.connectedUsersMap.values()).map((entry) => entry.userId);
+    const payload: UsersUpdatePayload = { count, onlineUserIds };
     this.io.to(BOARD_ROOM).emit(USERS_UPDATE_EVENT, payload);
   }
 
@@ -127,5 +136,15 @@ export class WebSocketController {
   /** Number of currently connected clients. */
   getConnectedCount(): number {
     return this.connectedSockets.size;
+  }
+
+  /** Number of currently identified users. */
+  getOnlineUserCount(): number {
+    return this.connectedUsersMap.size;
+  }
+
+  /** Ids of currently identified (online) users. */
+  getOnlineUserIds(): string[] {
+    return Array.from(this.connectedUsersMap.values()).map((entry) => entry.userId);
   }
 }

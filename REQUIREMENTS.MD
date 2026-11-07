@@ -43,8 +43,8 @@ The application shall have the following features:
 - each card and group shall show a 8px top bar in the user color, looking up the color in the user directory
 - the top bar of cards or groups shall be shown in the users color
 - when a user changes an element on a board, their name or their color, the board and toolbar shall update in all other users sessions.
-- the toolbar shall show the number of known users in the to right corner.
-- hovering over the number of users shall show the list of known users in a tooltip.
+- the toolbar shall show the number of active (connected) users in the top right corner.
+- hovering over the number of users shall show the list of all known users in a tooltip; users not currently connected are shown toned down.
 
 ## Card element
 
