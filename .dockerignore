@@ -6,5 +6,7 @@ npm-debug.log
 .vscode
 build
 data/backups
+data/users.json
+data/board.json
 *.lock
 coverage
