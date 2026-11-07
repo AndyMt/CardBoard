@@ -1,8 +1,12 @@
-import { Card } from '../../types/Card';
-import { Group } from '../../types/Group';
+import { WebSocketService } from './WebSocketService';
 
 // API configuration
 const API_BASE_URL = '/api';
+
+function socketHeaders(): Record<string, string> {
+  const id = WebSocketService.getInstance().getSocketId();
+  return id ? { 'X-Socket-Id': id } : {};
+}
 
 class BoardService {
   private static instance: BoardService;
@@ -38,9 +42,10 @@ class BoardService {
 
   async addCard(card: Card): Promise<{ cards: Card[]; groups: Group[] }> {
     try {
+      WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/card`, {
         method: 'POST',
-        headers: {
+        headers: { ...socketHeaders(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(card),
@@ -63,9 +68,10 @@ class BoardService {
 
   async addGroup(group: Group): Promise<{ cards: Card[]; groups: Group[] }> {
     try {
+      WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/group`, {
         method: 'POST',
-        headers: {
+        headers: { ...socketHeaders(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(group),
@@ -88,9 +94,10 @@ class BoardService {
 
   async updateCard(cardId: string, updates: Partial<Card>): Promise<{ cards: Card[]; groups: Group[] }> {
     try {
+      WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/card/${cardId}`, {
         method: 'PUT',
-        headers: {
+        headers: { ...socketHeaders(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(updates),
@@ -113,9 +120,10 @@ class BoardService {
 
   async updateGroup(groupId: string, updates: Partial<Group>): Promise<{ cards: Card[]; groups: Group[] }> {
     try {
+      WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/group/${groupId}`, {
         method: 'PUT',
-        headers: {
+        headers: { ...socketHeaders(),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(updates),
@@ -138,9 +146,11 @@ class BoardService {
 
   async deleteCard(cardId: string): Promise<{ cards: Card[]; groups: Group[] }> {
     try {
+      WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/card/${cardId}`, {
-        method: 'DELETE',
-      });
+         method: 'DELETE',
+         headers: socketHeaders(),
+       });
       
       if (!response.ok) {
         throw new Error(`Failed to delete card: ${response.statusText}`);
@@ -159,9 +169,11 @@ class BoardService {
 
   async deleteGroup(groupId: string): Promise<{ cards: Card[]; groups: Group[] }> {
     try {
+      WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/group/${groupId}`, {
-        method: 'DELETE',
-      });
+         method: 'DELETE',
+         headers: socketHeaders(),
+       });
       
       if (!response.ok) {
         throw new Error(`Failed to delete group: ${response.statusText}`);

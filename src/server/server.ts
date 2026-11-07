@@ -80,7 +80,7 @@ app.post('/api/board/card', async (req, res) => {
     board.cards.push(card);
     await persistence.saveBoard(board);
     // Notify all other users of the change
-    await broadcastBoard();
+    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
     res.json(board);
   } catch (error) {
     console.error('Failed to add card:', error);
@@ -95,7 +95,7 @@ app.post('/api/board/group', async (req, res) => {
     board.groups.push(group);
     await persistence.saveBoard(board);
     // Notify all other users of the change
-    await broadcastBoard();
+    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
     res.json(board);
   } catch (error) {
     console.error('Failed to add group:', error);
@@ -117,7 +117,7 @@ app.put('/api/board/card/:id', async (req, res) => {
     board.cards[cardIndex] = { ...board.cards[cardIndex], ...updates };
     await persistence.saveBoard(board);
     // Notify all other users of the change
-    await broadcastBoard();
+    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
     res.json(board);
   } catch (error) {
     console.error('Failed to update card:', error);
@@ -139,7 +139,7 @@ app.put('/api/board/group/:id', async (req, res) => {
     board.groups[groupIndex] = { ...board.groups[groupIndex], ...updates };
     await persistence.saveBoard(board);
     // Notify all other users of the change
-    await broadcastBoard();
+    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
     res.json(board);
   } catch (error) {
     console.error('Failed to update group:', error);
@@ -160,7 +160,7 @@ app.delete('/api/board/card/:id', async (req, res) => {
     board.cards.splice(cardIndex, 1);
     await persistence.saveBoard(board);
     // Notify all other users of the change
-    await broadcastBoard();
+    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
     res.json(board);
   } catch (error) {
     console.error('Failed to delete card:', error);
@@ -182,7 +182,7 @@ app.delete('/api/board/group/:id', async (req, res) => {
     board.cards = board.cards.map(card => (card.groupId === groupId ? { ...card, groupId: undefined } : card));
     await persistence.saveBoard(board);
     // Notify all other users of the change
-    await broadcastBoard();
+    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
     res.json(board);
   } catch (error) {
     console.error('Failed to delete group:', error);

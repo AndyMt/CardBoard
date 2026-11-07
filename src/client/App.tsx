@@ -43,8 +43,11 @@ const App: React.FC<AppProps> = () => {
     ws.connect();
 
     const unsubscribeBoard = ws.onBoardUpdate(() => {
+      if (ws.isRecentLocalMutation()) {
+        console.log('[APP] board:update skipped (local mutation)');
+        return;
+      }
       console.log('[APP] board:update received -> triggering board refresh');
-      // Remote mutation: let BoardView re-fetch the authoritative board
       window.dispatchEvent(new CustomEvent('board:changed'));
     });
 

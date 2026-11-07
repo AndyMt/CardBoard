@@ -111,6 +111,20 @@ class WebSocketService {
     return this.socket;
   }
 
+  /** Return the current socket id, if connected. */
+  public getSocketId(): string | null {
+    return this.socket?.id ?? null;
+  }
+  private lastLocalMutation = 0;
+
+  public markLocalMutation(): void {
+    this.lastLocalMutation = Date.now();
+  }
+
+  public isRecentLocalMutation(windowMs: number = 1000): boolean {
+    return Date.now() - this.lastLocalMutation < windowMs;
+  }
+
   /** True when the socket is connected. */
   isConnected(): boolean {
     return !!this.socket && this.socket.connected;
@@ -151,4 +165,5 @@ class WebSocketService {
   }
 }
 
+export { WebSocketService };
 export default WebSocketService;
