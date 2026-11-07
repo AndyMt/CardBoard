@@ -2,7 +2,8 @@ export type BoardScalar = number;
 
 export function quantizeScalar(value: number): BoardScalar {
   if (!Number.isFinite(value)) return 0;
-  return Math.round(value * 10) / 10;
+  return Math.round(value / 20) * 20;
+  //return Math.round(value * 10) / 10;
 }
 
 export function quantizeNonNegative(value: number): BoardScalar {
