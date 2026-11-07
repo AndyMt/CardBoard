@@ -362,9 +362,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
         console.error('Failed to update card position:', err);
       });
     } else if (activeType === 'group') {
+      const group = groups.find(g => g.id === activeId);
+      if (!group) return;
       const containedCards = cards.filter(c => c.groupId === activeId && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 440));
-      setGroups(prevGroups => prevGroups.map(group => {
-        if (group.id === activeId) {
+      setGroups(prevGroups => prevGroups.map(g => {
+        if (g.id === activeId) {
           const updatedGroup = {
             ...group,
             x: Math.max(0, group.x + delta.x),
@@ -375,7 +377,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
           });
           return updatedGroup;
         }
-        return group;
+        return g;
       }));
       containedCards.forEach(card => {
         const updatedCard = { ...card, x: Math.max(0, card.x + delta.x), y: Math.max(0, card.y + delta.y) };
