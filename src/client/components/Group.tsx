@@ -146,7 +146,17 @@ export const Group: React.FC<GroupProps> = ({
       onMouseDown={handleMouseDownSelection}
       onMouseUp={handleMouseUp}
       onMouseMove={handleMouseMove}
-      onClick={(e) => e.stopPropagation()}
+onClick={(e) => {
+        e.stopPropagation();
+        const boardContainer = document.querySelector('.board-container');
+        const br = boardContainer.getBoundingClientRect();
+        const boardX = e.clientX - br.left + boardContainer.scrollLeft;
+        const boardY = e.clientY - br.top + boardContainer.scrollTop;
+        console.log('Group content click', {
+          viewport: { x: e.clientX, y: e.clientY },
+          board: { x: boardX, y: boardY },
+        });
+      }}
       className={`absolute border-[1.33px] border-dashed border-gray-400 rounded-lg bg-white overflow-hidden group-component ${isSelected ? 'selected' : ''}`}
     >
       {/* Header with 8px blue bar and centered label */}
@@ -170,7 +180,13 @@ export const Group: React.FC<GroupProps> = ({
               onBlur={handleInputBlur}
               onKeyDown={handleInputKeyDown}
               className="outline-none text-sm font-medium text-center bg-blue-50 rounded px-1 py-0.5"
-              onClick={(e) => e.stopPropagation()}
+onClick={(e) => {
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        const boardX = e.clientX - rect.left + e.currentTarget.scrollLeft;
+        const boardY = e.clientY - rect.top + e.currentTarget.scrollTop;
+        console.log('Group content click (board-global):', { x: boardX, y: boardY });
+      }}
             />
           ) : (
             <div
