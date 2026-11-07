@@ -12,7 +12,6 @@ import { quantizeGeometry, quantizeNonNegative, quantizeScalar } from '../../sha
 
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
-  onSelectionChange?: (count: number) => void;
   onToolChange?: (tool: 'select' | 'card' | 'group') => void;
   currentUser?: User | null;
 }
@@ -46,7 +45,7 @@ const createDefaultGroup = (x: number, y: number, createdBy?: string, createdCol
   });
 };
 
-export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionChange, onToolChange, currentUser }) => {
+export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange, currentUser }) => {
   const [cards, setCards] = useState<CardType[]>([]);
   const [groups, setGroups] = useState<GroupType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,10 +61,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   const isLocallyDraggingRef = useRef(false);
   const editingCardIdsRef = useRef<Set<string>>(new Set());
   const editingGroupIdsRef = useRef<Set<string>>(new Set());
-
-  useEffect(() => {
-    onSelectionChange?.(selectedItems.length);
-  }, [selectedItems, onSelectionChange]);
 
   const mergeBoard = (serverBoard: { cards?: CardType[]; groups?: GroupType[]; lastUpdated?: string }) => {
     const serverCards = serverBoard.cards || [];

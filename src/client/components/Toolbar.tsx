@@ -8,7 +8,6 @@ export type ToolType = 'select' | 'card' | 'group';
 interface ToolbarProps {
   onToolSelect: (tool: ToolType) => void;
   selectedTool: ToolType;
-  selectedCount?: number;
   user?: User | null;
   connectedUsers?: number;
   onlineUserIds?: string[];
@@ -17,7 +16,6 @@ interface ToolbarProps {
 const Toolbar: React.FC<ToolbarProps> = ({
   onToolSelect,
   selectedTool,
-  selectedCount = 0,
   user = null,
   connectedUsers = 0,
   onlineUserIds = [],
@@ -91,10 +89,6 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
         {/* Selected indicator + user - right side */}
         <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-600">
-            Selected: {selectedCount} items
-          </span>
-
           {/* Connected users indicator with tooltip */}
           <div className="relative">
             <button
@@ -114,7 +108,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
             </button>
 
             {showUserList && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
+              <div className="absolute left-1/2 -translate-x-1/2 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
                 {knownUsers.length === 0 ? (
                   <div className="px-3 py-2 text-sm text-gray-500">No users</div>
                 ) : (

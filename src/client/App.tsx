@@ -19,7 +19,6 @@ const App: React.FC<AppProps> = () => {
   const [selectedTool, setSelectedTool] = useState<ToolType>(
     toolService.getSelectedTool()
   );
-  const [selectedCount, setSelectedCount] = useState<number>(0);
   const [user, setUser] = useState<User | null>(null);
   const [userInitialized, setUserInitialized] = useState<boolean>(false);
   const [connectedUsers, setConnectedUsers] = useState<number>(0);
@@ -131,7 +130,6 @@ const App: React.FC<AppProps> = () => {
       <Toolbar
         selectedTool={selectedTool}
         onToolSelect={handleToolSelect}
-        selectedCount={selectedCount}
         user={user}
         connectedUsers={connectedUsers}
         onlineUserIds={onlineUserIds}
@@ -141,9 +139,8 @@ const App: React.FC<AppProps> = () => {
       <div className="flex-1 overflow-hidden pt-12">
         {/* Add pt-12 to account for toolbar height */}
         <BoardView
-          selectedTool={selectedTool}
-          onSelectionChange={setSelectedCount}
-          onToolChange={handleToolSelect}
+        selectedTool={selectedTool}
+        onToolChange={handleToolSelect}
           currentUser={user}
         />
       </div>
