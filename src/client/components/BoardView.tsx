@@ -259,10 +259,13 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
     // Cards contained inside any moved group travel with it.
     const movedGroupIds = movedGroups.map(mg => mg.id);
-    if (movedGroupIds.length > 0) {
+    // Also include contained cards of selected groups being dragged together.
+    const selectedGroupIds = selectedItems.filter(id => groups.some(g => g.id === id));
+    const allMovedGroupIds = Array.from(new Set([...movedGroupIds, ...selectedGroupIds]));
+    if (allMovedGroupIds.length > 0) {
       cards.forEach((c) => {
         if (movedCards.some(mc => mc.id === c.id)) return; // already moved (e.g. selected)
-        if (c.groupId && movedGroupIds.includes(c.groupId)) {
+        if (c.groupId && allMovedGroupIds.includes(c.groupId)) {
           const group = groups.find(g => g.id === c.groupId);
           if (group && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 440)) {
             movedCards.push({ id: c.id, x: quantizeNonNegative(c.x + delta.x), y: quantizeNonNegative(c.y + delta.y) });
@@ -593,7 +596,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
               width={card.width || 200}
               height={card.height || 60}
               isSelected={isCardSelected}
-              dragOffset={(isCardSelected || (activeDragId !== null && cards.find(c => c.id === card.id)?.groupId === activeDragId)) && card.id !== activeDragId && dragDelta ? dragDelta : null}
+              dragOffset={(isCardSelected || (activeDragId !== null && (cards.find(c => c.id === card.id)?.groupId === activeDragId || selectedItems.includes(cards.find(c => c.id === card.id)?.groupId ?? '')))) && card.id !== activeDragId && dragDelta ? dragDelta : null}
               onCardClick={handleCardClick}
               onSelect={handleSelect}
               onTextChange={handleCardTextChange}
