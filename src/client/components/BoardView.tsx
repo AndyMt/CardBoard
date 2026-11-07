@@ -40,7 +40,7 @@ const createDefaultGroup = (x: number, y: number, createdBy?: string, createdCol
     x: Math.max(0, x - 220), // Center the group on click position
     y: Math.max(0, y - 30),  // Account for group header height
     width: 440, // Default group width
-    height: 440, // Default group height
+    height: 300, // Default group height
     isSelected: false,
     createdBy,
     createdColor: createdColor || UNKNOWN_USER_COLOR,
@@ -305,7 +305,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         if (movedCards.some(mc => mc.id === c.id)) return; // already moved (e.g. selected)
         if (c.groupId && allMovedGroupIds.includes(c.groupId)) {
           const group = groups.find(g => g.id === c.groupId);
-          if (group && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 440)) {
+          if (group && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 300)) {
             movedCards.push({ id: c.id, x: quantizeNonNegative(c.x + delta.x), y: quantizeNonNegative(c.y + delta.y) });
           }
         }
@@ -338,7 +338,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
           // Hit-test whether the card was dropped inside a group
           const targetGroup = groups.find(g => {
             const gw = g.width || 440;
-            const gh = g.height || 440;
+            const gh = g.height || 300;
             return newBoardX >= g.x && newBoardX <= g.x + gw && newBoardY >= g.y && newBoardY <= g.y + gh;
           });
 
@@ -392,7 +392,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         cards.forEach(card => {
           if (movedCardIds.has(card.id)) return; // already handled by selected-cards loop
           if (card.groupId !== groupId) return;
-          if (card.x < group.x || card.x > group.x + (group.width || 440) || card.y < group.y || card.y > group.y + (group.height || 440)) return;
+          if (card.x < group.x || card.x > group.x + (group.width || 440) || card.y < group.y || card.y > group.y + (group.height || 300)) return;
           movedCardIds.add(card.id);
           const updatedCard = { ...card, x: quantizeNonNegative(card.x + delta.x), y: quantizeNonNegative(card.y + delta.y) };
           setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
@@ -421,7 +421,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
       // Hit-test whether the card was dropped inside a group
       const targetGroup = groups.find(g => {
         const gw = g.width || 440;
-        const gh = g.height || 440;
+        const gh = g.height || 300;
         return newBoardX >= g.x && newBoardX <= g.x + gw && newBoardY >= g.y && newBoardY <= g.y + gh;
       });
 
@@ -443,7 +443,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     } else if (activeType === 'group') {
       const group = groups.find(g => g.id === activeId);
       if (!group) return;
-      const containedCards = cards.filter(c => c.groupId === activeId && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 440));
+      const containedCards = cards.filter(c => c.groupId === activeId && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 300));
       setGroups(prevGroups => prevGroups.map(g => {
         if (g.id === activeId) {
           const updatedGroup = {
@@ -657,7 +657,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
               x={group.x}
               y={group.y}
               width={group.width || 440}
-              height={group.height || 440}
+              height={group.height || 300}
               isSelected={isGroupSelected}
               dragOffset={isGroupSelected && group.id !== activeDragId && dragDelta ? dragDelta : null}
               cards={[]}

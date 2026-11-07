@@ -6,7 +6,7 @@ import { Card as CardType } from '../../types/Card.js';
 import { UNKNOWN_USER_COLOR } from '../../shared/userColorNormalization.js';
 
 const DEFAULT_WIDTH = 440; // 2x2 cards + padding
-const DEFAULT_HEIGHT = 440;
+const DEFAULT_HEIGHT = 300;
 const MIN_WIDTH = 220; // 1x1 card + padding
 const MIN_HEIGHT = 220;
 

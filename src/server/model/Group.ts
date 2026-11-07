@@ -3,7 +3,7 @@ import { ElementModel } from './ElementModel.js';
 import { quantizeScalar } from '../../shared/geometry.js';
 
 const DEFAULT_WIDTH = 440;
-const DEFAULT_HEIGHT = 440;
+const DEFAULT_HEIGHT = 300;
 const MIN_WIDTH = 220;
 const MIN_HEIGHT = 220;
 
