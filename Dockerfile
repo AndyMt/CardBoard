@@ -6,9 +6,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 
-# Copy source and build frontend
+# Copy source and build frontend + server
 COPY . .
-RUN npm run build
+RUN npm run build:all
 
 # ---- Runtime stage ----
 FROM node:20-alpine AS runtime
@@ -21,11 +21,9 @@ ENV PORT=8080
 COPY package*.json ./
 RUN npm ci --omit=dev
 
-# Copy built frontend
+# Copy built frontend and compiled server
 COPY --from=build /app/build ./build
-
-# Copy server source and persistence code
-COPY src ./src
+COPY --from=build /app/dist ./dist
 
 # Ensure data directory exists (will be mounted as volume in practice)
 RUN mkdir -p ./data ./data/backups
@@ -33,4 +31,4 @@ RUN mkdir -p ./data ./data/backups
 EXPOSE 8080
 
 # Start the API server
-CMD ["node", "src/server/server.cjs"]
+CMD ["node", "dist/server/server.js"]

@@ -290,6 +290,16 @@ app.delete('/api/users/:id', async (req, res) => {
   }
 });
 
+// Serve frontend in production (single-image Docker setup)
+if (process.env.NODE_ENV === 'production') {
+  const buildDir = path.join(process.cwd(), 'build');
+  app.use(express.static(buildDir));
+  app.get(/.*/, (req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next();
+    res.sendFile(path.join(buildDir, 'index.html'));
+  });
+}
+
 // Error handling middleware
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
