@@ -258,6 +258,20 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       }
     });
 
+    // Cards contained inside any moved group travel with it.
+    const movedGroupIds = movedGroups.map(mg => mg.id);
+    if (movedGroupIds.length > 0) {
+      cards.forEach((c) => {
+        if (movedCards.some(mc => mc.id === c.id)) return; // already moved (e.g. selected)
+        if (c.groupId && movedGroupIds.includes(c.groupId)) {
+          const group = groups.find(g => g.id === c.groupId);
+          if (group && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 440)) {
+            movedCards.push({ id: c.id, x: Math.max(0, c.x + delta.x), y: Math.max(0, c.y + delta.y) });
+          }
+        }
+      });
+    }
+
     if (movedCards.length > 0 || movedGroups.length > 0) {
       ws.emitLiveDrag({ cards: movedCards, groups: movedGroups });
     }
@@ -304,9 +318,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
       });
 
       // Move all selected groups
+      const movedGroupIds: string[] = [];
       selectedItems.forEach(itemId => {
         const group = groups.find(g => g.id === itemId);
         if (group) {
+          movedGroupIds.push(group.id);
           const updatedGroup = {
             ...group,
             x: Math.max(0, group.x + delta.x),
@@ -323,6 +339,29 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
           });
         }
       });
+
+      // Cards contained inside any moved group travel with it.
+      const movedCardIds = new Set<string>();
+      selectedItems.forEach(itemId => {
+        const card = cards.find(c => c.id === itemId);
+        if (card) movedCardIds.add(card.id);
+      });
+      movedGroupIds.forEach(groupId => {
+        const group = groups.find(g => g.id === groupId);
+        if (!group) return;
+        cards.forEach(card => {
+          if (movedCardIds.has(card.id)) return; // already handled by selected-cards loop
+          if (card.groupId !== groupId) return;
+          if (card.x < group.x || card.x > group.x + (group.width || 440) || card.y < group.y || card.y > group.y + (group.height || 440)) return;
+          movedCardIds.add(card.id);
+          const updatedCard = { ...card, x: Math.max(0, card.x + delta.x), y: Math.max(0, card.y + delta.y) };
+          setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
+          boardService.updateCard(card.id, { x: updatedCard.x, y: updatedCard.y }).catch(err => {
+            console.error('Failed to update card position:', err);
+          });
+        });
+      });
+
       setActiveDragId(null);
       setDragDelta(null);
       setDragStartedSelected(false);
