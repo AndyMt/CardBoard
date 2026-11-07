@@ -29,17 +29,17 @@ const Toolbar: React.FC<ToolbarProps> = ({
     {
       type: 'select',
       label: 'Select/Move',
-      icon: '🖱️',
+      icon: 'open_with',
     },
     {
       type: 'card',
       label: 'Add Card',
-      icon: '📝',
+      icon: 'note_add',
     },
     {
       type: 'group',
       label: 'Add Group',
-      icon: '📁',
+      icon: 'create_new_folder',
     },
   ];
 
@@ -81,7 +81,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
               }`}
               title={tool.label}
             >
-              <span>{tool.icon}</span>
+              <span className="material-symbols-outlined">{tool.icon}</span>
               <span>{tool.label}</span>
             </button>
           ))}
