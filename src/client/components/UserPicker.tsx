@@ -37,6 +37,26 @@ const UserPicker: React.FC<UserPickerProps> = ({ onConfirm, initialName, initial
   const isColorTaken = (c: string) => takenColors.has(c);
   const noColorsAvailable = USER_COLORS.every(c => isColorTaken(c));
 
+  // When the entered name matches an existing user, select that user's color.
+  useEffect(() => {
+    const trimmed = name.trim();
+    if (trimmed.length <= 2) return;
+    let cancelled = false;
+    UserService.getInstance()
+      .getUsers()
+      .then((users) => {
+        if (cancelled) return;
+        const existing = users.find((u) => u.name === trimmed);
+        if (existing) {
+          setColor(existing.color);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [name]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
