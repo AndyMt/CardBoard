@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../../types/User.js';
 import UserService from '../services/UserService.js';
+import { downloadBoardExport, type ExportType } from '../services/ExportService.js';
 
 // Define tool types
 export type ToolType = 'select' | 'card' | 'group';
@@ -46,7 +47,20 @@ const Toolbar: React.FC<ToolbarProps> = ({
   const [showUserList, setShowUserList] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
   const [knownUsers, setKnownUsers] = useState<User[]>([]);
+  const [exportError, setExportError] = useState<string | null>(null);
   const onlineIds = new Set(onlineUserIds);
+
+  const handleExport = useCallback(async (type: ExportType) => {
+    setShowDownload(false);
+    setExportError(null);
+    try {
+      await downloadBoardExport(type);
+    } catch (err) {
+      console.error('Failed to export:', err);
+      setExportError(err instanceof Error ? err.message : 'Export failed');
+      window.setTimeout(() => setExportError(null), 4000);
+    }
+  }, []);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -100,25 +114,30 @@ const Toolbar: React.FC<ToolbarProps> = ({
               <div className="absolute left-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-50">
                 <button
                   type="button"
-                  onClick={() => setShowDownload(false)}
+                  onClick={() => handleExport('mapping')}
                   className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
                 >
                   Mapping CSV
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowDownload(false)}
+                  onClick={() => handleExport('cards')}
                   className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
                 >
                   Cards CSV
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowDownload(false)}
+                  onClick={() => handleExport('groups')}
                   className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
                 >
-                  Groups DSV
+                  Groups CSV
                 </button>
+              </div>
+            )}
+            {exportError && (
+              <div className="absolute left-0 mt-2 top-full px-3 py-1.5 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md shadow-sm whitespace-nowrap z-50">
+                {exportError}
               </div>
             )}
           </div>

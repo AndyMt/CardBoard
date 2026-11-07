@@ -11,6 +11,7 @@ import { BoardModel } from './model/BoardModel';
 import { UserService } from './services/UserService.js';
 import { WebSocketController } from './controller/WebSocketController.js';
 import { quantizeGeometry, quantizeGeometryUpdates } from '../shared/geometry.js';
+import { buildBoardExportCsv, getExportFilename, type BoardExportType } from './utils/csvExport.js';
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -53,6 +54,23 @@ app.use(cors());
 app.use(express.json());
 
 // API Routes
+app.get('/api/board/export', async (req, res) => {
+  try {
+    const type = req.query.type;
+    if (type !== 'cards' && type !== 'groups' && type !== 'mapping') {
+      return res.status(400).json({ error: 'Invalid export type. Expected cards, groups, or mapping.' });
+    }
+    const board = await persistence.loadBoard();
+    const csv = buildBoardExportCsv(type as BoardExportType, board);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${getExportFilename(type)}"`);
+    res.send(csv);
+  } catch (error) {
+    console.error('Failed to export board:', error);
+    res.status(500).json({ error: 'Failed to export board' });
+  }
+});
+
 app.get('/api/board', async (req, res) => {
   try {
     const board = await persistence.loadBoard();
