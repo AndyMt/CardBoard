@@ -8,7 +8,6 @@ import { User } from '../../types/User';
 import BoardService from '../services/BoardService';
 import WebSocketService from '../services/WebSocketService.js';
 import { ElementSelectionController } from '../controller/ElementSelectionController.js';
-import { GroupSelectionController } from '../controller/GroupSelectionController.js';
 
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
@@ -385,7 +384,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
           console.error('Failed to update card position:', err);
         });
       });
-      setSelectedItems([activeId, ...containedCards.map(c => c.id)]);
     }
     setActiveDragId(null);
     setDragDelta(null);
@@ -470,8 +468,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
     }
-    const groupSelectionController = new GroupSelectionController(cards);
-    setSelectedItems((prev) => groupSelectionController.select(prev, id, ctrlKey));
+    setSelectedItems((prev) => new ElementSelectionController().select(prev, id, ctrlKey));
   };
 
   const handleBoardFocus = () => {
