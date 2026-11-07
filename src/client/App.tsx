@@ -44,20 +44,16 @@ const App: React.FC<AppProps> = () => {
 
     const unsubscribeBoard = ws.onBoardUpdate(() => {
       if (ws.isRecentLocalMutation()) {
-        console.log('[APP] board:update skipped (local mutation)');
         return;
       }
-      console.log('[APP] board:update received -> triggering board refresh');
       window.dispatchEvent(new CustomEvent('board:changed'));
     });
 
     const unsubscribeUsers = ws.onUsersUpdate((payload) => {
-      console.log('[APP] users:update received', payload);
       setConnectedUsers(payload.count);
     });
 
     const unsubscribeDirectory = ws.onUsersDirectoryUpdate((payload) => {
-      console.log('[APP] users:directory received', payload);
       UserService.getInstance().setUsers(payload.users);
     });
 

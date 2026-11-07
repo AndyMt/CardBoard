@@ -142,7 +142,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     const ws = WebSocketService.getInstance();
 
     const unsubscribeBoard = ws.onBoardUpdate((payload) => {
-      console.log('[BoardView] board:update received', payload);
+      if (ws.isRecentLocalMutation()) return;
       // Ignore our own updates while dragging to keep local optimistic state
       if (isLocallyDraggingRef.current) return;
       const serverBoard = payload.board;
@@ -157,7 +157,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
     });
 
     const unsubscribeLive = ws.onLiveUpdate((payload) => {
-      console.log('[BoardView] board:live-update received', payload);
       if (isLocallyDraggingRef.current) return;
       if (!payload) return;
 
@@ -182,6 +181,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
   // completes, so we re-fetch the authoritative board.
   useEffect(() => {
     const handleChanged = async () => {
+      const ws = WebSocketService.getInstance();
+      if (ws.isRecentLocalMutation()) return;
       try {
         const boardService = BoardService.getInstance();
         const serverBoard = await boardService.getBoard();

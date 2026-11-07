@@ -76,31 +76,23 @@ class WebSocketService {
       reconnectionDelay: 1000,
     });
 
-    this.socket.on('connect', () => {
-      console.log('[WS] connected', this.socket?.id);
-    });
+    this.socket.on('connect', () => {});
 
-    this.socket.on('disconnect', (reason) => {
-      console.log('[WS] disconnected', reason);
-    });
+    this.socket.on('disconnect', (reason) => {});
 
     this.socket.on(BOARD_UPDATE_EVENT, (payload: BoardUpdatePayload) => {
-      console.log('[WS] received board:update', payload);
       this.boardUpdateHandlers.forEach((handler) => handler(payload));
     });
 
     this.socket.on(BOARD_LIVE_UPDATE_EVENT, (payload: LiveUpdatePayload) => {
-      console.log('[WS] received board:live-update', payload);
       this.liveUpdateHandlers.forEach((handler) => handler(payload));
     });
 
     this.socket.on(USERS_UPDATE_EVENT, (payload: UsersUpdatePayload) => {
-      console.log('[WS] received users:update', payload);
       this.usersUpdateHandlers.forEach((handler) => handler(payload));
     });
 
     this.socket.on(USERS_DIRECTORY_UPDATE_EVENT, (payload: UserDirectoryUpdatePayload) => {
-      console.log('[WS] received users:directory', payload);
       this.userDirectoryHandlers.forEach((handler) => handler(payload));
     });
 
