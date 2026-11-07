@@ -7,8 +7,10 @@ import { Group as GroupType } from '../../types/Group';
 import { User } from '../../types/User';
 import BoardService from '../services/BoardService';
 import WebSocketService from '../services/WebSocketService.js';
+import UserService from '../services/UserService.js';
 import { ElementSelectionController } from '../controller/ElementSelectionController.js';
 import { quantizeGeometry, quantizeNonNegative, quantizeScalar } from '../../shared/geometry.js';
+import { normalizeBoardModel, UNKNOWN_USER_COLOR } from '../../shared/userColorNormalization.js';
 
 interface BoardViewProps {
   selectedTool: 'select' | 'card' | 'group';
@@ -27,7 +29,7 @@ const createDefaultCard = (x: number, y: number, createdBy?: string, createdColo
     height: 60, // Default card height
     isSelected: false,
     createdBy,
-    createdColor,
+    createdColor: createdColor || UNKNOWN_USER_COLOR,
   });
 };
 
@@ -41,7 +43,7 @@ const createDefaultGroup = (x: number, y: number, createdBy?: string, createdCol
     height: 440, // Default group height
     isSelected: false,
     createdBy,
-    createdColor,
+    createdColor: createdColor || UNKNOWN_USER_COLOR,
   });
 };
 
@@ -61,6 +63,34 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   const isLocallyDraggingRef = useRef(false);
   const editingCardIdsRef = useRef<Set<string>>(new Set());
   const editingGroupIdsRef = useRef<Set<string>>(new Set());
+  const cardsRef = useRef<CardType[]>([]);
+  const groupsRef = useRef<GroupType[]>([]);
+
+  useEffect(() => {
+    cardsRef.current = cards;
+  }, [cards]);
+
+  useEffect(() => {
+    groupsRef.current = groups;
+  }, [groups]);
+
+  const getDirectoryUsers = async (): Promise<User[] | null> => {
+    try {
+      const users = await UserService.getInstance().getUsers();
+      return Array.isArray(users) ? users : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const applyBoardState = (serverBoard: { cards?: CardType[]; groups?: GroupType[]; lastUpdated?: string }, users: User[] | null) => {
+    const normalizedBoard = users ? normalizeBoardModel({
+      cards: serverBoard.cards || [],
+      groups: serverBoard.groups || [],
+      lastUpdated: serverBoard.lastUpdated,
+    }, users).board : { cards: serverBoard.cards || [], groups: serverBoard.groups || [], lastUpdated: serverBoard.lastUpdated };
+    mergeBoard(normalizedBoard);
+  };
 
   const mergeBoard = (serverBoard: { cards?: CardType[]; groups?: GroupType[]; lastUpdated?: string }) => {
     const serverCards = serverBoard.cards || [];
@@ -92,8 +122,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
       try {
         const boardService = BoardService.getInstance();
         const { cards, groups } = await boardService.getBoard();
-        setCards(cards);
-        setGroups(groups);
+        const users = await getDirectoryUsers();
+        applyBoardState({ cards, groups }, users);
       } catch (err) {
         console.error('Failed to load board:', err);
         setError('Failed to load board data');
@@ -139,7 +169,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   useEffect(() => {
     const ws = WebSocketService.getInstance();
 
-    const unsubscribeBoard = ws.onBoardUpdate((payload) => {
+    const unsubscribeBoard = ws.onBoardUpdate(async (payload) => {
       if (ws.isRecentLocalMutation()) return;
       // Ignore our own updates while dragging to keep local optimistic state
       if (isLocallyDraggingRef.current) return;
@@ -150,7 +180,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
       const serverVersion = serverBoard.lastUpdated || '';
       if (serverVersion && serverVersion <= (lastBoardVersionRef.current || '')) return;
 
-      mergeBoard(serverBoard);
+      const users = await getDirectoryUsers();
+      applyBoardState(serverBoard, users);
       // Keep current selection; do not clear on remote board update
     });
 
@@ -169,9 +200,15 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
       }));
     });
 
+    const unsubscribeDirectory = UserService.getInstance().onUsersDirectoryUpdate((users) => {
+      if (!Array.isArray(users)) return;
+      applyBoardState({ cards: cardsRef.current, groups: groupsRef.current, lastUpdated: lastBoardVersionRef.current || undefined }, users);
+    });
+
     return () => {
       unsubscribeBoard();
       unsubscribeLive();
+      unsubscribeDirectory();
     };
   }, []);
 
@@ -184,7 +221,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
       try {
         const boardService = BoardService.getInstance();
         const serverBoard = await boardService.getBoard();
-        mergeBoard(serverBoard);
+        const users = await getDirectoryUsers();
+        applyBoardState(serverBoard, users);
       } catch (err) {
         console.error('Failed to refresh board after remote change:', err);
       }

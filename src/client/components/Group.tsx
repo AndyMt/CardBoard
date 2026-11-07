@@ -3,6 +3,7 @@ import { useDraggable } from '@dnd-kit/core';
 import { useElementSelection } from '../hooks/useElementSelection.js';
 import Card from './Card.js';
 import { Card as CardType } from '../../types/Card.js';
+import { UNKNOWN_USER_COLOR } from '../../shared/userColorNormalization.js';
 
 const DEFAULT_WIDTH = 440; // 2x2 cards + padding
 const DEFAULT_HEIGHT = 440;
@@ -54,7 +55,7 @@ export const Group: React.FC<GroupProps> = ({
   onCardTextCommit,
   onCardEditingChange,
   createdBy,
-  createdColor = '#3b82f6',
+  createdColor,
 }) => {
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
@@ -155,7 +156,7 @@ export const Group: React.FC<GroupProps> = ({
           {...listeners}
           {...attributes}
           className="h-2 w-full cursor-move drag-handle-area"
-          style={{ backgroundColor: createdColor || '#9ca3af' }}
+          style={{ backgroundColor: createdColor || UNKNOWN_USER_COLOR }}
         ></div>
         
         {/* Label area - centered */}
@@ -201,6 +202,8 @@ export const Group: React.FC<GroupProps> = ({
               onTextChange={onCardTextChange}
               onTextCommit={onCardTextCommit}
               onEditingChange={onCardEditingChange}
+              createdBy={card.createdBy}
+              createdColor={card.createdColor}
             />
           );
         })}

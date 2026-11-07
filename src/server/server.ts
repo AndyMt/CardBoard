@@ -12,6 +12,7 @@ import { UserService } from './services/UserService.js';
 import { WebSocketController } from './controller/WebSocketController.js';
 import { quantizeGeometry, quantizeGeometryUpdates } from '../shared/geometry.js';
 import { buildBoardExportCsv, getExportFilename, type BoardExportType } from './utils/csvExport.js';
+import { normalizeAndOptionallyPersistBoard } from './utils/boardNormalization.js';
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -23,8 +24,14 @@ const userService = new UserService({
     try {
       const users = await userService.listUsers();
       wsController.broadcastUsersDirectory(users);
+      const board = await persistence.loadBoard();
+      await normalizeAndOptionallyPersistBoard(persistence, userService, wsController, board, {
+        users,
+        persistIfChanged: true,
+        broadcastIfChanged: true,
+      });
     } catch (err) {
-      console.error('Failed to broadcast user directory:', err);
+      console.error('Failed to handle user directory change:', err);
     }
   },
 });
@@ -42,11 +49,20 @@ const wsController = new WebSocketController(io);
 // Helper to broadcast the current board to all other clients after a mutation
 async function broadcastBoard(excludeSocketId?: string): Promise<void> {
   try {
-    const board = await persistence.loadBoard();
+    const board = await getNormalizedBoard();
     wsController.broadcastBoardUpdate(board, excludeSocketId);
   } catch (err) {
     console.error('Failed to broadcast board update:', err);
   }
+}
+
+async function getNormalizedBoard(options: { persistIfChanged?: boolean; broadcastIfChanged?: boolean; excludeSocketId?: string } = {}): Promise<BoardModel> {
+  const board = await persistence.loadBoard();
+  return normalizeAndOptionallyPersistBoard(persistence, userService, wsController, board, {
+    persistIfChanged: options.persistIfChanged ?? true,
+    broadcastIfChanged: options.broadcastIfChanged ?? false,
+    excludeSocketId: options.excludeSocketId,
+  });
 }
 
 // Middleware
@@ -60,7 +76,7 @@ app.get('/api/board/export', async (req, res) => {
     if (type !== 'cards' && type !== 'groups' && type !== 'mapping') {
       return res.status(400).json({ error: 'Invalid export type. Expected cards, groups, or mapping.' });
     }
-    const board = await persistence.loadBoard();
+    const board = await getNormalizedBoard();
     const csv = buildBoardExportCsv(type as BoardExportType, board);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${getExportFilename(type)}"`);
@@ -73,7 +89,7 @@ app.get('/api/board/export', async (req, res) => {
 
 app.get('/api/board', async (req, res) => {
   try {
-    const board = await persistence.loadBoard();
+    const board = await getNormalizedBoard();
     res.json(board);
   } catch (error) {
     console.error('Failed to load board:', error);
@@ -85,7 +101,8 @@ app.post('/api/board', async (req, res) => {
   try {
     const board: BoardModel = req.body;
     await persistence.saveBoard(board);
-    res.json({ success: true });
+    const normalized = await getNormalizedBoard({ broadcastIfChanged: true });
+    res.json({ success: true, board: normalized });
   } catch (error) {
     console.error('Failed to save board:', error);
     res.status(500).json({ error: 'Failed to save board' });
@@ -95,7 +112,7 @@ app.post('/api/board', async (req, res) => {
 app.post('/api/board/card', async (req, res) => {
   try {
     const card: Card = quantizeGeometry(req.body);
-    const board = await persistence.loadBoard();
+    const board = await getNormalizedBoard();
     board.cards.push(card);
     await persistence.saveBoard(board);
     // Notify all other users of the change
@@ -110,7 +127,7 @@ app.post('/api/board/card', async (req, res) => {
 app.post('/api/board/group', async (req, res) => {
   try {
     const group: Group = quantizeGeometry(req.body);
-    const board = await persistence.loadBoard();
+    const board = await getNormalizedBoard();
     board.groups.push(group);
     await persistence.saveBoard(board);
     // Notify all other users of the change
@@ -126,7 +143,7 @@ app.put('/api/board/card/:id', async (req, res) => {
   try {
     const cardId = req.params.id;
     const updates: Partial<Card> = quantizeGeometryUpdates(req.body);
-    const board = await persistence.loadBoard();
+    const board = await getNormalizedBoard();
 
     const cardIndex = board.cards.findIndex(card => card.id === cardId);
     if (cardIndex === -1) {
@@ -148,7 +165,7 @@ app.put('/api/board/group/:id', async (req, res) => {
   try {
     const groupId = req.params.id;
     const updates: Partial<Group> = quantizeGeometryUpdates(req.body);
-    const board = await persistence.loadBoard();
+    const board = await getNormalizedBoard();
 
     const groupIndex = board.groups.findIndex(group => group.id === groupId);
     if (groupIndex === -1) {
@@ -169,7 +186,7 @@ app.put('/api/board/group/:id', async (req, res) => {
 app.delete('/api/board/card/:id', async (req, res) => {
   try {
     const cardId = req.params.id;
-    const board = await persistence.loadBoard();
+    const board = await getNormalizedBoard();
 
     const cardIndex = board.cards.findIndex(card => card.id === cardId);
     if (cardIndex === -1) {
@@ -190,7 +207,7 @@ app.delete('/api/board/card/:id', async (req, res) => {
 app.delete('/api/board/group/:id', async (req, res) => {
   try {
     const groupId = req.params.id;
-    const board = await persistence.loadBoard();
+    const board = await getNormalizedBoard();
 
     const groupIndex = board.groups.findIndex(group => group.id === groupId);
     if (groupIndex === -1) {

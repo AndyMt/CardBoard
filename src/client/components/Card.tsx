@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useElementSelection } from '../hooks/useElementSelection.js';
+import { UNKNOWN_USER_COLOR } from '../../shared/userColorNormalization.js';
 
 const CARD_WIDTH = 200; // px
 const LINE_HEIGHT = 20; // px
@@ -38,7 +39,7 @@ export const Card: React.FC<CardProps> = ({
   onSelect,
   onCardClick,
   createdBy,
-  createdColor = '#3b82f6',
+  createdColor,
 }) => {
   const [cardText, setCardText] = useState(text);
   const [isEditing, setIsEditing] = useState(false);
@@ -137,7 +138,7 @@ export const Card: React.FC<CardProps> = ({
         {...listeners}
         {...attributes}
         className="h-2 w-full cursor-move drag-handle-area"
-        style={{ backgroundColor: createdColor || '#9ca3af' }}
+        style={{ backgroundColor: createdColor || UNKNOWN_USER_COLOR }}
       ></div>
       
       {/* Content area */}
