@@ -37,7 +37,9 @@ export class BoardModelManager {
   updateCard(cardId: string, updates: Partial<Card>): void {
     const cardIndex = this.board.cards.findIndex(c => c.id === cardId);
     if (cardIndex >= 0) {
-      this.board.cards[cardIndex] = { ...this.board.cards[cardIndex], ...updates };
+      const updated = { ...this.board.cards[cardIndex], ...updates };
+      if (updates.groupId === null) updated.groupId = undefined;
+      this.board.cards[cardIndex] = updated;
       this.board.lastUpdated = new Date().toISOString();
     }
   }

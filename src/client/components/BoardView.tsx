@@ -296,7 +296,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
           boardService.updateCard(card.id, {
             x: updatedCard.x,
             y: updatedCard.y,
-            groupId: updatedCard.groupId
+            groupId: updatedCard.groupId ?? null
           }).catch(err => {
             console.error('Failed to update card position:', err);
           });
@@ -354,15 +354,15 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onSelectionC
 
       setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
 
-      boardService.updateCard(card.id, {
-        x: updatedCard.x,
-        y: updatedCard.y,
-        groupId: updatedCard.groupId
-      }).catch(err => {
+       boardService.updateCard(card.id, {
+         x: updatedCard.x,
+         y: updatedCard.y,
+         groupId: updatedCard.groupId ?? null
+       }).catch(err => {
         console.error('Failed to update card position:', err);
       });
     } else if (activeType === 'group') {
-      const containedCards = cards.filter(c => c.groupId === activeId);
+      const containedCards = cards.filter(c => c.groupId === activeId && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 440));
       setGroups(prevGroups => prevGroups.map(group => {
         if (group.id === activeId) {
           const updatedGroup = {
