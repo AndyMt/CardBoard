@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useElementSelection } from '../hooks/useElementSelection.js';
+import ToolService from '../services/ToolService.js';
 import Card from './Card.js';
 import { Card as CardType } from '../../types/Card.js';
 import { UNKNOWN_USER_COLOR } from '../../shared/userColorNormalization.js';
@@ -148,14 +149,13 @@ export const Group: React.FC<GroupProps> = ({
       onMouseMove={handleMouseMove}
 onClick={(e) => {
         e.stopPropagation();
+        if (ToolService.getInstance().getSelectedTool() !== 'card') return;
         const boardContainer = document.querySelector('.board-container');
+        if (!boardContainer) return;
         const br = boardContainer.getBoundingClientRect();
         const boardX = e.clientX - br.left + boardContainer.scrollLeft;
         const boardY = e.clientY - br.top + boardContainer.scrollTop;
-        console.log('Group content click', {
-          viewport: { x: e.clientX, y: e.clientY },
-          board: { x: boardX, y: boardY },
-        });
+        console.log('Group content click (Add Card active)', { x: boardX, y: boardY });
       }}
       className={`absolute border-[1.33px] border-dashed border-gray-400 rounded-lg bg-white overflow-hidden group-component ${isSelected ? 'selected' : ''}`}
     >
