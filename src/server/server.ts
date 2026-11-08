@@ -89,7 +89,7 @@ app.get('/api/board/export', async (req, res) => {
 
 app.get('/api/board', async (req, res) => {
   try {
-    const board = await getNormalizedBoard();
+    const board = await getNormalizedBoard({ persistIfChanged: false });
     res.json(board);
   } catch (error) {
     console.error('Failed to load board:', error);
