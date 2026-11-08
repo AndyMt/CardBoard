@@ -323,153 +323,103 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
     const activeId = active.id as string;
     const activeType = active.data.current?.type;
+    const dx = quantizeScalar(delta.x);
+    const dy = quantizeScalar(delta.y);
 
-    // If the dragged item is part of a multi-selection, move all selected items
-    if (selectedItems.includes(activeId) && selectedItems.length > 1) {
-      // Move all selected cards
-      selectedItems.forEach(itemId => {
-        const card = cards.find(c => c.id === itemId);
-        if (card) {
-          const startBoardX = card.x;
-          const startBoardY = card.y;
-          const newBoardX = quantizeNonNegative(startBoardX + delta.x);
-          const newBoardY = quantizeNonNegative(startBoardY + delta.y);
-
-          // Hit-test whether the card was dropped inside a group
-          const targetGroup = groups.find(g => {
-            const gw = g.width || 440;
-            const gh = g.height || 300;
-            return newBoardX >= g.x && newBoardX <= g.x + gw && newBoardY >= g.y && newBoardY <= g.y + gh;
-          });
-
-          const newGroupId = targetGroup ? targetGroup.id : undefined;
-          const updatedCard = { ...card, x: newBoardX, y: newBoardY, groupId: newGroupId };
-
-          setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
-
-          boardService.updateCard(card.id, {
-            x: updatedCard.x,
-            y: updatedCard.y,
-            groupId: updatedCard.groupId ?? null
-          }).catch(err => {
-            console.error('Failed to update card position:', err);
-          });
-        }
-      });
-
-      // Move all selected groups
-      const movedGroupIds: string[] = [];
-      selectedItems.forEach(itemId => {
-        const group = groups.find(g => g.id === itemId);
-        if (group) {
-          movedGroupIds.push(group.id);
-          const updatedGroup = {
-            ...group,
-            x: quantizeNonNegative(group.x + delta.x),
-            y: quantizeNonNegative(group.y + delta.y),
-          };
-
-          setGroups(prevGroups => prevGroups.map(g => (g.id === group.id ? updatedGroup : g)));
-
-          boardService.updateGroup(group.id, {
-            x: updatedGroup.x,
-            y: updatedGroup.y
-          }).catch(err => {
-            console.error('Failed to update group position:', err);
-          });
-        }
-      });
-
-      // Cards contained inside any moved group travel with it.
-      const movedCardIds = new Set<string>();
-      selectedItems.forEach(itemId => {
-        const card = cards.find(c => c.id === itemId);
-        if (card) movedCardIds.add(card.id);
-      });
-      movedGroupIds.forEach(groupId => {
-        const group = groups.find(g => g.id === groupId);
-        if (!group) return;
-        cards.forEach(card => {
-          if (movedCardIds.has(card.id)) return; // already handled by selected-cards loop
-          if (card.groupId !== groupId) return;
-          if (card.x < group.x || card.x > group.x + (group.width || 440) || card.y < group.y || card.y > group.y + (group.height || 300)) return;
-          movedCardIds.add(card.id);
-          const updatedCard = { ...card, x: quantizeNonNegative(card.x + delta.x), y: quantizeNonNegative(card.y + delta.y) };
-          setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
-          boardService.updateCard(card.id, { x: updatedCard.x, y: updatedCard.y }).catch(err => {
-            console.error('Failed to update card position:', err);
-          });
-        });
-      });
-
+    const finishDrag = () => {
       setActiveDragId(null);
       setDragDelta(null);
       setDragStartedSelected(false);
       isLocallyDraggingRef.current = false;
+    };
+
+    const insideGroup = (gx: number, gy: number, g: GroupType) => {
+      const gw = g.width || 440;
+      const gh = g.height || 300;
+      return gx >= g.x && gx <= g.x + gw && gy >= g.y && gy <= g.y + gh;
+    };
+
+    const cardUpdatesMap = new Map<string, { id: string; x: number; y: number; groupId?: string | null }>();
+    const groupUpdatesMap = new Map<string, { id: string; x: number; y: number }>();
+    let nextCards = cards;
+    let nextGroups = groups;
+
+    // If the dragged item is part of a multi-selection, move all selected items
+    if (selectedItems.includes(activeId) && selectedItems.length > 1) {
+      selectedItems.forEach(itemId => {
+        const card = cards.find(c => c.id === itemId);
+        if (card) {
+          const newBoardX = quantizeNonNegative(card.x + dx);
+          const newBoardY = quantizeNonNegative(card.y + dy);
+          const targetGroup = groups.find(g => insideGroup(newBoardX, newBoardY, g));
+          const newGroupId = targetGroup ? targetGroup.id : undefined;
+          cardUpdatesMap.set(card.id, { id: card.id, x: newBoardX, y: newBoardY, groupId: newGroupId ?? null });
+          nextCards = nextCards.map(c => (c.id === card.id ? { ...c, x: newBoardX, y: newBoardY, groupId: newGroupId } : c));
+        }
+      });
+
+      selectedItems.forEach(itemId => {
+        const group = groups.find(g => g.id === itemId);
+        if (group) {
+          const updated = { id: group.id, x: quantizeNonNegative(group.x + dx), y: quantizeNonNegative(group.y + dy) };
+          groupUpdatesMap.set(group.id, updated);
+          nextGroups = nextGroups.map(g => (g.id === group.id ? { ...g, x: updated.x, y: updated.y } : g));
+        }
+      });
+
+      // Cards contained inside any moved group travel with it.
+      groupUpdatesMap.forEach((moved, groupId) => {
+        const group = groups.find(g => g.id === groupId);
+        if (!group) return;
+        cards.forEach(card => {
+          if (cardUpdatesMap.has(card.id)) return;
+          if (card.groupId !== groupId) return;
+          if (!insideGroup(card.x, card.y, group)) return;
+          const updatedCard = { id: card.id, x: quantizeNonNegative(card.x + dx), y: quantizeNonNegative(card.y + dy) };
+          cardUpdatesMap.set(card.id, updatedCard);
+          nextCards = nextCards.map(c => (c.id === card.id ? { ...c, x: updatedCard.x, y: updatedCard.y } : c));
+        });
+      });
+
+      setCards(nextCards);
+      setGroups(nextGroups);
+      boardService.batchUpdate({ cards: Array.from(cardUpdatesMap.values()), groups: Array.from(groupUpdatesMap.values()) }).catch(err => {
+        console.error('Failed to batch update board positions:', err);
+      });
+      finishDrag();
       return;
     }
 
     if (activeType === 'card') {
       const card = cards.find(c => c.id === activeId);
-      if (!card) return;
-
-      const startBoardX = card.x;
-      const startBoardY = card.y;
-      const newBoardX = quantizeNonNegative(startBoardX + delta.x);
-      const newBoardY = quantizeNonNegative(startBoardY + delta.y);
-
-      // Hit-test whether the card was dropped inside a group
-      const targetGroup = groups.find(g => {
-        const gw = g.width || 440;
-        const gh = g.height || 300;
-        return newBoardX >= g.x && newBoardX <= g.x + gw && newBoardY >= g.y && newBoardY <= g.y + gh;
-      });
-
+      if (!card) { finishDrag(); return; }
+      const newBoardX = quantizeNonNegative(card.x + dx);
+      const newBoardY = quantizeNonNegative(card.y + dy);
+      const targetGroup = groups.find(g => insideGroup(newBoardX, newBoardY, g));
       const newGroupId = targetGroup ? targetGroup.id : undefined;
-      const finalX = newBoardX;
-      const finalY = newBoardY;
-
-      const updatedCard = { ...card, x: finalX, y: finalY, groupId: newGroupId };
-
-      setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
-
-      boardService.updateCard(card.id, {
-        x: updatedCard.x,
-        y: updatedCard.y,
-        groupId: updatedCard.groupId ?? null
-      }).catch(err => {
+      setCards(prevCards => prevCards.map(c => (c.id === card.id ? { ...c, x: newBoardX, y: newBoardY, groupId: newGroupId } : c)));
+      boardService.batchUpdate({ cards: [{ id: card.id, x: newBoardX, y: newBoardY, groupId: newGroupId ?? null }] }).catch(err => {
         console.error('Failed to update card position:', err);
       });
     } else if (activeType === 'group') {
       const group = groups.find(g => g.id === activeId);
-      if (!group) return;
-      const containedCards = cards.filter(c => c.groupId === activeId && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 300));
-      setGroups(prevGroups => prevGroups.map(g => {
-        if (g.id === activeId) {
-          const updatedGroup = {
-            ...group,
-            x: quantizeNonNegative(group.x + delta.x),
-            y: quantizeNonNegative(group.y + delta.y),
-          };
-          boardService.updateGroup(group.id, { x: updatedGroup.x, y: updatedGroup.y }).catch(err => {
-            console.error('Failed to update group position:', err);
-          });
-          return updatedGroup;
-        }
-        return g;
+      if (!group) { finishDrag(); return; }
+      const gx = quantizeNonNegative(group.x + dx);
+      const gy = quantizeNonNegative(group.y + dy);
+      const movedGroups = [{ id: group.id, x: gx, y: gy }];
+      const movedCards = cards
+        .filter(c => c.groupId === activeId && insideGroup(c.x, c.y, group))
+        .map(c => ({ id: c.id, x: quantizeNonNegative(c.x + dx), y: quantizeNonNegative(c.y + dy) }));
+      setGroups(prevGroups => prevGroups.map(g => (g.id === group.id ? { ...g, x: gx, y: gy } : g)));
+      setCards(prevCards => prevCards.map(c => {
+        const moved = movedCards.find(m => m.id === c.id);
+        return moved ? { ...c, x: moved.x, y: moved.y } : c;
       }));
-      containedCards.forEach(card => {
-        const updatedCard = { ...card, x: quantizeNonNegative(card.x + delta.x), y: quantizeNonNegative(card.y + delta.y) };
-        setCards(prevCards => prevCards.map(c => (c.id === card.id ? updatedCard : c)));
-        boardService.updateCard(card.id, { x: updatedCard.x, y: updatedCard.y }).catch(err => {
-          console.error('Failed to update card position:', err);
-        });
+      boardService.batchUpdate({ groups: movedGroups, cards: movedCards }).catch(err => {
+        console.error('Failed to update group position:', err);
       });
     }
-    setActiveDragId(null);
-    setDragDelta(null);
-    setDragStartedSelected(false);
-    isLocallyDraggingRef.current = false;
+    finishDrag();
   };
 
   const handleCardTextChange = (id: string, newText: string) => {

@@ -147,6 +147,31 @@ class BoardService {
     }
   }
 
+  async batchUpdate(payload: {
+    cards?: Array<{ id: string } & Partial<Card>>;
+    groups?: Array<{ id: string } & Partial<Group>>;
+  }): Promise<{ cards: Card[]; groups: Group[] }> {
+    try {
+      WebSocketService.getInstance().markLocalMutation();
+      const response = await fetch(`${API_BASE_URL}/board/batch`, {
+        method: 'PUT',
+        headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cards: (payload.cards || []).map((c) => ({ ...c, ...quantizeGeometryUpdates(c) })),
+          groups: (payload.groups || []).map((g) => ({ ...g, ...quantizeGeometryUpdates(g) })),
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to batch update board: ${response.statusText}`);
+      }
+      const board = await response.json();
+      return { cards: board.cards || [], groups: board.groups || [] };
+    } catch (error) {
+      console.error('Failed to batch update board:', error);
+      throw error;
+    }
+  }
+
   async deleteCard(cardId: string): Promise<{ cards: Card[]; groups: Group[] }> {
     try {
       WebSocketService.getInstance().markLocalMutation();

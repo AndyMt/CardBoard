@@ -84,18 +84,56 @@ export class JSONPersistence {
     }
   }
 
-  async saveBoard(board: BoardModel): Promise<void> {
+  private readBoardUnlocked(): BoardModel {
+    if (!fs.existsSync(this.filePath)) {
+      return createDefaultBoard();
+    }
+    const data = fs.readJsonSync(this.filePath);
+    return this.createBoardFromData(data);
+  }
+
+  private writeBoardUnlocked(board: BoardModel): BoardModel {
+    const boardToSave: BoardModel = {
+      ...board,
+      lastUpdated: new Date().toISOString()
+    };
+    fs.writeJsonSync(this.filePath, boardToSave, { spaces: 2 });
+    return boardToSave;
+  }
+
+  async readBoard(): Promise<BoardModel> {
     try {
       await this.acquireLock();
       try {
-        // Update lastUpdated timestamp
-        const boardToSave = {
-          ...board,
-          lastUpdated: new Date().toISOString()
-        };
+        return this.readBoardUnlocked();
+      } finally {
+        this.releaseLock();
+      }
+    } catch (err) {
+      console.error(`Failed to read board: ${(err as Error).message}`);
+      return createDefaultBoard();
+    }
+  }
 
-        // Save the board data
-        await fs.writeJson(this.filePath, boardToSave, { spaces: 2 });
+  async mutateBoard(mutator: (board: BoardModel) => BoardModel | void | Promise<BoardModel | void>): Promise<BoardModel> {
+    await this.acquireLock();
+    try {
+      const current = this.readBoardUnlocked();
+      const result = await mutator(current);
+      const next = (result && typeof result === 'object' && 'cards' in result && 'groups' in result)
+        ? result as BoardModel
+        : current;
+      return this.writeBoardUnlocked(next);
+    } finally {
+      this.releaseLock();
+    }
+  }
+
+  async saveBoard(board: BoardModel): Promise<BoardModel> {
+    try {
+      await this.acquireLock();
+      try {
+        return this.writeBoardUnlocked(board);
       } finally {
         this.releaseLock();
       }
@@ -107,33 +145,10 @@ export class JSONPersistence {
 
   async loadBoard(): Promise<BoardModel> {
     try {
-      await this.acquireLock();
-      try {
-        // Check if file exists
-        if (!await fs.pathExists(this.filePath)) {
-          // Return default board if file doesn't exist
-          const defaultBoard = createDefaultBoard();
-          // Save the default board for future use
-          await this.saveBoard(defaultBoard);
-          return defaultBoard;
-        }
-
-        // Load and parse the board data
-        const data = await fs.readJson(this.filePath);
-        return this.createBoardFromData(data);
-      } finally {
-        this.releaseLock();
-      }
+      return await this.readBoard();
     } catch (readErr) {
       console.error(`Failed to load board: ${(readErr as Error).message}`);
-      // If there's an error reading, return default board
-      const defaultBoard = createDefaultBoard();
-      try {
-        await this.saveBoard(defaultBoard);
-      } catch {
-        // ignore
-      }
-      return defaultBoard;
+      return createDefaultBoard();
     }
   }
 

@@ -12,7 +12,7 @@ import { UserService } from './services/UserService.js';
 import { WebSocketController } from './controller/WebSocketController.js';
 import { quantizeGeometry, quantizeGeometryUpdates } from '../shared/geometry.js';
 import { buildBoardExportCsv, getExportFilename, type BoardExportType } from './utils/csvExport.js';
-import { normalizeAndOptionallyPersistBoard } from './utils/boardNormalization.js';
+import { normalizeBoard } from './utils/boardNormalization.js';
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -24,12 +24,6 @@ const userService = new UserService({
     try {
       const users = await userService.listUsers();
       wsController.broadcastUsersDirectory(users);
-      const board = await persistence.loadBoard();
-      await normalizeAndOptionallyPersistBoard(persistence, userService, wsController, board, {
-        users,
-        persistIfChanged: true,
-        broadcastIfChanged: true,
-      });
     } catch (err) {
       console.error('Failed to handle user directory change:', err);
     }
@@ -46,23 +40,28 @@ const io = new SocketServer(httpServer, {
 });
 const wsController = new WebSocketController(io);
 
-// Helper to broadcast the current board to all other clients after a mutation
-async function broadcastBoard(excludeSocketId?: string): Promise<void> {
-  try {
-    const board = await getNormalizedBoard();
-    wsController.broadcastBoardUpdate(board, excludeSocketId);
-  } catch (err) {
-    console.error('Failed to broadcast board update:', err);
-  }
+function senderSocketId(req: express.Request): string | undefined {
+  const id = req.headers['x-socket-id'];
+  return typeof id === 'string' ? id : undefined;
 }
 
-async function getNormalizedBoard(options: { persistIfChanged?: boolean; broadcastIfChanged?: boolean; excludeSocketId?: string } = {}): Promise<BoardModel> {
-  const board = await persistence.loadBoard();
-  return normalizeAndOptionallyPersistBoard(persistence, userService, wsController, board, {
-    persistIfChanged: options.persistIfChanged ?? true,
-    broadcastIfChanged: options.broadcastIfChanged ?? false,
-    excludeSocketId: options.excludeSocketId,
+async function getBoardView(): Promise<BoardModel> {
+  const board = await persistence.readBoard();
+  return normalizeBoard(userService, board);
+}
+
+async function localMutation(
+  mutate: (board: BoardModel) => BoardModel | void,
+  excludeSocketId?: string,
+): Promise<BoardModel> {
+  const saved = await persistence.mutateBoard(async (board) => {
+    const draft = { ...board, cards: [...board.cards], groups: [...board.groups] };
+    const result = mutate(draft);
+    const next = result || draft;
+    return normalizeBoard(userService, next);
   });
+  wsController.broadcastBoardUpdate(saved, excludeSocketId);
+  return saved;
 }
 
 // Middleware
@@ -76,7 +75,7 @@ app.get('/api/board/export', async (req, res) => {
     if (type !== 'cards' && type !== 'groups' && type !== 'mapping') {
       return res.status(400).json({ error: 'Invalid export type. Expected cards, groups, or mapping.' });
     }
-    const board = await getNormalizedBoard();
+    const board = await getBoardView();
     const csv = buildBoardExportCsv(type as BoardExportType, board);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${getExportFilename(type)}"`);
@@ -89,7 +88,7 @@ app.get('/api/board/export', async (req, res) => {
 
 app.get('/api/board', async (req, res) => {
   try {
-    const board = await getNormalizedBoard({ persistIfChanged: false });
+    const board = await getBoardView();
     res.json(board);
   } catch (error) {
     console.error('Failed to load board:', error);
@@ -99,10 +98,13 @@ app.get('/api/board', async (req, res) => {
 
 app.post('/api/board', async (req, res) => {
   try {
-    const board: BoardModel = req.body;
-    await persistence.saveBoard(board);
-    const normalized = await getNormalizedBoard({ broadcastIfChanged: true });
-    res.json({ success: true, board: normalized });
+    const incoming = req.body as BoardModel;
+    const board = await localMutation(() => ({
+      cards: Array.isArray(incoming?.cards) ? incoming.cards.map((c: Card) => quantizeGeometry(c)) : [],
+      groups: Array.isArray(incoming?.groups) ? incoming.groups.map((g: Group) => quantizeGeometry(g)) : [],
+      lastUpdated: incoming?.lastUpdated || new Date().toISOString(),
+    }), senderSocketId(req));
+    res.json({ success: true, board });
   } catch (error) {
     console.error('Failed to save board:', error);
     res.status(500).json({ error: 'Failed to save board' });
@@ -112,11 +114,9 @@ app.post('/api/board', async (req, res) => {
 app.post('/api/board/card', async (req, res) => {
   try {
     const card: Card = quantizeGeometry(req.body);
-    const board = await getNormalizedBoard();
-    board.cards.push(card);
-    await persistence.saveBoard(board);
-    // Notify all other users of the change
-    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
+    const board = await localMutation((b) => {
+      b.cards.push(card);
+    }, senderSocketId(req));
     res.json(board);
   } catch (error) {
     console.error('Failed to add card:', error);
@@ -127,11 +127,9 @@ app.post('/api/board/card', async (req, res) => {
 app.post('/api/board/group', async (req, res) => {
   try {
     const group: Group = quantizeGeometry(req.body);
-    const board = await getNormalizedBoard();
-    board.groups.push(group);
-    await persistence.saveBoard(board);
-    // Notify all other users of the change
-    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
+    const board = await localMutation((b) => {
+      b.groups.push(group);
+    }, senderSocketId(req));
     res.json(board);
   } catch (error) {
     console.error('Failed to add group:', error);
@@ -139,21 +137,31 @@ app.post('/api/board/group', async (req, res) => {
   }
 });
 
+function applyCardUpdate(board: BoardModel, cardId: string, updates: Partial<Card>): boolean {
+  const idx = board.cards.findIndex(card => card.id === cardId);
+  if (idx === -1) return false;
+  const next = { ...board.cards[idx], ...quantizeGeometryUpdates(updates) } as Card;
+  if ((updates as { groupId?: string | null }).groupId === null) next.groupId = undefined;
+  board.cards[idx] = next;
+  return true;
+}
+
+function applyGroupUpdate(board: BoardModel, groupId: string, updates: Partial<Group>): boolean {
+  const idx = board.groups.findIndex(group => group.id === groupId);
+  if (idx === -1) return false;
+  board.groups[idx] = { ...board.groups[idx], ...quantizeGeometryUpdates(updates) } as Group;
+  return true;
+}
+
 app.put('/api/board/card/:id', async (req, res) => {
   try {
     const cardId = req.params.id;
-    const updates: Partial<Card> = quantizeGeometryUpdates(req.body);
-    const board = await getNormalizedBoard();
-
-    const cardIndex = board.cards.findIndex(card => card.id === cardId);
-    if (cardIndex === -1) {
-      return res.status(404).json({ error: 'Card not found' });
-    }
-
-    board.cards[cardIndex] = { ...board.cards[cardIndex], ...updates };
-    await persistence.saveBoard(board);
-    // Notify all other users of the change
-    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
+    const updates: Partial<Card> = req.body || {};
+    let found = false;
+    const board = await localMutation((b) => {
+      found = applyCardUpdate(b, cardId, updates);
+    }, senderSocketId(req));
+    if (!found) return res.status(404).json({ error: 'Card not found' });
     res.json(board);
   } catch (error) {
     console.error('Failed to update card:', error);
@@ -164,18 +172,12 @@ app.put('/api/board/card/:id', async (req, res) => {
 app.put('/api/board/group/:id', async (req, res) => {
   try {
     const groupId = req.params.id;
-    const updates: Partial<Group> = quantizeGeometryUpdates(req.body);
-    const board = await getNormalizedBoard();
-
-    const groupIndex = board.groups.findIndex(group => group.id === groupId);
-    if (groupIndex === -1) {
-      return res.status(404).json({ error: 'Group not found' });
-    }
-
-    board.groups[groupIndex] = { ...board.groups[groupIndex], ...updates };
-    await persistence.saveBoard(board);
-    // Notify all other users of the change
-    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
+    const updates: Partial<Group> = req.body || {};
+    let found = false;
+    const board = await localMutation((b) => {
+      found = applyGroupUpdate(b, groupId, updates);
+    }, senderSocketId(req));
+    if (!found) return res.status(404).json({ error: 'Group not found' });
     res.json(board);
   } catch (error) {
     console.error('Failed to update group:', error);
@@ -183,20 +185,40 @@ app.put('/api/board/group/:id', async (req, res) => {
   }
 });
 
+app.put('/api/board/batch', async (req, res) => {
+  try {
+    const cardUpdates = Array.isArray(req.body?.cards) ? req.body.cards as Array<{ id: string } & Partial<Card>> : [];
+    const groupUpdates = Array.isArray(req.body?.groups) ? req.body.groups as Array<{ id: string } & Partial<Group>> : [];
+    const board = await localMutation((b) => {
+      for (const item of groupUpdates) {
+        if (!item?.id) continue;
+        const { id, ...updates } = item;
+        applyGroupUpdate(b, id, updates as Partial<Group>);
+      }
+      for (const item of cardUpdates) {
+        if (!item?.id) continue;
+        const { id, ...updates } = item;
+        applyCardUpdate(b, id, updates as Partial<Card>);
+      }
+    }, senderSocketId(req));
+    res.json(board);
+  } catch (error) {
+    console.error('Failed to batch update board:', error);
+    res.status(500).json({ error: 'Failed to batch update board' });
+  }
+});
+
 app.delete('/api/board/card/:id', async (req, res) => {
   try {
     const cardId = req.params.id;
-    const board = await getNormalizedBoard();
-
-    const cardIndex = board.cards.findIndex(card => card.id === cardId);
-    if (cardIndex === -1) {
-      return res.status(404).json({ error: 'Card not found' });
-    }
-
-    board.cards.splice(cardIndex, 1);
-    await persistence.saveBoard(board);
-    // Notify all other users of the change
-    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
+    let found = false;
+    const board = await localMutation((b) => {
+      const idx = b.cards.findIndex(card => card.id === cardId);
+      if (idx === -1) return;
+      found = true;
+      b.cards.splice(idx, 1);
+    }, senderSocketId(req));
+    if (!found) return res.status(404).json({ error: 'Card not found' });
     res.json(board);
   } catch (error) {
     console.error('Failed to delete card:', error);
@@ -207,18 +229,15 @@ app.delete('/api/board/card/:id', async (req, res) => {
 app.delete('/api/board/group/:id', async (req, res) => {
   try {
     const groupId = req.params.id;
-    const board = await getNormalizedBoard();
-
-    const groupIndex = board.groups.findIndex(group => group.id === groupId);
-    if (groupIndex === -1) {
-      return res.status(404).json({ error: 'Group not found' });
-    }
-
-    board.groups.splice(groupIndex, 1);
-    board.cards = board.cards.map(card => (card.groupId === groupId ? { ...card, groupId: undefined } : card));
-    await persistence.saveBoard(board);
-    // Notify all other users of the change
-    await broadcastBoard(req.headers['x-socket-id'] as string | undefined);
+    let found = false;
+    const board = await localMutation((b) => {
+      const idx = b.groups.findIndex(group => group.id === groupId);
+      if (idx === -1) return;
+      found = true;
+      b.groups.splice(idx, 1);
+      b.cards = b.cards.map(card => (card.groupId === groupId ? { ...card, groupId: undefined } : card));
+    }, senderSocketId(req));
+    if (!found) return res.status(404).json({ error: 'Group not found' });
     res.json(board);
   } catch (error) {
     console.error('Failed to delete group:', error);
