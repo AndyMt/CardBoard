@@ -27,7 +27,6 @@ const createDefaultCard = (x: number, y: number, createdBy?: string, createdColo
     y: Math.max(0, y - 30),  // Account for card height
     width: 200, // Default card width
     height: 60, // Default card height
-    isSelected: false,
     createdBy,
     createdColor: createdColor || UNKNOWN_USER_COLOR,
   });
@@ -41,7 +40,6 @@ const createDefaultGroup = (x: number, y: number, createdBy?: string, createdCol
     y: Math.max(0, y - 30),  // Account for group header height
     width: 440, // Default group width
     height: 300, // Default group height
-    isSelected: false,
     createdBy,
     createdColor: createdColor || UNKNOWN_USER_COLOR,
   });

@@ -5,14 +5,13 @@ export interface ElementViewProps {
   y: number;
   width?: number;
   height?: number;
-  isSelected?: boolean;
   style?: React.CSSProperties;
   className?: string;
   children?: React.ReactNode;
 }
 
 export const ElementView = React.forwardRef<HTMLDivElement, ElementViewProps & React.HTMLAttributes<HTMLDivElement>>(
-  ({ x, y, width, height, isSelected, style, className, children, ...rest }, ref) => {
+  ({ x, y, width, height, style, className, children, ...rest }, ref) => {
     return (
       <div
         ref={ref}
