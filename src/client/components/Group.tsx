@@ -65,6 +65,7 @@ export const Group: React.FC<GroupProps> = ({
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const autoFocusRef = useRef(false);
 
   const { isDraggingRef, handleMouseDown: handleMouseDownSelection, handleMouseUp, handleMouseMove } = useElementSelection(
     id,
@@ -138,7 +139,8 @@ export const Group: React.FC<GroupProps> = ({
 
   // Enter edit mode on mount when autoFocus is true
   useEffect(() => {
-    if (autoFocus && !isEditing) {
+    if (autoFocus && !autoFocusRef.current && !isEditing) {
+      autoFocusRef.current = true;
       setIsEditing(true);
     }
   }, [autoFocus, isEditing]);

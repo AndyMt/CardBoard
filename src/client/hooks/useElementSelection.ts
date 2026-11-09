@@ -13,6 +13,7 @@ export function useElementSelection(
   const isDraggingRef = useRef(false);
 
   const handleMouseDown = (e: React.MouseEvent) => {
+    console.log('[SELECTION] useElementSelection handleMouseDown', { id, ctrlKey: e.ctrlKey, clientX: e.clientX, clientY: e.clientY });
     isDraggingRef.current = false;
 
     const rect = e.currentTarget.getBoundingClientRect();
@@ -46,14 +47,19 @@ export function useElementSelection(
         id,
         ctrlKey: e.ctrlKey,
       } satisfies PendingSelection;
+      console.log('[SELECTION] useElementSelection pending selection set', { id, ctrlKey: e.ctrlKey, isInDragHandle, isInSelectionZone });
+    } else {
+      console.log('[SELECTION] useElementSelection click outside selection zone', { id, clickX, clickY, isInDragHandle, isInSelectionZone });
     }
   };
 
   const handleMouseUp = (e: React.MouseEvent) => {
     const pending = (e.currentTarget as any)._pendingSelection as PendingSelection | undefined;
+    console.log('[SELECTION] useElementSelection handleMouseUp', { id, isDragging: isDraggingRef.current, pending });
     if (pending && !isDraggingRef.current) {
       e.stopPropagation();
       e.preventDefault();
+      console.log('[SELECTION] useElementSelection invoking onElementClick', { id: pending.id, ctrlKey: pending.ctrlKey });
       onElementClick?.(pending.id, pending.ctrlKey);
     }
     delete (e.currentTarget as any)._pendingSelection;
@@ -61,6 +67,7 @@ export function useElementSelection(
 
   const handleMouseMove = () => {
     isDraggingRef.current = true;
+    console.log('[SELECTION] useElementSelection handleMouseMove', { id, isDragging: true });
   };
 
   return { isDraggingRef, handleMouseDown, handleMouseUp, handleMouseMove };
