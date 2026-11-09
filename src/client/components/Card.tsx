@@ -69,30 +69,24 @@ export const Card: React.FC<CardProps> = ({
   }, [id, isEditing, onEditingChange]);
 
   useEffect(() => {
-    onHeightChange?.(id, contentHeight);
-  }, [id, contentHeight, onHeightChange]);
-
-  useEffect(() => {
     updateHeight();
     if (!isEditing) {
-      onEditEnd?.(id, contentHeight);
+      onEditEnd?.(id, 14 + contentHeight + 8);
     }
   }, [isEditing]);
 
   const updateHeight = () => {
     if (isEditing && textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
       const height = textareaRef.current.scrollHeight;
       const contentHeight = Math.max(height, 20);
       setContentHeight(contentHeight);
-      textareaRef.current.style.height = `${contentHeight}px`;
-      // Sync total card height back to parent: drag handle (14px) + content height + bottom margin (8px)
+      // Sync total card height: drag handle (14px) + content height + bottom margin (8px)
       onHeightChange?.(id, 14 + contentHeight + 8);
     } else if (!isEditing && textRef.current) {
       const height = textRef.current.scrollHeight;
       const contentHeight = Math.max(height, 20);
       setContentHeight(contentHeight);
-      // Sync total card height back to parent
+      // Sync total card height: drag handle (14px) + content height + bottom margin (8px)
       onHeightChange?.(id, 14 + contentHeight + 8);
     }
   };
@@ -172,6 +166,7 @@ export const Card: React.FC<CardProps> = ({
           <textarea
             ref={textareaRef}
             value={cardText}
+            rows={1}
             onChange={(e) => {
               handleTextChange(e.target.value);
               updateHeight();
@@ -194,10 +189,15 @@ export const Card: React.FC<CardProps> = ({
                 wordWrap: 'break-word',
                 fontFamily: 'inherit',
                 fontSize: 'inherit',
-                lineHeight: `${LINE_HEIGHT}px`,
+                lineHeight: '1.4',
                 minHeight: '20px',
                 boxSizing: 'border-box',
                 border: 'none',
+                paddingLeft: '0px',
+                paddingRight: '0px',
+                paddingTop: '0px',
+                paddingBottom: '0px',
+                fieldSizing: 'content',
                 height: `${contentHeight}px`
               }
             }
@@ -213,9 +213,13 @@ export const Card: React.FC<CardProps> = ({
                 wordWrap: 'break-word',
                 fontFamily: 'inherit',
                 fontSize: 'inherit',
-                lineHeight: `${LINE_HEIGHT}px`,
+                lineHeight: '1.4',
                 minHeight: '20px',
                 boxSizing: 'border-box',
+                paddingLeft: '0px',
+                paddingRight: '0px',
+                paddingTop: '0px',
+                paddingBottom: '0px',
                 height: `${contentHeight}px`
               }
             }
