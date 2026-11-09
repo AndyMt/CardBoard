@@ -14,7 +14,7 @@ export interface CursorEntry {
 }
 
 export interface CursorServiceOptions {
-  /** Broadcast interval in milliseconds. Defaults to 300ms. */
+  /** Broadcast interval in milliseconds. Defaults to 100ms. */
   intervalMs?: number;
 }
 
@@ -26,7 +26,7 @@ export class CursorService {
 
   constructor(io: Server, options: CursorServiceOptions = {}) {
     this.io = io;
-    this.intervalMs = options.intervalMs ?? 300;
+    this.intervalMs = options.intervalMs ?? 100;
     this.io.on('connection', (socket) => this.handleConnection(socket));
     this.startBroadcastTimer();
   }

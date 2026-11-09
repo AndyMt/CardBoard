@@ -3,7 +3,7 @@ import type { CursorPosition } from '../../types/Cursor.js';
 import type { User } from '../../types/User.js';
 
 export interface CursorControllerOptions {
-  /** Throttle interval for local cursor emits in milliseconds. Defaults to 300ms. */
+  /** Throttle interval for local cursor emits in milliseconds. Defaults to 100ms. */
   emitIntervalMs?: number;
 }
 
@@ -19,7 +19,7 @@ export class CursorController {
   private unsubscribeCursor?: () => void;
 
   private constructor(options: CursorControllerOptions = {}) {
-    this.emitIntervalMs = options.emitIntervalMs ?? 300;
+    this.emitIntervalMs = options.emitIntervalMs ?? 100;
   }
 
   public static getInstance(options?: CursorControllerOptions): CursorController {

@@ -58,8 +58,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ scrollX: number; scrollY: number; clientX: number; clientY: number } | null>(null);
-  // Remote user cursors (local user excluded), keyed by userId via the controller.
-  const [remoteCursors, setRemoteCursors] = useState<CursorPosition[]>([]);
+  // Remote user cursors (local user excluded), rendered via direct DOM to avoid board re-renders.
+  const boardContainerRef = useRef<HTMLDivElement>(null);
+  const cursorElements = new Map<string, HTMLDivElement>();
 
   // Tracks the last known board version so we can ignore stale broadcasts
   const lastBoardVersionRef = useRef<string | null>(null);
@@ -224,16 +225,57 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
   // Connect the remote-cursor controller: emit local cursor moves and render
   // remote cursors (excluding the local user) on every other user's session.
+  // Cursors are rendered via direct DOM manipulation to avoid board re-renders.
   useEffect(() => {
     const controller = CursorController.getInstance();
     controller.connect();
     controller.setLocalUserId(currentUser?.id ?? null);
 
     const unsubscribe = controller.onCursorChange((cursors) => {
-      setRemoteCursors(cursors);
+      const container = boardContainerRef.current;
+      if (!container) return;
+
+      const incoming = new Set(cursors.map((c) => c.userId));
+
+      // Remove cursors that are no longer present
+      for (const [userId, el] of cursorElements) {
+        if (!incoming.has(userId)) {
+          el.remove();
+          cursorElements.delete(userId);
+        }
+      }
+
+      // Add/update cursors
+      for (const cursor of cursors) {
+        let el = cursorElements.get(cursor.userId);
+        if (!el) {
+          el = document.createElement('div');
+          el.style.position = 'absolute';
+          el.style.borderRadius = '50%';
+          el.style.pointerEvents = 'none';
+          el.style.zIndex = '50';
+          el.style.transition = 'transform 0.1s linear';
+          el.style.willChange = 'transform';
+          container.appendChild(el);
+          cursorElements.set(cursor.userId, el);
+        }
+        // Center the 4px cursor on the exact board-content coordinate.
+        el.style.transform = `translate3d(${cursor.x - 2}px, ${cursor.y - 2}px, 0)`;
+        el.style.width = '4px';
+        el.style.height = '4px';
+        el.style.backgroundColor = cursor.color;
+        el.style.boxShadow = `0 0 3px ${cursor.color}`;
+      }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      // Clean up cursor elements on unmount
+      for (const el of cursorElements.values()) {
+        el.remove();
+      }
+      cursorElements.clear();
+    };
   }, [currentUser?.id]);
 
   // Listen for the custom event fired by App.tsx when a remote mutation
@@ -637,6 +679,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
      };
    }]}>
       <div
+        ref={boardContainerRef}
         className="relative w-full h-full bg-gray-100 overflow-auto board-container"
         onClick={(e) => {
           handleBoardClick(e);
@@ -712,26 +755,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
             />
           );
         })}
-
-        {/* Remote user cursors (local user excluded), 2px circle with 3px glow */}
-        {remoteCursors.map((cursor) => (
-          <div
-            key={cursor.userId}
-            className="absolute"
-            style={{
-              left: cursor.x,
-              top: cursor.y,
-              width: 2,
-              height: 2,
-              borderRadius: '50%',
-              backgroundColor: cursor.color,
-              boxShadow: `0 0 3px ${cursor.color}`,
-              pointerEvents: 'none',
-              zIndex: 50,
-              transform: 'translate(-50%, -50%)',
-            }}
-          />
-        ))}
       </div>
     </DndContext>
   );
