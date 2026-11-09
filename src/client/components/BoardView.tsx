@@ -18,6 +18,15 @@ interface BoardViewProps {
   currentUser?: User | null;
 }
 
+const CARD_MIN_HEIGHT = 40;
+const LINE_HEIGHT = 20;
+
+const calculateCardHeight = (text: string): number => {
+  if (!text) return CARD_MIN_HEIGHT;
+  const lines = text.split('\n').length;
+  return Math.max(CARD_MIN_HEIGHT, lines * LINE_HEIGHT + 10);
+};
+
 // Helper functions for model operations (client-side only)
 const createDefaultCard = (x: number, y: number, createdBy?: string, createdColor?: string): CardType => {
   return quantizeGeometry({
@@ -425,7 +434,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   const handleCardTextChange = (id: string, newText: string) => {
     setCards(prevCards => prevCards.map(card => {
       if (card.id === id) {
-        return { ...card, text: newText };
+        return { ...card, text: newText, height: calculateCardHeight(newText) };
       }
       return card;
     }));
@@ -433,7 +442,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
   const handleCardTextCommit = (id: string, newText: string) => {
     const boardService = BoardService.getInstance();
-    boardService.updateCard(id, { text: newText }).catch(err => {
+    boardService.updateCard(id, { text: newText, height: calculateCardHeight(newText) }).catch(err => {
       console.error('Failed to update card text:', err);
     });
   };
