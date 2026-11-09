@@ -176,7 +176,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     const ws = WebSocketService.getInstance();
 
     const unsubscribeBoard = ws.onBoardUpdate(async (payload) => {
-      console.log('[SOCKET] board:update received', { payload, isRecentLocalMutation: ws.isRecentLocalMutation(), isLocallyDragging: isLocallyDraggingRef.current });
       if (ws.isRecentLocalMutation()) return;
       // Ignore our own updates while dragging to keep local optimistic state
       if (isLocallyDraggingRef.current) return;
@@ -185,10 +184,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
       // Avoid applying stale updates by comparing lastUpdated timestamps
       const serverVersion = serverBoard.lastUpdated || '';
-      if (serverVersion && serverVersion <= (lastBoardVersionRef.current || '')) {
-        console.log('[SOCKET] board:update ignored (stale)', { serverVersion, lastBoardVersion: lastBoardVersionRef.current });
-        return;
-      }
+      if (serverVersion && serverVersion <= (lastBoardVersionRef.current || '')) return;
 
       const users = await getDirectoryUsers();
       applyBoardState(serverBoard, users);
@@ -196,7 +192,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     });
 
     const unsubscribeLive = ws.onLiveUpdate((payload) => {
-      console.log('[SOCKET] board:live-update received', { payload, isLocallyDragging: isLocallyDraggingRef.current });
       if (isLocallyDraggingRef.current) return;
       if (!payload) return;
 
@@ -260,7 +255,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
   const handleDragStart = (event: DragStartEvent) => {
     const id = event.active.id as string;
-    console.log('[DRAG] handleDragStart', { id, selectedTool, selectedItems, isSelected: selectedItems.includes(id) });
     setActiveDragId(id);
     setDragDelta({ x: 0, y: 0 });
     setDragStartedSelected(selectedItems.includes(id));
@@ -274,7 +268,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     setDragDelta({ x: event.delta.x, y: event.delta.y });
     if (!dragStartedSelected && (event.delta.x !== 0 || event.delta.y !== 0)) {
       const id = event.active.id as string;
-      console.log('[DRAG] handleDragMove auto-select on drag', { id, delta: event.delta, prevSelection: selectedItems });
       setSelectedItems([id]);
     }
     // Broadcast live positions to other users (throttled server-side)
@@ -339,14 +332,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     const dx = quantizeScalar(delta.x);
     const dy = quantizeScalar(delta.y);
 
-    console.log('[DRAG] handleDragEnd', { activeId, activeType, dx, dy, selectedItems, dragStartedSelected });
-
     const finishDrag = () => {
       setActiveDragId(null);
       setDragDelta(null);
       setDragStartedSelected(false);
       isLocallyDraggingRef.current = false;
-      console.log('[DRAG] handleDragEnd finishDrag', { activeId, newSelection: selectedItems });
     };
 
     const insideGroup = (gx: number, gy: number, g: GroupType) => {
@@ -506,39 +496,30 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   };
 
   const handleSelect = (id: string, ctrlKey: boolean = false) => {
-    console.log('[SELECTION] handleSelect called', { id, ctrlKey, currentSelection: selectedItems });
     setSelectedItems(prev => {
       // If Ctrl key is pressed, toggle the selection state of the item
       if (ctrlKey) {
         if (prev.includes(id)) {
-          const result = prev.filter(itemId => itemId !== id);
-          console.log('[SELECTION] handleSelect ctrlKey toggle off', { id, prevSelection: prev, newSelection: result });
-          return result;
+          return prev.filter(itemId => itemId !== id);
         } else {
-          const result = [...prev, id];
-          console.log('[SELECTION] handleSelect ctrlKey toggle on', { id, prevSelection: prev, newSelection: result });
-          return result;
+          return [...prev, id];
         }
       }
       // If Ctrl key is not pressed, replace the selection with the clicked item
       else {
         // If already selected, deselect it
         if (prev.length === 1 && prev[0] === id) {
-          console.log('[SELECTION] handleSelect deselect single', { id, prevSelection: prev, newSelection: [] });
           return [];
         }
         // Otherwise select this item
         else {
-          const result = [id];
-          console.log('[SELECTION] handleSelect select single', { id, prevSelection: prev, newSelection: result });
-          return result;
+          return [id];
         }
       }
     });
   };
 
   const handleCardClick = (id: string, ctrlKey: boolean) => {
-    console.log('[SELECTION] handleCardClick called', { id, ctrlKey, selectedTool, currentSelection: selectedItems });
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
     }
@@ -546,7 +527,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   };
 
   const handleGroupClick = (id: string, ctrlKey: boolean) => {
-    console.log('[SELECTION] handleGroupClick called', { id, ctrlKey, selectedTool, currentSelection: selectedItems });
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
     }
