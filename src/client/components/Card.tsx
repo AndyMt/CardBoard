@@ -64,12 +64,6 @@ export const Card: React.FC<CardProps> = ({
     onEditingChange?.(id, isEditing);
   }, [id, isEditing, onEditingChange]);
 
-  useEffect(() => {
-    if (!isEditing) {
-      requestAnimationFrame(updateHeight);
-    }
-  }, [text, isEditing]);
-
   const updateHeight = () => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -184,6 +178,7 @@ export const Card: React.FC<CardProps> = ({
                 border: 'none',
                 marginLeft: '8px',
                 marginRight: '8px',
+                marginBottom: '8px',
                 height: `${contentHeight}px`
               }
             }
@@ -204,6 +199,7 @@ export const Card: React.FC<CardProps> = ({
                 boxSizing: 'border-box',
                 marginLeft: '8px',
                 marginRight: '8px',
+                marginBottom: '8px',
                 height: `${contentHeight}px`
               }
             }
