@@ -126,13 +126,6 @@ export const Group: React.FC<GroupProps> = ({
     }
   };
 
-  // Auto-enter edit mode when group is created with empty label
-  useEffect(() => {
-    if (groupLabel === '' && !isEditing) {
-      setIsEditing(true);
-    }
-  }, [groupLabel]);
-
   // Auto-focus when editing starts
   useEffect(() => {
     if (isEditing && inputRef.current) {
