@@ -54,6 +54,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
   const [dragStartedSelected, setDragStartedSelected] = useState<boolean>(false);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState<{ scrollX: number; scrollY: number; clientX: number; clientY: number } | null>(null);
   // Tracks the last known board version so we can ignore stale broadcasts
   const lastBoardVersionRef = useRef<string | null>(null);
   // While the current user is dragging, ignore full-board broadcasts from
@@ -538,6 +540,32 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     }
   };
 
+  const handlePanStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (selectedTool !== 'select' || e.button !== 0) return;
+    setIsPanning(true);
+    setPanStart({
+      scrollX: e.currentTarget.scrollLeft,
+      scrollY: e.currentTarget.scrollTop,
+      clientX: e.clientX,
+      clientY: e.clientY,
+    });
+  };
+
+  const handlePanMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPanning || !panStart) return;
+    const { scrollX, scrollY, clientX, clientY } = panStart;
+    const dx = clientX - e.clientX;
+    const dy = clientY - e.clientY;
+    e.currentTarget.scrollLeft = scrollX + dx;
+    e.currentTarget.scrollTop = scrollY + dy;
+  };
+
+  const handlePanEnd = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPanning) return;
+    setIsPanning(false);
+    setPanStart(null);
+  };
+
   const handleBoardClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     // Only handle clicks on the board background (empty space)
     if (e.target !== e.currentTarget) return;
@@ -600,6 +628,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
           handleBoardClick(e);
           handleBoardFocus();
         }}
+        onMouseDown={handlePanStart}
+        onMouseMove={handlePanMove}
+        onMouseLeave={handlePanEnd}
+        onMouseUp={handlePanEnd}
+        style={{ cursor: isPanning ? 'grabbing' : 'default' }}
         tabIndex={0}
       >
        {/* All cards rendered first in DOM (below groups visually via z-index) */}
