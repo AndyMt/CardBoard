@@ -67,7 +67,7 @@ export const Group: React.FC<GroupProps> = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const autoFocusRef = useRef(false);
 
-  const { isDraggingRef, handleMouseDown: handleMouseDownSelection, handleMouseUp, handleMouseMove } = useElementSelection(
+  const { handleMouseDown: handleMouseDownSelection, handleMouseUp } = useElementSelection(
     id,
     onGroupClick,
     1.33
@@ -152,7 +152,6 @@ export const Group: React.FC<GroupProps> = ({
       data-group-id={id}
       onMouseDown={handleMouseDownSelection}
       onMouseUp={handleMouseUp}
-      onMouseMove={handleMouseMove}
 onClick={(e) => {
         e.stopPropagation();
         if (ToolService.getInstance().getSelectedTool() !== 'card') return;

@@ -53,7 +53,7 @@ export const Card: React.FC<CardProps> = ({
   const textRef = useRef<HTMLDivElement>(null);
   const autoFocusRef = useRef(false);
   const [contentHeight, setContentHeight] = useState(20);
-  const { isDraggingRef, handleMouseDown, handleMouseUp, handleMouseMove } = useElementSelection(
+  const { handleMouseDown, handleMouseUp } = useElementSelection(
     id,
     onCardClick,
     2
@@ -152,7 +152,6 @@ export const Card: React.FC<CardProps> = ({
       data-card-id={id}
       onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
-      onMouseMove={handleMouseMove}
       onClick={(e) => e.stopPropagation()}
       className={`absolute border-2 border-solid border-gray-800 rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}
     >
