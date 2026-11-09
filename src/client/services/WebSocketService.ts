@@ -20,6 +20,8 @@ export const BOARD_LIVE_UPDATE_EVENT = 'board:live-update';
 export const USERS_UPDATE_EVENT = 'users:update';
 export const USERS_DIRECTORY_UPDATE_EVENT = 'users:directory';
 export const LIVE_DRAG_EVENT = 'live:drag';
+export const CURSOR_MOVE_EVENT = 'cursor:move';
+export const CURSOR_UPDATE_EVENT = 'cursor:update';
 
 export interface BoardUpdatePayload {
   board: { cards: Card[]; groups: Group[] };
@@ -33,6 +35,14 @@ export interface LiveUpdatePayload {
 export interface UsersUpdatePayload {
   count: number;
   onlineUserIds: string[];
+}
+
+export interface CursorPosition {
+  userId: string;
+  userName: string;
+  color: string;
+  x: number;
+  y: number;
 }
 
 export interface UserDirectoryUpdatePayload {
@@ -53,6 +63,7 @@ class WebSocketService {
   private liveUpdateHandlers = new Set<LiveUpdateHandler>();
   private usersUpdateHandlers = new Set<UsersUpdateHandler>();
   private userDirectoryHandlers = new Set<UserDirectoryUpdateHandler>();
+  private cursorUpdateHandlers = new Set<(payload: { cursors: CursorPosition[] }) => void>();
   private connectHandlers = new Set<() => void>();
 
   private constructor(url: string = '') {
@@ -102,6 +113,10 @@ class WebSocketService {
       this.userDirectoryHandlers.forEach((handler) => handler(payload));
     });
 
+    this.socket.on(CURSOR_UPDATE_EVENT, (payload: { cursors: CursorPosition[] }) => {
+      this.cursorUpdateHandlers.forEach((handler) => handler(payload));
+    });
+
     this.socket.on('connect_error', (err: Error) => {
       console.error('[WS] connection error:', err);
     });
@@ -143,6 +158,12 @@ class WebSocketService {
     this.socket.emit('user:identify', payload);
   }
 
+  /** Send the local cursor position to the server (throttled client-side). */
+  emitCursorMove(payload: CursorPosition): void {
+    if (!this.socket) return;
+    this.socket.emit(CURSOR_MOVE_EVENT, payload);
+  }
+
   onBoardUpdate(handler: BoardUpdateHandler): () => void {
     this.boardUpdateHandlers.add(handler);
     return () => this.boardUpdateHandlers.delete(handler);
@@ -161,6 +182,11 @@ class WebSocketService {
   onUsersDirectoryUpdate(handler: UserDirectoryUpdateHandler): () => void {
     this.userDirectoryHandlers.add(handler);
     return () => this.userDirectoryHandlers.delete(handler);
+  }
+
+  onCursorUpdate(handler: (payload: { cursors: CursorPosition[] }) => void): () => void {
+    this.cursorUpdateHandlers.add(handler);
+    return () => this.cursorUpdateHandlers.delete(handler);
   }
 
   onConnect(handler: () => void): () => void {

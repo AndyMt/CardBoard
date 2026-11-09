@@ -10,6 +10,7 @@ import { JSONPersistence } from './persistence/JSONPersistence.js';
 import { BoardModel } from './model/BoardModel';
 import { UserService } from './services/UserService.js';
 import { WebSocketController } from './controller/WebSocketController.js';
+import { CursorService } from './services/CursorService.js';
 import { quantizeGeometry, quantizeGeometryUpdates } from '../shared/geometry.js';
 import { buildBoardExportCsv, getExportFilename, type BoardExportType } from './utils/csvExport.js';
 import { normalizeBoard } from './utils/boardNormalization.js';
@@ -39,6 +40,7 @@ const io = new SocketServer(httpServer, {
   },
 });
 const wsController = new WebSocketController(io);
+const cursorService = new CursorService(io);
 
 function senderSocketId(req: express.Request): string | undefined {
   const id = req.headers['x-socket-id'];

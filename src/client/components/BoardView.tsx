@@ -9,6 +9,8 @@ import BoardService from '../services/BoardService';
 import WebSocketService from '../services/WebSocketService.js';
 import UserService from '../services/UserService.js';
 import { ElementSelectionController } from '../controller/ElementSelectionController.js';
+import { CursorController } from '../controller/CursorController.js';
+import type { CursorPosition } from '../../types/Cursor.js';
 import { quantizeGeometry, quantizeNonNegative, quantizeScalar } from '../../shared/geometry.js';
 import { normalizeBoardModel, UNKNOWN_USER_COLOR } from '../../shared/userColorNormalization.js';
 
@@ -56,6 +58,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ scrollX: number; scrollY: number; clientX: number; clientY: number } | null>(null);
+  // Remote user cursors (local user excluded), keyed by userId via the controller.
+  const [remoteCursors, setRemoteCursors] = useState<CursorPosition[]>([]);
+
   // Tracks the last known board version so we can ignore stale broadcasts
   const lastBoardVersionRef = useRef<string | null>(null);
   // While the current user is dragging, ignore full-board broadcasts from
@@ -216,6 +221,20 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
       unsubscribeDirectory();
     };
   }, []);
+
+  // Connect the remote-cursor controller: emit local cursor moves and render
+  // remote cursors (excluding the local user) on every other user's session.
+  useEffect(() => {
+    const controller = CursorController.getInstance();
+    controller.connect();
+    controller.setLocalUserId(currentUser?.id ?? null);
+
+    const unsubscribe = controller.onCursorChange((cursors) => {
+      setRemoteCursors(cursors);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser?.id]);
 
   // Listen for the custom event fired by App.tsx when a remote mutation
   // completes, so we re-fetch the authoritative board.
@@ -552,6 +571,14 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     setPanStart(null);
   };
 
+  const emitCursorPosition = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!currentUser) return;
+    const boardRect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - boardRect.left + e.currentTarget.scrollLeft;
+    const y = e.clientY - boardRect.top + e.currentTarget.scrollTop;
+    CursorController.getInstance().emitPosition(currentUser, x, y);
+  };
+
   const handleBoardClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     if (isLocallyDraggingRef.current) return; // Skip if dragging
     // Only handle clicks on the board background (empty space)
@@ -616,7 +643,10 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
           handleBoardFocus();
         }}
         onMouseDown={handlePanStart}
-        onMouseMove={handlePanMove}
+        onMouseMove={(e) => {
+          handlePanMove(e);
+          emitCursorPosition(e);
+        }}
         onMouseLeave={handlePanEnd}
         onMouseUp={handlePanEnd}
         style={{ cursor: isPanning ? 'grabbing' : 'default' }}
@@ -669,9 +699,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
               onLabelChange={handleGroupLabelChange}
               onLabelCommit={handleGroupLabelCommit}
               onEditingChange={handleGroupEditingChange}
-onGroupClick={handleGroupClick}
-               onAddCard={handleAddCardInGroup}
-               onSelect={handleSelect}
+              onGroupClick={handleGroupClick}
+              onAddCard={handleAddCardInGroup}
+              onSelect={handleSelect}
               onCardClick={handleCardClick}
               onCardTextChange={handleCardTextChange}
               onCardTextCommit={handleCardTextCommit}
@@ -682,6 +712,26 @@ onGroupClick={handleGroupClick}
             />
           );
         })}
+
+        {/* Remote user cursors (local user excluded), 2px circle with 3px glow */}
+        {remoteCursors.map((cursor) => (
+          <div
+            key={cursor.userId}
+            className="absolute"
+            style={{
+              left: cursor.x,
+              top: cursor.y,
+              width: 2,
+              height: 2,
+              borderRadius: '50%',
+              backgroundColor: cursor.color,
+              boxShadow: `0 0 3px ${cursor.color}`,
+              pointerEvents: 'none',
+              zIndex: 50,
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        ))}
       </div>
     </DndContext>
   );
