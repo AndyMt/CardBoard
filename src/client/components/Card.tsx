@@ -22,6 +22,7 @@ interface CardProps {
   onCardClick?: (id: string, ctrlKey: boolean) => void;
   createdBy?: string;
   createdColor?: string;
+  autoFocus?: boolean;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -40,6 +41,7 @@ export const Card: React.FC<CardProps> = ({
   onCardClick,
   createdBy,
   createdColor,
+  autoFocus = false,
 }) => {
   const [cardText, setCardText] = useState(text);
   const [isEditing, setIsEditing] = useState(false);
@@ -114,6 +116,13 @@ export const Card: React.FC<CardProps> = ({
       textareaRef.current.select();
     }
   }, [isEditing]);
+
+  // Enter edit mode on mount when autoFocus is true
+  useEffect(() => {
+    if (autoFocus && !isEditing) {
+      setIsEditing(true);
+    }
+  }, [autoFocus, isEditing]);
 
   return (
     <div

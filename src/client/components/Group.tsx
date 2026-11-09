@@ -34,6 +34,7 @@ interface GroupProps {
   onCardEditingChange?: (id: string, editing: boolean) => void;
   createdBy?: string;
   createdColor?: string;
+  autoFocus?: boolean;
 }
 
 export const Group: React.FC<GroupProps> = ({
@@ -59,6 +60,7 @@ export const Group: React.FC<GroupProps> = ({
   onCardEditingChange,
   createdBy,
   createdColor,
+  autoFocus = false,
 }) => {
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
@@ -133,6 +135,13 @@ export const Group: React.FC<GroupProps> = ({
       inputRef.current.select();
     }
   }, [isEditing]);
+
+  // Enter edit mode on mount when autoFocus is true
+  useEffect(() => {
+    if (autoFocus && !isEditing) {
+      setIsEditing(true);
+    }
+  }, [autoFocus, isEditing]);
 
   return (
     <div

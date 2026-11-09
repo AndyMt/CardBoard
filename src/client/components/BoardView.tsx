@@ -63,6 +63,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   const editingGroupIdsRef = useRef<Set<string>>(new Set());
   const cardsRef = useRef<CardType[]>([]);
   const groupsRef = useRef<GroupType[]>([]);
+  // ID of the card or group that should enter edit mode after creation
+  const [autoFocusId, setAutoFocusId] = useState<string | null>(null);
 
   useEffect(() => {
     cardsRef.current = cards;
@@ -544,6 +546,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         const boardService = BoardService.getInstance();
         const { cards } = await boardService.addCard(newCard);
         setCards(cards);
+        setAutoFocusId(newCard.id);
       } catch (err) {
         console.error('Failed to add card:', err);
       }
@@ -556,6 +559,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         const boardService = BoardService.getInstance();
         const { groups } = await boardService.addGroup(newGroup);
         setGroups(groups);
+        setAutoFocusId(newGroup.id);
       } catch (err) {
         console.error('Failed to add group:', err);
       }
@@ -602,6 +606,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
               onEditingChange={handleCardEditingChange}
               createdBy={card.createdBy}
               createdColor={card.createdColor}
+              autoFocus={autoFocusId === card.id}
             />
           );
         })}
@@ -634,6 +639,7 @@ onGroupClick={handleGroupClick}
               onCardEditingChange={handleCardEditingChange}
               createdBy={group.createdBy}
               createdColor={group.createdColor}
+              autoFocus={autoFocusId === group.id}
             />
           );
         })}
