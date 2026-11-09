@@ -64,6 +64,12 @@ export const Card: React.FC<CardProps> = ({
     onEditingChange?.(id, isEditing);
   }, [id, isEditing, onEditingChange]);
 
+  useEffect(() => {
+    if (isEditing) {
+      updateHeight();
+    }
+  }, [isEditing]);
+
   const updateHeight = () => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -146,13 +152,14 @@ export const Card: React.FC<CardProps> = ({
       ></div>
       
       {/* Content area */}
-      <div className="flex-1">
+      <div className="flex-1" style={{ marginLeft: '8px', marginRight: '8px', marginBottom: '8px' }}>
         {isEditing ? (
           <textarea
             ref={textareaRef}
             value={cardText}
             onChange={(e) => {
               handleTextChange(e.target.value);
+              updateHeight();
             }}
             onBlur={() => {
               setIsEditing(false);
@@ -176,9 +183,6 @@ export const Card: React.FC<CardProps> = ({
                 minHeight: '20px',
                 boxSizing: 'border-box',
                 border: 'none',
-                marginLeft: '8px',
-                marginRight: '8px',
-                marginBottom: '8px',
                 height: `${contentHeight}px`
               }
             }
@@ -197,9 +201,6 @@ export const Card: React.FC<CardProps> = ({
                 lineHeight: `${LINE_HEIGHT}px`,
                 minHeight: '20px',
                 boxSizing: 'border-box',
-                marginLeft: '8px',
-                marginRight: '8px',
-                marginBottom: '8px',
                 height: `${contentHeight}px`
               }
             }
