@@ -161,7 +161,7 @@ export const Card: React.FC<CardProps> = ({
       ></div>
       
       {/* Content area */}
-      <div className="flex-1" style={{ marginLeft: '8px', marginRight: '8px', marginBottom: '8px' }}>
+      <div className="flex-1" style={{ marginLeft: '8px', marginRight: '8px', marginBottom: '0px' }}>
         {isEditing ? (
           <textarea
             ref={textareaRef}

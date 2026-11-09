@@ -439,9 +439,10 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   };
 
   const handleCardHeightChange = (id: string, height: number) => {
+    const quantizedHeight = quantizeScalar(height);
     setCards(prevCards => prevCards.map(card => {
       if (card.id === id) {
-        return { ...card, height };
+        return { ...card, height: quantizedHeight };
       }
       return card;
     }));
