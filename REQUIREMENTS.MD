@@ -61,7 +61,7 @@ The application shall have the following features:
 - minimum size is 1x1 card plus including padding.
 - border shall be 1.33px dotted.
 - Text label to centered on the top border line.
-- clicking on the group border shall select the group and all cards within it.
+- moving a group shall move all cards within it.
 
 ## Select and moving elements
 
