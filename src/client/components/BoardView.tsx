@@ -53,7 +53,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
-  const [dragStartedSelected, setDragStartedSelected] = useState<boolean>(false);
+
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ scrollX: number; scrollY: number; clientX: number; clientY: number } | null>(null);
   // Tracks the last known board version so we can ignore stale broadcasts
@@ -188,7 +188,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
       const users = await getDirectoryUsers();
       applyBoardState(serverBoard, users);
-      // Keep current selection; do not clear on remote board update
     });
 
     const unsubscribeLive = ws.onLiveUpdate((payload) => {
@@ -257,7 +256,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     const id = event.active.id as string;
     setActiveDragId(id);
     setDragDelta({ x: 0, y: 0 });
-    setDragStartedSelected(selectedItems.includes(id));
     // We are now the active dragger; ignore our own server echoes
     isLocallyDraggingRef.current = true;
     // Emit a live preview so other users see the drag start immediately
@@ -266,10 +264,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
   const handleDragMove = (event: DragMoveEvent) => {
     setDragDelta({ x: event.delta.x, y: event.delta.y });
-    if (!dragStartedSelected && (event.delta.x !== 0 || event.delta.y !== 0)) {
-      const id = event.active.id as string;
-      setSelectedItems([id]);
-    }
     // Broadcast live positions to other users (throttled server-side)
     emitLivePreview();
   };
@@ -335,7 +329,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     const finishDrag = () => {
       setActiveDragId(null);
       setDragDelta(null);
-      setDragStartedSelected(false);
       isLocallyDraggingRef.current = false;
     };
 
@@ -392,6 +385,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
       boardService.batchUpdate({ cards: Array.from(cardUpdatesMap.values()), groups: Array.from(groupUpdatesMap.values()) }).catch(err => {
         console.error('Failed to batch update board positions:', err);
       });
+      setSelectedItems(selectedItems); // Preserve selection
       finishDrag();
       return;
     }
@@ -496,27 +490,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   };
 
   const handleSelect = (id: string, ctrlKey: boolean = false) => {
-    setSelectedItems(prev => {
-      // If Ctrl key is pressed, toggle the selection state of the item
-      if (ctrlKey) {
-        if (prev.includes(id)) {
-          return prev.filter(itemId => itemId !== id);
-        } else {
-          return [...prev, id];
-        }
-      }
-      // If Ctrl key is not pressed, replace the selection with the clicked item
-      else {
-        // If already selected, deselect it
-        if (prev.length === 1 && prev[0] === id) {
-          return [];
-        }
-        // Otherwise select this item
-        else {
-          return [id];
-        }
-      }
-    });
+    setSelectedItems(prev => new ElementSelectionController().select(prev, id, ctrlKey));
   };
 
   const handleCardClick = (id: string, ctrlKey: boolean) => {
@@ -579,6 +553,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   };
 
   const handleBoardClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isLocallyDraggingRef.current) return; // Skip if dragging
     // Only handle clicks on the board background (empty space)
     if (e.target !== e.currentTarget) return;
 
