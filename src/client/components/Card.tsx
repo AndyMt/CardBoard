@@ -51,6 +51,7 @@ export const Card: React.FC<CardProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
+  const autoFocusRef = useRef(false);
   const [contentHeight, setContentHeight] = useState(20);
   const { isDraggingRef, handleMouseDown, handleMouseUp, handleMouseMove } = useElementSelection(
     id,
@@ -69,26 +70,30 @@ export const Card: React.FC<CardProps> = ({
   }, [id, isEditing, onEditingChange]);
 
   useEffect(() => {
-    updateHeight();
+    const contentHeight = updateHeight();
     if (!isEditing) {
       onEditEnd?.(id, 14 + contentHeight + 8);
     }
   }, [isEditing]);
 
-  const updateHeight = () => {
+  const updateHeight = (): number => {
     if (isEditing && textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
       const height = textareaRef.current.scrollHeight;
       const contentHeight = Math.max(height, 20);
       setContentHeight(contentHeight);
       // Sync total card height: drag handle (14px) + content height + bottom margin (8px)
       onHeightChange?.(id, 14 + contentHeight + 8);
+      return contentHeight;
     } else if (!isEditing && textRef.current) {
       const height = textRef.current.scrollHeight;
       const contentHeight = Math.max(height, 20);
       setContentHeight(contentHeight);
       // Sync total card height: drag handle (14px) + content height + bottom margin (8px)
       onHeightChange?.(id, 14 + contentHeight + 8);
+      return contentHeight;
     }
+    return contentHeight;
   };
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
@@ -134,7 +139,8 @@ export const Card: React.FC<CardProps> = ({
 
   // Enter edit mode on mount when autoFocus is true
   useEffect(() => {
-    if (autoFocus && !isEditing) {
+    if (autoFocus && !autoFocusRef.current && !isEditing) {
+      autoFocusRef.current = true;
       setIsEditing(true);
     }
   }, [autoFocus, isEditing]);
