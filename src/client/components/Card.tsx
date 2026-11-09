@@ -18,6 +18,8 @@ interface CardProps {
   onTextChange?: (id: string, newText: string) => void;
   onTextCommit?: (id: string, newText: string) => void;
   onEditingChange?: (id: string, editing: boolean) => void;
+  onHeightChange?: (id: string, height: number) => void;
+  onEditEnd?: (id: string, height: number) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
   createdBy?: string;
@@ -37,6 +39,8 @@ export const Card: React.FC<CardProps> = ({
   onTextChange,
   onTextCommit,
   onEditingChange,
+  onHeightChange,
+  onEditEnd,
   onSelect,
   onCardClick,
   createdBy,
@@ -65,8 +69,13 @@ export const Card: React.FC<CardProps> = ({
   }, [id, isEditing, onEditingChange]);
 
   useEffect(() => {
-    if (isEditing) {
-      updateHeight();
+    onHeightChange?.(id, contentHeight);
+  }, [id, contentHeight, onHeightChange]);
+
+  useEffect(() => {
+    updateHeight();
+    if (!isEditing) {
+      onEditEnd?.(id, contentHeight);
     }
   }, [isEditing]);
 
@@ -74,11 +83,17 @@ export const Card: React.FC<CardProps> = ({
     if (isEditing && textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       const height = textareaRef.current.scrollHeight;
-      setContentHeight(Math.max(height, 20));
-      textareaRef.current.style.height = `${height}px`;
+      const contentHeight = Math.max(height, 20);
+      setContentHeight(contentHeight);
+      textareaRef.current.style.height = `${contentHeight}px`;
+      // Sync total card height back to parent: drag handle (14px) + content height + bottom margin (8px)
+      onHeightChange?.(id, 14 + contentHeight + 8);
     } else if (!isEditing && textRef.current) {
       const height = textRef.current.scrollHeight;
-      setContentHeight(Math.max(height, 20));
+      const contentHeight = Math.max(height, 20);
+      setContentHeight(contentHeight);
+      // Sync total card height back to parent
+      onHeightChange?.(id, 14 + contentHeight + 8);
     }
   };
 

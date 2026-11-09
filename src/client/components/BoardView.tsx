@@ -438,6 +438,22 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     });
   };
 
+  const handleCardHeightChange = (id: string, height: number) => {
+    setCards(prevCards => prevCards.map(card => {
+      if (card.id === id) {
+        return { ...card, height };
+      }
+      return card;
+    }));
+  };
+
+  const handleCardEditEnd = (id: string, height: number) => {
+    const boardService = BoardService.getInstance();
+    boardService.updateCard(id, { height }).catch(err => {
+      console.error('Failed to update card height:', err);
+    });
+  };
+
   const handleCardEditingChange = (id: string, editing: boolean) => {
     if (editing) editingCardIdsRef.current.add(id);
     else editingCardIdsRef.current.delete(id);
@@ -604,6 +620,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
               onTextChange={handleCardTextChange}
               onTextCommit={handleCardTextCommit}
               onEditingChange={handleCardEditingChange}
+              onHeightChange={handleCardHeightChange}
+              onEditEnd={handleCardEditEnd}
               createdBy={card.createdBy}
               createdColor={card.createdColor}
               autoFocus={autoFocusId === card.id}
