@@ -746,14 +746,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         style={{ cursor: isPanning ? 'grabbing' : 'default', userSelect: connectionSourceId ? 'none' : 'auto' }}
         tabIndex={0}
       >
-       {/* Connection renderer (preview line + connector lines) */}
-       <ConnectionRenderer
-         cards={cards}
-         connectionSourceId={connectionSourceId}
-         connectionPointer={connectionPointer}
-       />
-        {/* All cards rendered first in DOM (below groups visually via z-index) */}
-        {cards.map(card => {
+         {/* All cards rendered first in DOM (below groups visually via z-index) */}
+         {cards.map(card => {
           const isCardSelected = selectedItems.includes(card.id);
           return (
             <Card
@@ -786,6 +780,13 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
             />
           );
         })}
+
+        {/* Connector lines rendered between cards and groups in z-order */}
+        <ConnectionRenderer
+          cards={cards}
+          connectionSourceId={connectionSourceId}
+          connectionPointer={connectionPointer}
+        />
 
         {/* Groups rendered after cards in DOM */}
         {groups.map(group => {

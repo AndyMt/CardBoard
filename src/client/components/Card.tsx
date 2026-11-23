@@ -114,7 +114,7 @@ export const Card: React.FC<CardProps> = ({
     top: `${y}px`,
     width: `${width}px`,
     minHeight: `${height}px`,
-    zIndex: 2,
+    zIndex: 3,
   };
 
   const handleCardMouseDown = (e: React.MouseEvent) => {

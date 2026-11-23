@@ -32,6 +32,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
           width: dist,
           height: 2,
           backgroundColor: '#3b82f6',
+          zIndex: 2,
           transformOrigin: '0% 50%',
           transform: `rotate(${angle}deg)`,
         }} />
@@ -82,6 +83,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
           width: odist,
           height: 2,
           backgroundColor: '#3b82f6',
+          zIndex: 2,
           transformOrigin: '0% 50%',
           transform: `rotate(${angle}deg)`,
         }}>
