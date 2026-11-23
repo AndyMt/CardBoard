@@ -331,6 +331,12 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     const id = event.active.id as string;
     setActiveDragId(id);
     setDragDelta({ x: 0, y: 0 });
+    // Clear pending selection set by useElementSelection.handleMouseDown so
+    // handleMouseUp doesn't deselect the item after drag end
+    const element = document.querySelector(`[data-card-id="${id}"], [data-group-id="${id}"]`);
+    if (element) {
+      delete (element as any)._pendingSelection;
+    }
     // We are now the active dragger; ignore our own server echoes
     isLocallyDraggingRef.current = true;
     // Emit a live preview so other users see the drag start immediately
