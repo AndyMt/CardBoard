@@ -4,7 +4,7 @@ import UserService from '../services/UserService.js';
 import { downloadBoardExport, type ExportType } from '../services/ExportService.js';
 
 // Define tool types
-export type ToolType = 'select' | 'card' | 'group';
+export type ToolType = 'select' | 'card' | 'group' | 'connection';
 
 interface ToolbarProps {
   onToolSelect: (tool: ToolType) => void;
@@ -45,6 +45,11 @@ const Toolbar: React.FC<ToolbarProps> = ({
       type: 'group',
       label: 'Add Group',
       icon: 'create_new_folder',
+    },
+    {
+      type: 'connection',
+      label: 'Add Connection',
+      icon: 'link',
     },
   ];
 

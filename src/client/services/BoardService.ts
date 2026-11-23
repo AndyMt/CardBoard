@@ -2,7 +2,6 @@ import { WebSocketService } from './WebSocketService';
 import type { Card } from '../../types/Card';
 import type { Group } from '../../types/Group';
 import { quantizeGeometry, quantizeGeometryUpdates } from '../../shared/geometry.js';
-
 // API configuration
 const API_BASE_URL = '/api';
 
@@ -202,7 +201,7 @@ class BoardService {
          method: 'DELETE',
          headers: socketHeaders(),
        });
-      
+       
       if (!response.ok) {
         throw new Error(`Failed to delete group: ${response.statusText}`);
       }
@@ -214,6 +213,30 @@ class BoardService {
       };
     } catch (error) {
       console.error('Failed to delete group:', error);
+      throw error;
+    }
+  }
+
+  async addConnection(cardId: string, targetCardId: string): Promise<{ cards: Card[]; groups: Group[] }> {
+    try {
+      WebSocketService.getInstance().markLocalMutation();
+      const response = await fetch(`${API_BASE_URL}/board/card/${cardId}/connections`, {
+        method: 'PUT',
+        headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetCardId }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to add connection: ${response.statusText}`);
+      }
+
+      const board = await response.json();
+      return {
+        cards: board.cards || [],
+        groups: board.groups || []
+      };
+    } catch (error) {
+      console.error('Failed to add connection:', error);
       throw error;
     }
   }

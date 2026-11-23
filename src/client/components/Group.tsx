@@ -35,6 +35,7 @@ interface GroupProps {
   createdBy?: string;
   createdColor?: string;
   autoFocus?: boolean;
+  tool?: string;
 }
 
 export const Group: React.FC<GroupProps> = ({
@@ -61,12 +62,13 @@ export const Group: React.FC<GroupProps> = ({
   createdBy,
   createdColor,
   autoFocus = false,
+  tool = 'select',
 }) => {
   const [groupLabel, setGroupLabel] = useState(label);
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const autoFocusRef = useRef(false);
-
+  const stableNoopRef = useRef(() => {}).current;
   const { handleMouseDown: handleMouseDownSelection, handleMouseUp } = useElementSelection(
     id,
     onGroupClick,
@@ -83,10 +85,13 @@ export const Group: React.FC<GroupProps> = ({
     onEditingChange?.(id, isEditing);
   }, [id, isEditing, onEditingChange]);
 
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  const draggable = useDraggable({
     id,
     data: { type: 'group', x, y }
   });
+  const { attributes, listeners, setNodeRef, transform } = tool === 'connection'
+    ? { attributes: {}, listeners: {}, setNodeRef: stableNoopRef, transform: null }
+    : draggable;
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : (dragOffset ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` : undefined),
@@ -113,6 +118,8 @@ export const Group: React.FC<GroupProps> = ({
   };
 
   const handleLabelClick = () => {
+    // Start editing on single click (only when not in connection tool)
+    if (tool === 'connection') return;
     setIsEditing(true);
   };
 
@@ -150,8 +157,8 @@ export const Group: React.FC<GroupProps> = ({
       ref={setNodeRef}
       style={style}
       data-group-id={id}
-      onMouseDown={handleMouseDownSelection}
-      onMouseUp={handleMouseUp}
+      onMouseDown={(e) => { if (tool !== 'connection') handleMouseDownSelection(e); }}
+      onMouseUp={(e) => { if (tool !== 'connection') handleMouseUp(e); }}
 onClick={(e) => {
         e.stopPropagation();
         if (ToolService.getInstance().getSelectedTool() !== 'card') return;
@@ -171,7 +178,7 @@ onClick={(e) => {
         <div
           {...listeners}
           {...attributes}
-          className="h-[14px] w-full cursor-move drag-handle-area"
+          className={`h-[14px] w-full drag-handle-area ${tool === 'select' ? 'cursor-move' : ''}`}
           style={{
             background: `linear-gradient(to bottom, ${createdColor || UNKNOWN_USER_COLOR} 8px, transparent 8px)`
           }}
@@ -199,7 +206,7 @@ onClick={(e) => {
           ) : (
             <div
               onClick={handleLabelClick}
-              className="text-sm font-medium cursor-text hover:bg-gray-50 rounded px-1 py-0.5 text-center"
+              className={`text-sm font-medium ${tool === 'select' ? 'cursor-text' : ''} hover:bg-gray-50 rounded px-1 py-0.5 text-center`}
             >
               {groupLabel || 'Group'}
             </div>

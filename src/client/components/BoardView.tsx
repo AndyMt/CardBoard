@@ -3,6 +3,7 @@ import { DndContext, DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-ki
 import Card from './Card.js';
 import Group from './Group.js';
 import { Card as CardType } from '../../types/Card';
+import type { Connection } from '../../types/Card.js';
 import { Group as GroupType } from '../../types/Group';
 import { User } from '../../types/User';
 import BoardService from '../services/BoardService';
@@ -15,8 +16,8 @@ import { quantizeGeometry, quantizeNonNegative, quantizeScalar } from '../../sha
 import { normalizeBoardModel, UNKNOWN_USER_COLOR } from '../../shared/userColorNormalization.js';
 
 interface BoardViewProps {
-  selectedTool: 'select' | 'card' | 'group';
-  onToolChange?: (tool: 'select' | 'card' | 'group') => void;
+  selectedTool: 'select' | 'card' | 'group' | 'connection';
+  onToolChange?: (tool: 'select' | 'card' | 'group' | 'connection') => void;
   currentUser?: User | null;
 }
 
@@ -61,6 +62,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   // Remote user cursors (local user excluded), rendered via direct DOM to avoid board re-renders.
   const boardContainerRef = useRef<HTMLDivElement>(null);
   const cursorElements = new Map<string, HTMLDivElement>();
+  // Connection tool state
+  const [connectionSourceId, setConnectionSourceId] = useState<string | null>(null);
+  const [connectionPointer, setConnectionPointer] = useState<{ x: number; y: number } | null>(null);
 
   // Tracks the last known board version so we can ignore stale broadcasts
   const lastBoardVersionRef = useRef<string | null>(null);
@@ -314,6 +318,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   }
 
   const handleDragStart = (event: DragStartEvent) => {
+    if (selectedTool === 'connection') return;
     const id = event.active.id as string;
     setActiveDragId(id);
     setDragDelta({ x: 0, y: 0 });
@@ -379,6 +384,12 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (selectedTool === 'connection') {
+      setActiveDragId(null);
+      setDragDelta(null);
+      isLocallyDraggingRef.current = false;
+      return;
+    }
     const { active, delta } = event;
     const boardService = BoardService.getInstance();
 
@@ -629,7 +640,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     setSelectedItems([]);
     
     // Handle tool-specific actions
-    if (selectedTool === 'select') {
+    if (selectedTool === 'select' || selectedTool === 'connection') {
       return;
     }
     
@@ -667,6 +678,82 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     }
   };
 
+  const getBoardCoords = (e: React.MouseEvent<HTMLDivElement>): { x: number; y: number } => {
+    const boardRect = e.currentTarget.getBoundingClientRect();
+    return {
+      x: e.clientX - boardRect.left + e.currentTarget.scrollLeft,
+      y: e.clientY - boardRect.top + e.currentTarget.scrollTop,
+    };
+  };
+
+  const handleConnectionMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (selectedTool !== 'connection' || !connectionSourceId) return;
+    setConnectionPointer(getBoardCoords(e));
+  };
+
+  const handleConnectionMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (selectedTool !== 'connection' || !connectionSourceId) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const targetCardEl = el?.closest('[data-card-id]');
+    const targetId = targetCardEl?.dataset.cardId ?? null;
+
+    if (targetId && targetId !== connectionSourceId) {
+      try {
+        const boardService = BoardService.getInstance();
+        const { cards } = await boardService.addConnection(connectionSourceId, targetId);
+        setCards(cards);
+      } catch (err) {
+        console.error('Failed to add connection:', err);
+      }
+    }
+
+    setConnectionSourceId(null);
+    setConnectionPointer(null);
+  };
+
+  // Preview line during active connection drag
+  let previewLine = null;
+  if (connectionSourceId && connectionPointer) {
+    const source = cards.find(c => c.id === connectionSourceId);
+    if (source) {
+      const sx = (source.x || 0) + (source.width || 200) / 2;
+      const sy = (source.y || 0) + (source.height || 60) / 2;
+      const px = connectionPointer.x;
+      const py = connectionPointer.y;
+      const dx = px - sx;
+      const dy = py - sy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+      previewLine = (
+        <div className="absolute pointer-events-none" style={{
+          left: sx,
+          top: sy,
+          width: dist,
+          height: 2,
+          backgroundColor: '#3b82f6',
+          borderStyle: 'dashed',
+          transformOrigin: '0% 50%',
+          transform: `rotate(${angle}deg)`,
+        }}>
+          <div style={{
+            position: 'absolute',
+            right: -4,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: 0,
+            height: 0,
+            borderStyle: 'solid',
+            borderWidth: '4 0 4 6',
+            borderColor: 'transparent transparent transparent #3b82f6',
+          }} />
+        </div>
+      );
+    }
+  }
+
   return (
     <DndContext onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {
      const data = active?.data?.current as { x?: number; y?: number } | undefined;
@@ -689,10 +776,14 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         onMouseMove={(e) => {
           handlePanMove(e);
           emitCursorPosition(e);
+          handleConnectionMouseMove(e);
         }}
         onMouseLeave={handlePanEnd}
-        onMouseUp={handlePanEnd}
-        style={{ cursor: isPanning ? 'grabbing' : 'default' }}
+        onMouseUp={(e) => {
+          handlePanEnd(e);
+          handleConnectionMouseUp(e);
+        }}
+        style={{ cursor: isPanning ? 'grabbing' : 'default', userSelect: connectionSourceId ? 'none' : 'auto' }}
         tabIndex={0}
       >
        {/* All cards rendered first in DOM (below groups visually via z-index) */}
@@ -708,9 +799,16 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
               width={card.width || 200}
               height={card.height || 60}
               isSelected={isCardSelected}
+              tool={selectedTool}
               dragOffset={(isCardSelected || (activeDragId !== null && (cards.find(c => c.id === card.id)?.groupId === activeDragId || selectedItems.includes(cards.find(c => c.id === card.id)?.groupId ?? '')))) && card.id !== activeDragId && dragDelta ? dragDelta : null}
               onCardClick={handleCardClick}
               onSelect={handleSelect}
+              onCardMouseDown={(id) => {
+                if (selectedTool === 'connection') {
+                  setConnectionSourceId(id);
+                  setConnectionPointer(null);
+                }
+              }}
               onTextChange={handleCardTextChange}
               onTextCommit={handleCardTextCommit}
               onEditingChange={handleCardEditingChange}
@@ -736,6 +834,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
               width={group.width || 440}
               height={group.height || 300}
               isSelected={isGroupSelected}
+              tool={selectedTool}
               dragOffset={isGroupSelected && group.id !== activeDragId && dragDelta ? dragDelta : null}
               cards={[]}
               selectedIds={selectedItems}
@@ -755,6 +854,75 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
             />
           );
         })}
+
+        {/* Connector lines (same rendering framework as cards/groups: absolutely-positioned divs) */}
+        {cards.map(sourceCard => {
+          const connections = sourceCard.connections || [];
+          // Count connections per target to space out multiple connectors
+          const targetConnCount = new Map<string, number>();
+          connections.forEach((conn: Connection) => {
+            targetConnCount.set(conn.targetCardId, (targetConnCount.get(conn.targetCardId) || 0) + 1);
+          });
+          const targetConnIndex = new Map<string, number>();
+          return connections.map((conn: Connection, i: number) => {
+            const target = cards.find(c => c.id === conn.targetCardId);
+            if (!target) return null;
+            const sx = (sourceCard.x || 0) + (sourceCard.width || 200) / 2;
+            const sy = (sourceCard.y || 0) + (sourceCard.height || 60) / 2;
+            const tx = (target.x || 0) + (target.width || 200) / 2;
+            const ty = (target.y || 0) + (target.height || 60) / 2;
+            const dx = tx - sx;
+            const dy = ty - sy;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            // Space out multiple connections between same cards by offsetting
+            // start/end points perpendicular to the connection direction (15px each)
+            const total = targetConnCount.get(conn.targetCardId) || 1;
+            let index = targetConnIndex.get(conn.targetCardId) || 0;
+            targetConnIndex.set(conn.targetCardId, index + 1);
+            let osx = sx, osy = sy, otx = tx, oty = ty;
+            if (total > 1 && dist > 0) {
+              const spacing = 15;
+              const offset = (index - (total - 1) / 2) * spacing;
+              // Perpendicular unit vector (-dy/dist, dx/dist)
+              const px = -dy / dist;
+              const py = dx / dist;
+              osx = sx + px * offset;
+              osy = sy + py * offset;
+              otx = tx + px * offset;
+              oty = ty + py * offset;
+            }
+            const odx = otx - osx;
+            const ody = oty - osy;
+            const odist = Math.sqrt(odx * odx + ody * ody);
+            const angle = Math.atan2(ody, odx) * 180 / Math.PI;
+            return (
+              <div key={`${sourceCard.id}-${i}`} className="absolute pointer-events-none" style={{
+                left: osx,
+                top: osy,
+                width: odist,
+                height: 2,
+                backgroundColor: '#3b82f6',
+                transformOrigin: '0% 50%',
+                transform: `rotate(${angle}deg)`,
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  right: -4,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: 0,
+                  height: 0,
+                  borderStyle: 'solid',
+                  borderWidth: '4 0 4 6',
+                  borderColor: 'transparent transparent transparent #3b82f6',
+                }} />
+              </div>
+            );
+          });
+        })}
+
+        {/* Preview line during active connection drag */}
+        {previewLine}
       </div>
     </DndContext>
   );

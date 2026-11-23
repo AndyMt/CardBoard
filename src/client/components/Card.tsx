@@ -22,6 +22,8 @@ interface CardProps {
   onEditEnd?: (id: string, height: number) => void;
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
+  onCardMouseDown?: (id: string) => void;
+  tool?: string;
   createdBy?: string;
   createdColor?: string;
   autoFocus?: boolean;
@@ -43,6 +45,8 @@ export const Card: React.FC<CardProps> = ({
   onEditEnd,
   onSelect,
   onCardClick,
+  onCardMouseDown,
+  tool = 'select',
   createdBy,
   createdColor,
   autoFocus = false,
@@ -53,6 +57,7 @@ export const Card: React.FC<CardProps> = ({
   const textRef = useRef<HTMLDivElement>(null);
   const autoFocusRef = useRef(false);
   const [contentHeight, setContentHeight] = useState(20);
+  const stableNoopRef = useRef(() => {}).current;
   const { handleMouseDown, handleMouseUp } = useElementSelection(
     id,
     onCardClick,
@@ -96,10 +101,13 @@ export const Card: React.FC<CardProps> = ({
     return contentHeight;
   };
 
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  const draggable = useDraggable({
     id,
     data: { type: 'card', x, y }
   });
+  const { attributes, listeners, setNodeRef, transform } = tool === 'connection'
+    ? { attributes: {}, listeners: {}, setNodeRef: stableNoopRef, transform: null }
+    : draggable;
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : (dragOffset ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` : undefined),
     left: `${x}px`,
@@ -107,6 +115,11 @@ export const Card: React.FC<CardProps> = ({
     width: `${width}px`,
     minHeight: `${height}px`,
     zIndex: 2,
+  };
+
+  const handleCardMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onCardMouseDown?.(id);
   };
 
   const handleTextChange = (newText: string) => {
@@ -125,7 +138,8 @@ export const Card: React.FC<CardProps> = ({
 
 
   const handleContentClick = () => {
-    // Start editing on single click
+    // Start editing on single click (only when not in connection tool)
+    if (tool === 'connection') return;
     setIsEditing(true);
   };
 
@@ -150,8 +164,8 @@ export const Card: React.FC<CardProps> = ({
       ref={setNodeRef}
       style={style}
       data-card-id={id}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
+      onMouseDown={(e) => { if (tool !== 'connection') handleMouseDown(e); handleCardMouseDown(e); }}
+      onMouseUp={(e) => { if (tool !== 'connection') handleMouseUp(e); }}
       onClick={(e) => e.stopPropagation()}
       className={`absolute border-2 border-solid border-gray-800 rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}
     >
@@ -159,7 +173,7 @@ export const Card: React.FC<CardProps> = ({
       <div
         {...listeners}
         {...attributes}
-        className="h-[14px] w-full cursor-move drag-handle-area"
+        className={`h-[14px] w-full drag-handle-area ${tool === 'select' ? 'cursor-move' : ''}`}
         style={{
           background: `linear-gradient(to bottom, ${createdColor || UNKNOWN_USER_COLOR} 8px, transparent 8px)`
         }}
@@ -211,7 +225,7 @@ export const Card: React.FC<CardProps> = ({
           <div
             ref={textRef}
             onClick={handleContentClick}
-            className="w-full cursor-text hover:bg-gray-50 rounded"
+            className={`w-full ${tool === 'select' ? 'cursor-text' : ''} hover:bg-gray-50 rounded`}
             style={
               {
                 whiteSpace: 'pre-wrap',

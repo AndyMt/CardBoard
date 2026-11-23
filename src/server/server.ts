@@ -171,6 +171,30 @@ app.put('/api/board/card/:id', async (req, res) => {
   }
 });
 
+app.put('/api/board/card/:id/connections', async (req, res) => {
+  try {
+    const cardId = req.params.id;
+    const { targetCardId }: { targetCardId?: string } = req.body || {};
+    if (!targetCardId) {
+      return res.status(400).json({ error: 'targetCardId is required' });
+    }
+    if (cardId === targetCardId) {
+      return res.status(400).json({ error: 'Cannot connect a card to itself' });
+    }
+    const board = await localMutation((b) => {
+      const sourceCard = b.cards.find(card => card.id === cardId);
+      const targetCard = b.cards.find(card => card.id === targetCardId);
+      if (!sourceCard || !targetCard) return;
+      if (!sourceCard.connections) sourceCard.connections = [];
+      sourceCard.connections.push({ targetCardId });
+    }, senderSocketId(req));
+    res.json(board);
+  } catch (error) {
+    console.error('Failed to add connection:', error);
+    res.status(500).json({ error: 'Failed to add connection' });
+  }
+});
+
 app.put('/api/board/group/:id', async (req, res) => {
   try {
     const groupId = req.params.id;
