@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { DndContext, DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-kit/core';
 import Card from './Card.js';
 import Group from './Group.js';
+import { ConnectionRenderer } from './ConnectionRenderer.js';
 import { Card as CardType } from '../../types/Card';
-import type { Connection } from '../../types/Card.js';
 import { Group as GroupType } from '../../types/Group';
 import { User } from '../../types/User';
 import BoardService from '../services/BoardService';
@@ -686,34 +686,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     };
   };
 
-  const handleConnectionMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (selectedTool !== 'connection' || !connectionSourceId) return;
-    setConnectionPointer(getBoardCoords(e));
-  };
-
-  const handleConnectionMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (selectedTool !== 'connection' || !connectionSourceId) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const targetCardEl = el?.closest('[data-card-id]');
-    const targetId = targetCardEl?.dataset.cardId ?? null;
-
-    if (targetId && targetId !== connectionSourceId) {
-      try {
-        const boardService = BoardService.getInstance();
-        const { cards } = await boardService.addConnection(connectionSourceId, targetId);
-        setCards(cards);
-      } catch (err) {
-        console.error('Failed to add connection:', err);
-      }
-    }
-
-    setConnectionSourceId(null);
-    setConnectionPointer(null);
-  };
-
   // Preview line during active connection drag
   let previewLine = null;
   if (connectionSourceId && connectionPointer) {
@@ -776,17 +748,34 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         onMouseMove={(e) => {
           handlePanMove(e);
           emitCursorPosition(e);
-          handleConnectionMouseMove(e);
         }}
         onMouseLeave={handlePanEnd}
         onMouseUp={(e) => {
           handlePanEnd(e);
-          handleConnectionMouseUp(e);
         }}
         style={{ cursor: isPanning ? 'grabbing' : 'default', userSelect: connectionSourceId ? 'none' : 'auto' }}
         tabIndex={0}
       >
-       {/* All cards rendered first in DOM (below groups visually via z-index) */}
+       {/* Connection renderer (preview line + connector lines + connection overlay) */}
+       <ConnectionRenderer
+         cards={cards}
+         selectedTool={selectedTool}
+         connectionSourceId={connectionSourceId}
+         setConnectionSourceId={setConnectionSourceId}
+         connectionPointer={connectionPointer}
+         setConnectionPointer={setConnectionPointer}
+         getBoardCoords={getBoardCoords}
+         onConnectionComplete={async (sourceId, targetId) => {
+           try {
+             const boardService = BoardService.getInstance();
+             const { cards: updatedCards } = await boardService.addConnection(sourceId, targetId);
+             setCards(updatedCards);
+           } catch (err) {
+             console.error('Failed to add connection:', err);
+           }
+         }}
+       />
+        {/* All cards rendered first in DOM (below groups visually via z-index) */}
         {cards.map(card => {
           const isCardSelected = selectedItems.includes(card.id);
           return (
@@ -854,75 +843,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
             />
           );
         })}
-
-        {/* Connector lines (same rendering framework as cards/groups: absolutely-positioned divs) */}
-        {cards.map(sourceCard => {
-          const connections = sourceCard.connections || [];
-          // Count connections per target to space out multiple connectors
-          const targetConnCount = new Map<string, number>();
-          connections.forEach((conn: Connection) => {
-            targetConnCount.set(conn.targetCardId, (targetConnCount.get(conn.targetCardId) || 0) + 1);
-          });
-          const targetConnIndex = new Map<string, number>();
-          return connections.map((conn: Connection, i: number) => {
-            const target = cards.find(c => c.id === conn.targetCardId);
-            if (!target) return null;
-            const sx = (sourceCard.x || 0) + (sourceCard.width || 200) / 2;
-            const sy = (sourceCard.y || 0) + (sourceCard.height || 60) / 2;
-            const tx = (target.x || 0) + (target.width || 200) / 2;
-            const ty = (target.y || 0) + (target.height || 60) / 2;
-            const dx = tx - sx;
-            const dy = ty - sy;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            // Space out multiple connections between same cards by offsetting
-            // start/end points perpendicular to the connection direction (15px each)
-            const total = targetConnCount.get(conn.targetCardId) || 1;
-            let index = targetConnIndex.get(conn.targetCardId) || 0;
-            targetConnIndex.set(conn.targetCardId, index + 1);
-            let osx = sx, osy = sy, otx = tx, oty = ty;
-            if (total > 1 && dist > 0) {
-              const spacing = 15;
-              const offset = (index - (total - 1) / 2) * spacing;
-              // Perpendicular unit vector (-dy/dist, dx/dist)
-              const px = -dy / dist;
-              const py = dx / dist;
-              osx = sx + px * offset;
-              osy = sy + py * offset;
-              otx = tx + px * offset;
-              oty = ty + py * offset;
-            }
-            const odx = otx - osx;
-            const ody = oty - osy;
-            const odist = Math.sqrt(odx * odx + ody * ody);
-            const angle = Math.atan2(ody, odx) * 180 / Math.PI;
-            return (
-              <div key={`${sourceCard.id}-${i}`} className="absolute pointer-events-none" style={{
-                left: osx,
-                top: osy,
-                width: odist,
-                height: 2,
-                backgroundColor: '#3b82f6',
-                transformOrigin: '0% 50%',
-                transform: `rotate(${angle}deg)`,
-              }}>
-                <div style={{
-                  position: 'absolute',
-                  right: -4,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: 0,
-                  height: 0,
-                  borderStyle: 'solid',
-                  borderWidth: '4 0 4 6',
-                  borderColor: 'transparent transparent transparent #3b82f6',
-                }} />
-              </div>
-            );
-          });
-        })}
-
-        {/* Preview line during active connection drag */}
-        {previewLine}
       </div>
     </DndContext>
   );
