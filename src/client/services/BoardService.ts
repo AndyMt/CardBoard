@@ -217,7 +217,7 @@ class BoardService {
     }
   }
 
-  async addConnection(cardId: string, targetCardId: string): Promise<{ cards: Card[]; groups: Group[] }> {
+  async addConnection(cardId: string, targetCardId: string): Promise<{ cards: Card[]; groups: Group[]; connectionId?: string }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/card/${cardId}/connections`, {
@@ -231,12 +231,37 @@ class BoardService {
       }
 
       const board = await response.json();
+      const connectionId = board.connectionId;
+      return {
+        cards: board.cards || [],
+        groups: board.groups || [],
+        connectionId,
+      };
+    } catch (error) {
+      console.error('Failed to add connection:', error);
+      throw error;
+    }
+  }
+
+  async removeConnection(cardId: string, connectionId: string): Promise<{ cards: Card[]; groups: Group[] }> {
+    try {
+      WebSocketService.getInstance().markLocalMutation();
+      const response = await fetch(`${API_BASE_URL}/board/card/${cardId}/connections/${connectionId}`, {
+        method: 'DELETE',
+        headers: socketHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to remove connection: ${response.statusText}`);
+      }
+
+      const board = await response.json();
       return {
         cards: board.cards || [],
         groups: board.groups || []
       };
     } catch (error) {
-      console.error('Failed to add connection:', error);
+      console.error('Failed to remove connection:', error);
       throw error;
     }
   }

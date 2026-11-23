@@ -1,9 +1,5 @@
 import { Element } from './Element.js';
-
-export interface Connection {
-  targetCardId: string;
-  name?: string;
-}
+import { Connection } from './Connection.js';
 
 export interface Card extends Element {
   text: string;

@@ -1,16 +1,22 @@
 import { Card as CardType } from '../../types/Card';
-import type { Connection } from '../../types/Card.js';
+import type { Connection } from '../../types/Connection.js';
 
 interface ConnectionRendererProps {
   cards: CardType[];
   connectionSourceId: string | null;
   connectionPointer: { x: number; y: number } | null;
+  selectedTool: string;
+  selectedConnectorIds: string[];
+  onConnectorSelect: (id: string, ctrlKey: boolean) => void;
 }
 
 export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
   cards,
   connectionSourceId,
   connectionPointer,
+  selectedTool,
+  selectedConnectorIds,
+  onConnectorSelect,
 }) => {
   // Preview line during active connection drag
   let previewLine = null;
@@ -76,8 +82,14 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
       const ody = oty - osy;
       const odist = Math.sqrt(odx * odx + ody * ody);
       const angle = Math.atan2(ody, odx) * 180 / Math.PI;
+      const isSelected = selectedConnectorIds.includes(conn.id);
+      const handleConnectorClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (selectedTool === 'connection') return;
+        onConnectorSelect(conn.id, e.ctrlKey);
+      };
       return (
-        <div key={`${sourceCard.id}-${i}`} className="absolute pointer-events-none" style={{
+        <div key={conn.id} className="absolute" style={{
           left: osx,
           top: osy,
           width: odist,
@@ -86,7 +98,10 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
           zIndex: 2,
           transformOrigin: '0% 50%',
           transform: `rotate(${angle}deg)`,
-        }}>
+          boxShadow: isSelected ? `0 0 3px #3b82f6` : 'none',
+        }}
+        onClick={handleConnectorClick}
+        >
           <div style={{
             position: 'absolute',
             right: -4,

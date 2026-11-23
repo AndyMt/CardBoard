@@ -3,6 +3,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import path from 'path';
+import { randomUUID } from 'crypto';
 import type { Card } from '../types/Card.js';
 import type { Group } from '../types/Group.js';
 import type { User } from '../types/User.js';
@@ -181,17 +182,34 @@ app.put('/api/board/card/:id/connections', async (req, res) => {
     if (cardId === targetCardId) {
       return res.status(400).json({ error: 'Cannot connect a card to itself' });
     }
+    const connectionId = randomUUID();
     const board = await localMutation((b) => {
       const sourceCard = b.cards.find(card => card.id === cardId);
       const targetCard = b.cards.find(card => card.id === targetCardId);
       if (!sourceCard || !targetCard) return;
       if (!sourceCard.connections) sourceCard.connections = [];
-      sourceCard.connections.push({ targetCardId });
+      sourceCard.connections.push({ id: connectionId, targetCardId });
     }, senderSocketId(req));
-    res.json(board);
+    res.json({ ...board, connectionId });
   } catch (error) {
     console.error('Failed to add connection:', error);
     res.status(500).json({ error: 'Failed to add connection' });
+  }
+});
+
+app.delete('/api/board/card/:id/connections/:connectionId', async (req, res) => {
+  try {
+    const cardId = req.params.id;
+    const connectionId = req.params.connectionId;
+    const board = await localMutation((b) => {
+      const sourceCard = b.cards.find(card => card.id === cardId);
+      if (!sourceCard || !sourceCard.connections) return;
+      sourceCard.connections = sourceCard.connections.filter(c => c.id !== connectionId);
+    }, senderSocketId(req));
+    res.json(board);
+  } catch (error) {
+    console.error('Failed to remove connection:', error);
+    res.status(500).json({ error: 'Failed to remove connection' });
   }
 });
 

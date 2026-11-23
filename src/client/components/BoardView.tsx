@@ -54,6 +54,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [selectedConnectorIds, setSelectedConnectorIds] = useState<string[]>([]);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
 
@@ -154,14 +155,21 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         console.log('[KEYBOARD] Delete ignored (input focused)', { key: e.key, tagName: target.tagName });
         return;
       }
-      if (e.key !== 'Delete' || selectedItems.length === 0) return;
-      console.log('[KEYBOARD] Delete pressed', { key: e.key, selectedItems });
+      if (e.key !== 'Delete' || (selectedItems.length === 0 && selectedConnectorIds.length === 0)) return;
+      console.log('[KEYBOARD] Delete pressed', { key: e.key, selectedItems, selectedConnectorIds });
       e.preventDefault();
       try {
         const boardService = BoardService.getInstance();
         for (const id of selectedItems) {
           if (cards.some(card => card.id === id)) await boardService.deleteCard(id);
           else if (groups.some(group => group.id === id)) await boardService.deleteGroup(id);
+        }
+        for (const connId of selectedConnectorIds) {
+          const sourceCard = cards.find(c => (c.connections || []).some((conn: { id: string }) => conn.id === connId));
+          if (sourceCard) {
+            const { cards: updatedCards } = await boardService.removeConnection(sourceCard.id, connId);
+            setCards(updatedCards);
+          }
         }
         const deletedGroupIds = selectedItems.filter(id => groups.some(g => g.id === id));
         for (const gid of deletedGroupIds) {
@@ -172,13 +180,14 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         setCards(prev => prev.filter(card => !selectedItems.includes(card.id)).map(card => card.groupId && deletedGroupIds.includes(card.groupId) ? { ...card, groupId: undefined } : card));
         setGroups(prev => prev.filter(group => !selectedItems.includes(group.id)));
         setSelectedItems([]);
+        setSelectedConnectorIds([]);
       } catch (err) {
         console.error('Failed to delete selected items:', err);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedItems, cards, groups]);
+  }, [selectedItems, selectedConnectorIds, cards, groups]);
 
   // Subscribe to real-time board updates from other users.
   // The WebSocket is connected by App.tsx; here we only subscribe to events.
@@ -565,6 +574,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     setSelectedItems(prev => new ElementSelectionController().select(prev, id, ctrlKey));
   };
 
+  const handleConnectorSelect = (id: string, ctrlKey: boolean = false) => {
+    if (selectedTool === 'connection') return;
+    setSelectedConnectorIds(prev => new ElementSelectionController().select(prev, id, ctrlKey));
+  };
+
   const handleCardClick = (id: string, ctrlKey: boolean) => {
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
@@ -786,6 +800,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
           cards={cards}
           connectionSourceId={connectionSourceId}
           connectionPointer={connectionPointer}
+          selectedTool={selectedTool}
+          selectedConnectorIds={selectedConnectorIds}
+          onConnectorSelect={handleConnectorSelect}
         />
 
         {/* Groups rendered after cards in DOM */}
