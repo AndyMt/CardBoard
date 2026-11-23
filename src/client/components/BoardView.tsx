@@ -686,45 +686,33 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     };
   };
 
-  // Preview line during active connection drag
-  let previewLine = null;
-  if (connectionSourceId && connectionPointer) {
-    const source = cards.find(c => c.id === connectionSourceId);
-    if (source) {
-      const sx = (source.x || 0) + (source.width || 200) / 2;
-      const sy = (source.y || 0) + (source.height || 60) / 2;
-      const px = connectionPointer.x;
-      const py = connectionPointer.y;
-      const dx = px - sx;
-      const dy = py - sy;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-      previewLine = (
-        <div className="absolute pointer-events-none" style={{
-          left: sx,
-          top: sy,
-          width: dist,
-          height: 2,
-          backgroundColor: '#3b82f6',
-          borderStyle: 'dashed',
-          transformOrigin: '0% 50%',
-          transform: `rotate(${angle}deg)`,
-        }}>
-          <div style={{
-            position: 'absolute',
-            right: -4,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: 0,
-            height: 0,
-            borderStyle: 'solid',
-            borderWidth: '4 0 4 6',
-            borderColor: 'transparent transparent transparent #3b82f6',
-          }} />
-        </div>
-      );
+  const handleConnectionMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (selectedTool !== 'connection' || !connectionSourceId) return;
+    setConnectionPointer(getBoardCoords(e));
+  };
+
+  const handleConnectionMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (selectedTool !== 'connection' || !connectionSourceId) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const targetCardEl = el?.closest('[data-card-id]');
+    const targetId = targetCardEl?.dataset.cardId ?? null;
+
+    if (targetId && targetId !== connectionSourceId) {
+      try {
+        const boardService = BoardService.getInstance();
+        const { cards } = await boardService.addConnection(connectionSourceId, targetId);
+        setCards(cards);
+      } catch (err) {
+        console.error('Failed to add connection:', err);
+      }
     }
-  }
+
+    setConnectionSourceId(null);
+    setConnectionPointer(null);
+  };
 
   return (
     <DndContext onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {
@@ -748,32 +736,21 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         onMouseMove={(e) => {
           handlePanMove(e);
           emitCursorPosition(e);
+          handleConnectionMouseMove(e);
         }}
         onMouseLeave={handlePanEnd}
         onMouseUp={(e) => {
           handlePanEnd(e);
+          handleConnectionMouseUp(e);
         }}
         style={{ cursor: isPanning ? 'grabbing' : 'default', userSelect: connectionSourceId ? 'none' : 'auto' }}
         tabIndex={0}
       >
-       {/* Connection renderer (preview line + connector lines + connection overlay) */}
+       {/* Connection renderer (preview line + connector lines) */}
        <ConnectionRenderer
          cards={cards}
-         selectedTool={selectedTool}
          connectionSourceId={connectionSourceId}
-         setConnectionSourceId={setConnectionSourceId}
          connectionPointer={connectionPointer}
-         setConnectionPointer={setConnectionPointer}
-         getBoardCoords={getBoardCoords}
-         onConnectionComplete={async (sourceId, targetId) => {
-           try {
-             const boardService = BoardService.getInstance();
-             const { cards: updatedCards } = await boardService.addConnection(sourceId, targetId);
-             setCards(updatedCards);
-           } catch (err) {
-             console.error('Failed to add connection:', err);
-           }
-         }}
        />
         {/* All cards rendered first in DOM (below groups visually via z-index) */}
         {cards.map(card => {

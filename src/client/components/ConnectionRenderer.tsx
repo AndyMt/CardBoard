@@ -1,50 +1,17 @@
-import { useState } from 'react';
 import { Card as CardType } from '../../types/Card';
 import type { Connection } from '../../types/Card.js';
 
 interface ConnectionRendererProps {
   cards: CardType[];
-  selectedTool: 'select' | 'card' | 'group' | 'connection';
   connectionSourceId: string | null;
-  setConnectionSourceId: (id: string | null) => void;
   connectionPointer: { x: number; y: number } | null;
-  setConnectionPointer: (p: { x: number; y: number } | null) => void;
-  getBoardCoords: (e: React.MouseEvent<HTMLDivElement>) => { x: number; y: number };
-  onConnectionComplete: (sourceId: string, targetId: string) => void;
 }
 
 export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
   cards,
-  selectedTool,
   connectionSourceId,
-  setConnectionSourceId,
   connectionPointer,
-  setConnectionPointer,
-  getBoardCoords,
-  onConnectionComplete,
 }) => {
-  const handleConnectionMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (selectedTool !== 'connection' || !connectionSourceId) return;
-    setConnectionPointer(getBoardCoords(e));
-  };
-
-  const handleConnectionMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (selectedTool !== 'connection' || !connectionSourceId) return;
-    e.preventDefault();
-    e.stopPropagation();
-
-    const el = document.elementFromPoint(e.clientX, e.clientY);
-    const targetCardEl = el?.closest('[data-card-id]');
-    const targetId = targetCardEl?.dataset.cardId ?? null;
-
-    if (targetId && targetId !== connectionSourceId) {
-      onConnectionComplete(connectionSourceId, targetId);
-    }
-
-    setConnectionSourceId(null);
-    setConnectionPointer(null);
-  };
-
   // Preview line during active connection drag
   let previewLine = null;
   if (connectionSourceId && connectionPointer) {
@@ -134,19 +101,10 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
     });
   });
 
-  const isConnectionActive = selectedTool === 'connection' && connectionSourceId !== null;
-
   return (
-    <div
-      className="absolute inset-0"
-      style={{
-        pointerEvents: isConnectionActive ? 'auto' : 'none',
-      }}
-      onMouseMove={handleConnectionMouseMove}
-      onMouseUp={handleConnectionMouseUp}
-    >
+    <>
       {previewLine}
       {connectorLines.flat()}
-    </div>
+    </>
   );
 };
