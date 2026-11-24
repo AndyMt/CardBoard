@@ -341,6 +341,7 @@ export class ConnectorLayoutCoordinator {
   ): Map<string, ConnectorLabelAnchor> {
     const labels = new Map<string, ConnectorLabelAnchor>();
     const placed: Rect[] = [];
+    const groupIndex = new Map<number, number>();
     for (const entry of routed) {
       const { a, b } = entry.labelSegment;
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
@@ -350,6 +351,17 @@ export class ConnectorLayoutCoordinator {
       let cur: ConnectorLabelAnchor = vertical
         ? { x: mid.x + labelOffset, y: mid.y, vertical }
         : { x: mid.x, y: mid.y + labelOffset, vertical };
+
+      // Interleave labels in the same zone: center, then up, down, up, down...
+      const groupKey = vertical ? Math.round(mid.y / 4) : Math.round(mid.x / 4);
+      const gIdx = groupIndex.get(groupKey) ?? 0;
+      groupIndex.set(groupKey, gIdx + 1);
+      if (gIdx > 0) {
+        const sign = gIdx % 2 === 1 ? -1 : 1;
+        const step = Math.ceil(gIdx / 2) * 8;
+        if (vertical) cur = { ...cur, y: cur.y + sign * step };
+        else cur = { ...cur, x: cur.x + sign * step };
+      }
       const boxOf = (p: ConnectorLabelAnchor): Rect =>
         vertical
           ? { x: p.x, y: p.y - height / 2, width: w, height }
