@@ -745,6 +745,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
     }
+    setSelectedConnectorIds([]);
     setSelectedItems((prev) => new ElementSelectionController().select(prev, id, ctrlKey));
   };
 
@@ -752,6 +753,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
     }
+    setSelectedConnectorIds([]);
     setSelectedItems((prev) => new ElementSelectionController().select(prev, id, ctrlKey));
   };
 
