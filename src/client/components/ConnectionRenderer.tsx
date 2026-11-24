@@ -1,5 +1,6 @@
 import { Card as CardType } from '../../types/Card';
 import type { Connection } from '../../types/Connection.js';
+import { lineRectEntryPoint } from '../../shared/geometry.js';
 
 interface ConnectionRendererProps {
   cards: CardType[];
@@ -78,8 +79,14 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
         otx = tx + px * offset;
         oty = ty + py * offset;
       }
-      const odx = otx - osx;
-      const ody = oty - osy;
+      const tip = lineRectEntryPoint(osx, osy, otx, oty, {
+        x: target.x || 0,
+        y: target.y || 0,
+        width: target.width || 200,
+        height: target.height || 60,
+      });
+      const odx = tip.x - osx;
+      const ody = tip.y - osy;
       const odist = Math.sqrt(odx * odx + ody * ody);
       const angle = Math.atan2(ody, odx) * 180 / Math.PI;
       const isSelected = selectedConnectorIds.includes(conn.id);
@@ -104,13 +111,13 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
         >
           <div style={{
             position: 'absolute',
-            right: -4,
+            right: 0,
             top: '50%',
             transform: 'translateY(-50%)',
             width: 0,
             height: 0,
             borderStyle: 'solid',
-            borderWidth: '4 0 4 6',
+            borderWidth: '6px 0 6px 8px',
             borderColor: 'transparent transparent transparent #3b82f6',
           }} />
         </div>

@@ -41,3 +41,37 @@ export function quantizeGeometryUpdates<T extends { x?: number; y?: number; widt
   if (typeof value.height === 'number') result.height = quantizeScalar(value.height);
   return result;
 }
+
+export function lineRectEntryPoint(
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+  rect: { x: number; y: number; width: number; height: number },
+): { x: number; y: number } {
+  const dx = tx - sx;
+  const dy = ty - sy;
+  let tEnter = 0;
+  let tExit = 1;
+  const boundaries: [number, number][] = [
+    [-dx, sx - rect.x],
+    [dx, rect.x + rect.width - sx],
+    [-dy, sy - rect.y],
+    [dy, rect.y + rect.height - sy],
+  ];
+  for (const [p, q] of boundaries) {
+    if (p === 0) {
+      if (q < 0) return { x: tx, y: ty };
+      continue;
+    }
+    const r = q / p;
+    if (p < 0) {
+      tEnter = Math.max(tEnter, r);
+    } else {
+      tExit = Math.min(tExit, r);
+    }
+  }
+  if (tEnter > tExit) return { x: tx, y: ty };
+  const t = Math.min(Math.max(tEnter, 0), 1);
+  return { x: sx + dx * t, y: sy + dy * t };
+}
