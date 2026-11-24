@@ -1,9 +1,9 @@
-import { JSONPersistence } from '../persistence/JSONPersistence';
-import { BoardModelManager, BoardModel, createDefaultBoard } from '../model/BoardModel';
+import { JSONPersistence } from '../persistence/JSONPersistence.js';
+import { BoardModelManager, BoardModel, createDefaultBoard } from '../model/BoardModel.js';
 import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
 import { quantizeScalar } from '../../shared/geometry.js';
-import { UserPersistence } from '../persistence/UserPersistence';
+import { UserPersistence } from '../persistence/UserPersistence.js';
 import { normalizeBoardModel } from '../../shared/userColorNormalization.js';
 
 export class BoardController {

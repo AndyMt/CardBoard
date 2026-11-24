@@ -1,4 +1,4 @@
-import { ToolController, ToolType } from '../../server/controller/ToolController';
+import { ToolController, ToolType } from '../../server/controller/ToolController.js';
 
 class ToolService {
   private static instance: ToolService;

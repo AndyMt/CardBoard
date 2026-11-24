@@ -2,10 +2,10 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import Card from './Card.js';
 import Group from './Group.js';
 import { ConnectionRenderer } from './ConnectionRenderer.js';
-import { Card as CardType } from '../../types/Card';
-import { Group as GroupType } from '../../types/Group';
-import { User } from '../../types/User';
-import BoardService from '../services/BoardService';
+import { Card as CardType } from '../../types/Card.js';
+import { Group as GroupType } from '../../types/Group.js';
+import { User } from '../../types/User.js';
+import BoardService from '../services/BoardService.js';
 import WebSocketService from '../services/WebSocketService.js';
 import UserService from '../services/UserService.js';
 import { ElementSelectionController } from '../controller/ElementSelectionController.js';
@@ -765,7 +765,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   const handleBoardFocus = () => {
     const boardElement = document.querySelector('.board-container');
     if (boardElement) {
-      boardElement.focus();
+      (boardElement as HTMLElement).focus();
     }
   };
 
@@ -865,7 +865,7 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     e.stopPropagation();
 
     const el = document.elementFromPoint(e.clientX, e.clientY);
-    const targetCardEl = el?.closest('[data-card-id]');
+    const targetCardEl = el?.closest('[data-card-id]') as HTMLElement | null;
     const targetId = targetCardEl?.dataset.cardId ?? null;
 
     if (targetId && targetId !== connectionSourceId) {

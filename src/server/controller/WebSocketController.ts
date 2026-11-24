@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { BoardModel } from '../model/BoardModel';
+import { BoardModel } from '../model/BoardModel.js';
 import type { User } from '../../types/User.js';
 import { quantizeScalar } from '../../shared/geometry.js';
 

@@ -51,7 +51,7 @@ export class UserPersistence {
               users: Array.isArray(data.users) ? data.users : [],
             });
           } catch (readErr) {
-            console.error(`Failed to load users: ${readErr.message}`);
+            console.error(`Failed to load users: ${(readErr as Error).message}`);
             const defaultUsers = createDefaultUsers();
             await fs.writeJson(this.filePath, defaultUsers, { spaces: 2 });
             resolve(defaultUsers);
@@ -60,7 +60,7 @@ export class UserPersistence {
           try {
             lockfile.unlockSync(this.lockPath);
           } catch (unlockErr) {
-            console.error(`Failed to release lock: ${unlockErr.message}`);
+            console.error(`Failed to release lock: ${(unlockErr as Error).message}`);
           }
         }
       });
@@ -80,13 +80,13 @@ export class UserPersistence {
           await fs.writeJson(this.filePath, data, { spaces: 2 });
           resolve();
         } catch (writeErr) {
-          console.error(`Failed to save users: ${writeErr.message}`);
-          reject(new Error(`Failed to save users: ${writeErr.message}`));
+          console.error(`Failed to save users: ${(writeErr as Error).message}`);
+          reject(new Error(`Failed to save users: ${(writeErr as Error).message}`));
         } finally {
           try {
             lockfile.unlockSync(this.lockPath);
           } catch (unlockErr) {
-            console.error(`Failed to release lock: ${unlockErr.message}`);
+            console.error(`Failed to release lock: ${(unlockErr as Error).message}`);
           }
         }
       });

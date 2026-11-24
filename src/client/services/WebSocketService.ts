@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
-import type { Card } from '../../types/Card';
-import type { Group } from '../../types/Group';
+import type { Card } from '../../types/Card.js';
+import type { Group } from '../../types/Group.js';
 import type { User } from '../../types/User.js';
 import { quantizeScalar } from '../../shared/geometry.js';
 

@@ -1,4 +1,4 @@
-import { Group } from '../../types/Group';
+import { Group } from '../../types/Group.js';
 import { ElementModel } from './ElementModel.js';
 import { quantizeScalar } from '../../shared/geometry.js';
 

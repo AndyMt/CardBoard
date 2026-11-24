@@ -1,4 +1,4 @@
-import { Card } from '../../types/Card';
+import { Card } from '../../types/Card.js';
 import { ElementModel } from './ElementModel.js';
 import { quantizeScalar } from '../../shared/geometry.js';
 

@@ -1,6 +1,6 @@
-import { WebSocketService } from './WebSocketService';
-import type { Card } from '../../types/Card';
-import type { Group } from '../../types/Group';
+import { WebSocketService } from './WebSocketService.js';
+import type { Card } from '../../types/Card.js';
+import type { Group } from '../../types/Group.js';
 import { quantizeGeometry, quantizeGeometryUpdates } from '../../shared/geometry.js';
 // API configuration
 const API_BASE_URL = '/api';

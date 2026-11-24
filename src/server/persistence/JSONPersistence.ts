@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import lockfile from 'lockfile';
 import path from 'path';
-import { BoardModel } from '../model/BoardModel';
+import { BoardModel } from '../model/BoardModel.js';
 import { quantizeGeometry } from '../../shared/geometry.js';
 
 // Define the default board structure

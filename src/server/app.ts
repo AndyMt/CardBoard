@@ -1,9 +1,9 @@
 import express from 'express';
 import path from 'path';
-import { JSONPersistence } from './persistence/JSONPersistence';
-import { BoardModel } from './model/BoardModel';
+import { JSONPersistence } from './persistence/JSONPersistence.js';
+import { BoardModel } from './model/BoardModel.js';
 import cors from 'cors';
-import { UserPersistence } from './persistence/UserPersistence';
+import { UserPersistence } from './persistence/UserPersistence.js';
 import { normalizeBoardModel } from '../shared/userColorNormalization.js';
 
 const app = express();
