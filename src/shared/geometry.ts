@@ -48,16 +48,23 @@ export function lineRectEntryPoint(
   tx: number,
   ty: number,
   rect: { x: number; y: number; width: number; height: number },
+  inset = 0,
 ): { x: number; y: number } {
+  const inner = {
+    x: rect.x + inset,
+    y: rect.y + inset,
+    width: rect.width - inset * 2,
+    height: rect.height - inset * 2,
+  };
   const dx = tx - sx;
   const dy = ty - sy;
   let tEnter = 0;
   let tExit = 1;
   const boundaries: [number, number][] = [
-    [-dx, sx - rect.x],
-    [dx, rect.x + rect.width - sx],
-    [-dy, sy - rect.y],
-    [dy, rect.y + rect.height - sy],
+    [-dx, sx - inner.x],
+    [dx, inner.x + inner.width - sx],
+    [-dy, sy - inner.y],
+    [dy, inner.y + inner.height - sy],
   ];
   for (const [p, q] of boundaries) {
     if (p === 0) {

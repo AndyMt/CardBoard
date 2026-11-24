@@ -18,6 +18,7 @@ interface ConnectionRendererProps {
 }
 
 const LABEL_OFFSET = 4;
+const TIP_INSET = 1;
 
 export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
   cards,
@@ -98,7 +99,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
         y: sourceCard.y || 0,
         width: sourceCard.width || 200,
         height: sourceCard.height || 60,
-      });
+      }, TIP_INSET);
       const tip = lineRectEntryPoint(osx, osy, otx, oty, {
         x: target.x || 0,
         y: target.y || 0,
@@ -155,11 +156,10 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
         labelTop = my;
         labelTransform = 'translateY(-50%)';
       } else {
-        // Label below the line; left edge of box at midpoint,
-        // text left-aligned so it extends rightward below the line.
+        // Label below the line; centered horizontally at the midpoint.
         labelLeft = mx;
         labelTop = my + LABEL_OFFSET;
-        labelTransform = 'none';
+        labelTransform = 'translateX(-50%)';
       }
 
       const labelValue = isEditing ? connectorNameDraft : (conn.name || '');
@@ -199,7 +199,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
             transform: labelTransform,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'flex-start',
+            justifyContent: isVertical ? 'flex-start' : 'center',
             zIndex: 2,
             pointerEvents: 'auto',
             userSelect: 'none',
@@ -221,8 +221,8 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
                   outline: 'none',
                   width: 'auto',
                   minWidth: '60px',
-                  textAlign: 'left',
-                  lineHeight: 1,
+                textAlign: isVertical ? 'left' : 'center',
+                lineHeight: 1,
                   background: 'transparent',
                 }}
               />
@@ -237,7 +237,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
                 cursor: 'default',
                 whiteSpace: 'nowrap',
                 lineHeight: 1,
-                textAlign: 'left',
+                textAlign: isVertical ? 'left' : 'center',
               }}>
                 {labelDisplay}
               </span>
