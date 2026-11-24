@@ -144,7 +144,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: isVertical ? 'flex-start' : 'center',
-            zIndex: 2,
+            zIndex: 3,
             pointerEvents: 'auto',
             userSelect: 'none',
           }}
@@ -159,24 +159,24 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
                 onKeyDown={handleLabelInputKeyDown}
                 style={{
                   fontSize: '12px',
-                  padding: '2px 4px',
-                  border: 'none',
-                  borderRadius: 0,
-                  outline: 'none',
-                  width: 'auto',
-                  minWidth: '60px',
-                  textAlign: isVertical ? 'left' : 'center',
-                  lineHeight: 1,
-                  background: 'transparent',
+                padding: '1px',
+                border: 'none',
+                borderRadius: 0,
+                outline: 'none',
+                width: 'auto',
+                minWidth: '60px',
+                textAlign: isVertical ? 'left' : 'center',
+                lineHeight: 1,
+                background: 'rgba(238, 238, 238, 0.5)',
                 }}
               />
             ) : (
               <span style={{
                 fontSize: '11px',
-                padding: '1px 4px',
+                padding: '1px',
                 border: 'none',
                 borderRadius: 0,
-                background: 'transparent',
+                background: 'rgba(238, 238, 238, 0.5)',
                 color: '#111827',
                 cursor: 'default',
                 whiteSpace: 'nowrap',
