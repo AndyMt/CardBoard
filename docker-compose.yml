@@ -1,12 +1,17 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        BUILD_NUMBER: ${BUILD_NUMBER:-dev}
+    image: cardboard:${BUILD_NUMBER:-latest}
     container_name: cardboard
     ports:
       - "8080:8080"
     environment:
       - PORT=8080
       - NODE_ENV=production
+      - BUILD_NUMBER=${BUILD_NUMBER:-dev}
     volumes:
       - ./data:/app/data
     restart: unless-stopped

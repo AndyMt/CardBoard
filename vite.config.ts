@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { readFileSync } from 'node:fs';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf-8'));
-const buildNumber = new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 12);
+const buildNumber = process.env.BUILD_NUMBER || new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 12);
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }): UserConfig => {

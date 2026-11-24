@@ -1,3 +1,5 @@
+ARG BUILD_NUMBER=dev
+
 # ---- Build stage ----
 FROM node:20-alpine AS build
 WORKDIR /app
@@ -12,10 +14,12 @@ RUN npm run build:all
 
 # ---- Runtime stage ----
 FROM node:20-alpine AS runtime
-WORKDIR /app
-
+ARG BUILD_NUMBER
+ENV BUILD_NUMBER=$BUILD_NUMBER
 ENV NODE_ENV=production
 ENV PORT=8080
+
+WORKDIR /app
 
 # Install only production deps
 COPY package*.json ./
