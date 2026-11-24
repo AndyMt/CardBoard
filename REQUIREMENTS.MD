@@ -102,5 +102,3 @@ The application shall have the following features:
 
 ## Observations
 
-- canvas zoom is erratic
-- frame selection is too simplified. See Selecting and moving elements for more details.

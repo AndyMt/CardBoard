@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Card from './Card.js';
 import Group from './Group.js';
 import { ConnectionRenderer } from './ConnectionRenderer.js';
@@ -9,6 +9,7 @@ import BoardService from '../services/BoardService';
 import WebSocketService from '../services/WebSocketService.js';
 import UserService from '../services/UserService.js';
 import { ElementSelectionController } from '../controller/ElementSelectionController.js';
+import { ConnectorLayoutCoordinator } from '../controller/ConnectorLayoutCoordinator.js';
 import { CursorController } from '../controller/CursorController.js';
 import type { CursorPosition } from '../../types/Cursor.js';
 import { quantizeGeometry, quantizeNonNegative, quantizePreciseNonNegative, quantizeScalar } from '../../shared/geometry.js';
@@ -885,6 +886,20 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     setConnectionPointer(null);
   };
 
+  // Automatic orthogonal connector routing: recomputed whenever card/group
+  // geometry changes (including during drags). Purely client-side, not persisted.
+  const connectorLayout = useMemo(
+    () => new ConnectorLayoutCoordinator().computeLayout(cards, groups),
+    [cards, groups]
+  );
+
+  const previewRoute = useMemo(
+    () => (connectionSourceId && connectionPointer
+      ? new ConnectorLayoutCoordinator().computePreviewRoute(cards, connectionSourceId, connectionPointer)
+      : null),
+    [cards, connectionSourceId, connectionPointer]
+  );
+
   if (isLoading) {
     return (
       <div className="relative w-full h-full bg-gray-100 overflow-auto flex items-center justify-center">
@@ -961,8 +976,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
         {/* Connector lines rendered between cards and groups in z-order */}
         <ConnectionRenderer
           cards={cards}
-          connectionSourceId={connectionSourceId}
-          connectionPointer={connectionPointer}
+          routes={connectorLayout.routes}
+          labels={connectorLayout.labels}
+          previewRoute={previewRoute}
           selectedTool={selectedTool}
           selectedConnectorIds={selectedConnectorIds}
           onConnectorSelect={handleConnectorSelect}
