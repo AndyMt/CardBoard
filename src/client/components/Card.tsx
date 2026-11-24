@@ -163,7 +163,7 @@ export const Card: React.FC<CardProps> = ({
       {/* Drag handle - 8px visible bar, 14px active area */}
       <div
         data-drag-handle="card"
-        onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onDragStart?.(e, id, 'card'); }}
+        onPointerDown={(e) => { e.stopPropagation(); onDragStart?.(e, id, 'card'); }}
         style={{ touchAction: 'none', userSelect: 'none', background: `linear-gradient(to bottom, ${createdColor || UNKNOWN_USER_COLOR} 8px, transparent 8px)` }}
         className={`h-[14px] w-full drag-handle-area ${tool === 'select' ? 'cursor-move' : ''}`}
       ></div>

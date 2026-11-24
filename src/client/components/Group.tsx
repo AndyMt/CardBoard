@@ -167,7 +167,7 @@ onClick={(e) => {
         {/* 8px visible colored bar, 14px active drag handle */}
         <div
           data-drag-handle="group"
-          onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onDragStart?.(e, id, 'group'); }}
+          onPointerDown={(e) => { e.stopPropagation(); onDragStart?.(e, id, 'group'); }}
           style={{ touchAction: 'none', userSelect: 'none', background: `linear-gradient(to bottom, ${createdColor || UNKNOWN_USER_COLOR} 8px, transparent 8px)` }}
           className={`h-[14px] w-full drag-handle-area ${tool === 'select' ? 'cursor-move' : ''}`}
         ></div>
