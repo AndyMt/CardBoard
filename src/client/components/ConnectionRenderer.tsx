@@ -17,7 +17,7 @@ interface ConnectionRendererProps {
   onConnectorNameCancel: (id: string) => void;
 }
 
-const LABEL_OFFSET = 12;
+const LABEL_OFFSET = 4;
 
 export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
   cards,
@@ -163,7 +163,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
       }
 
       const labelValue = isEditing ? connectorNameDraft : (conn.name || '');
-      const labelDisplay = isEditing ? labelValue : (conn.name || '<->');
+      const labelDisplay = isEditing ? labelValue : (conn.name || '?');
 
       return (
         <>
