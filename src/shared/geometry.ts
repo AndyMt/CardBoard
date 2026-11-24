@@ -95,6 +95,23 @@ export interface Rect {
   height: number;
 }
 
+export type Side = 'left' | 'right' | 'top' | 'bottom';
+
+export interface Dir {
+  axis: 'x' | 'y';
+  sign: number;
+}
+
+// Outward-pointing normal of a rect side: right -> +x, left -> -x, bottom -> +y, top -> -y.
+export function sideNormal(side: Side): Dir {
+  switch (side) {
+    case 'right': return { axis: 'x', sign: 1 };
+    case 'left': return { axis: 'x', sign: -1 };
+    case 'bottom': return { axis: 'y', sign: 1 };
+    case 'top': return { axis: 'y', sign: -1 };
+  }
+}
+
 export function rectInflated(rect: Rect, margin: number): Rect {
   return {
     x: rect.x - margin,
@@ -195,6 +212,11 @@ export interface OrthogonalPathOptions {
   occupied: Rect[];
   bendPenalty?: number;
   crossPenalty?: number;
+  // If set, the first edge leaving `start` must go along this direction.
+  firstDir?: Dir;
+  // If set, the path is only accepted when the last edge into `goal` arrives
+  // along this direction.
+  lastDir?: Dir;
 }
 
 // A* on the visibility grid (grid lines at start/goal and obstacle borders),
@@ -205,6 +227,8 @@ export function findOrthogonalPath(start: Point, goal: Point, options: Orthogona
   const { obstacles, occupied } = options;
   const bendPenalty = options.bendPenalty ?? 20;
   const crossPenalty = options.crossPenalty ?? 10;
+  const firstDir = options.firstDir;
+  const lastDir = options.lastDir;
 
   const xs = new Set<number>([start.x, goal.x]);
   const ys = new Set<number>([start.y, goal.y]);
@@ -316,6 +340,18 @@ export function findOrthogonalPath(start: Point, goal: Point, options: Orthogona
   };
   heapPush(startState, fScore[startState]);
 
+  // True when the edge that relaxed state `s` into the goal arrives along lastDir.
+  const incomingDirMatches = (s: number): boolean => {
+    if (!lastDir) return true;
+    const prev = parent[s];
+    if (prev < 0) return false;
+    const pn = Math.floor(prev / 3);
+    const dxg = xList[goalNode % nx] - xList[pn % nx];
+    const dyg = yList[Math.floor(goalNode / nx)] - yList[Math.floor(pn / nx)];
+    if (lastDir.axis === 'x') return dyg === 0 && dxg * lastDir.sign > 0;
+    return dxg === 0 && dyg * lastDir.sign > 0;
+  };
+
   let goalState = -1;
   while (heapS.length > 0) {
     const s = heapPop();
@@ -323,19 +359,27 @@ export function findOrthogonalPath(start: Point, goal: Point, options: Orthogona
     const dir = s % 3;
     if (gScore[s] + h(node) > fScore[s] + 1e-9) continue; // stale heap entry
     if (node === goalNode) {
-      goalState = s;
-      break;
+      if (incomingDirMatches(s)) {
+        goalState = s;
+        break;
+      }
+      continue;
     }
     const xi = node % nx;
     const yi = Math.floor(node / nx);
     const px = xList[xi];
     const py = yList[yi];
     for (let dir2 = 0; dir2 < 2; dir2++) {
+      if (dir === 2 && firstDir && dir2 !== (firstDir.axis === 'x' ? 0 : 1)) continue;
       for (let t = 0; t < (dir2 === 0 ? nx : ny); t++) {
         if (dir2 === 0 && t === xi) continue;
         if (dir2 === 1 && t === yi) continue;
         const qx = dir2 === 0 ? xList[t] : px;
         const qy = dir2 === 0 ? py : yList[t];
+        if (dir === 2 && firstDir) {
+          const delta = dir2 === 0 ? qx - px : qy - py;
+          if (delta * firstDir.sign <= 0) continue;
+        }
         const a = { x: px, y: py };
         const b = { x: qx, y: qy };
         if (edgeBlocked(a, b)) continue;
@@ -359,7 +403,7 @@ export function findOrthogonalPath(start: Point, goal: Point, options: Orthogona
     let best = Infinity;
     for (let d = 0; d < 3; d++) {
       const s = goalNode * 3 + d;
-      if (gScore[s] < best) {
+      if (gScore[s] < best && incomingDirMatches(s)) {
         best = gScore[s];
         goalState = s;
       }

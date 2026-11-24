@@ -9,8 +9,10 @@ import {
   rectInflated,
   segmentIntersectsRect,
   segmentRect,
+  sideNormal,
   type Point,
   type Rect,
+  type Side,
 } from '../../shared/geometry.js';
 
 export interface ConnectorRoute {
@@ -39,8 +41,6 @@ export interface ConnectorLayoutOptions {
   labelCharWidth?: number;
   labelHeight?: number;
 }
-
-type Side = 'left' | 'right' | 'top' | 'bottom';
 
 const DEFAULT_CARD_WIDTH = 200;
 const DEFAULT_CARD_HEIGHT = 60;
@@ -88,6 +88,32 @@ function portOnSide(r: Rect, side: Side, offset: number, inset: number): Point {
 
 function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+// First segment leaves perpendicular to `side`, pointing outward.
+function firstSegmentOutward(points: Point[], side: Side): boolean {
+  if (points.length < 2) return false;
+  const vx = points[1].x - points[0].x;
+  const vy = points[1].y - points[0].y;
+  const n = sideNormal(side);
+  if (n.axis === 'x') return vy === 0 && vx * n.sign > 0;
+  return vx === 0 && vy * n.sign > 0;
+}
+
+// Last segment arrives perpendicular to `side` (travel direction = -normal).
+function lastSegmentInward(points: Point[], side: Side): boolean {
+  if (points.length < 2) return false;
+  const a = points[points.length - 2];
+  const b = points[points.length - 1];
+  const vx = b.x - a.x;
+  const vy = b.y - a.y;
+  const n = sideNormal(side);
+  if (n.axis === 'x') return vy === 0 && vx * -n.sign > 0;
+  return vx === 0 && vy * -n.sign > 0;
+}
+
+function endsPerpendicular(points: Point[], srcSide: Side, tgtSide: Side): boolean {
+  return firstSegmentOutward(points, srcSide) && lastSegmentInward(points, tgtSide);
 }
 
 interface RoutedEntry {
@@ -183,7 +209,9 @@ export class ConnectorLayoutCoordinator {
     const horiz = Math.abs(dx) >= Math.abs(dy);
     const side: Side = horiz ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'bottom' : 'top');
     const srcPort = portOnSide(srcRect, side, 0, tipInset);
-    return { points: compressPoints(orthogonalCandidates(srcPort, pointer)[0]) };
+    const cands = orthogonalCandidates(srcPort, pointer);
+    const valid = cands.find((c) => firstSegmentOutward(c, side));
+    return { points: compressPoints(valid ?? cands[0]) };
   }
 
   private routeBetween(
@@ -218,6 +246,7 @@ export class ConnectorLayoutCoordinator {
       const srcPort = portOnSide(srcRect, pair.src, fanOffset, tipInset);
       const tgtPort = portOnSide(tgtRect, pair.tgt, fanOffset, 0);
       for (const cand of orthogonalCandidates(srcPort, tgtPort)) {
+        if (!endsPerpendicular(cand, pair.src, pair.tgt)) continue;
         let blocked = false;
         let crossings = 0;
         for (let i = 1; i < cand.length && !blocked; i++) {
@@ -247,13 +276,29 @@ export class ConnectorLayoutCoordinator {
     if (best) return best;
 
     // Fallback: A* on the visibility grid, trying each side pair in order.
+    // firstDir/lastDir force the route to leave perpendicular to the source
+    // side and arrive perpendicular to the target side, so the rendered tips
+    // sit at the side centers exactly on the borders.
     let fallback: ConnectorRoute | null = null;
     for (const pair of pairs) {
       const srcPort = portOnSide(srcRect, pair.src, fanOffset, tipInset);
       const tgtPort = portOnSide(tgtRect, pair.tgt, fanOffset, 0);
-      const path = findOrthogonalPath(srcPort, tgtPort, { obstacles, occupied, bendPenalty, crossPenalty });
+      const nS = sideNormal(pair.src);
+      const nT = sideNormal(pair.tgt);
+      const path = findOrthogonalPath(srcPort, tgtPort, {
+        obstacles,
+        occupied,
+        bendPenalty,
+        crossPenalty,
+        firstDir: nS,
+        lastDir: { axis: nT.axis, sign: -nT.sign },
+      });
       if (path) return { points: path };
-      if (!fallback) fallback = { points: compressPoints(orthogonalCandidates(srcPort, tgtPort)[0]) };
+      if (!fallback) {
+        const cands = orthogonalCandidates(srcPort, tgtPort);
+        const valid = cands.find((c) => endsPerpendicular(c, pair.src, pair.tgt));
+        fallback = { points: compressPoints(valid ?? cands[0]) };
+      }
     }
     return fallback ?? { points: [{ x: 0, y: 0 }, { x: 0, y: 0 }] };
   }
