@@ -9,7 +9,15 @@ interface ConnectionRendererProps {
   selectedTool: string;
   selectedConnectorIds: string[];
   onConnectorSelect: (id: string, ctrlKey: boolean) => void;
+  editingConnectorId: string | null;
+  connectorNameDraft: string;
+  onConnectorNameStart: (id: string) => void;
+  onConnectorNameChange: (id: string, newName: string) => void;
+  onConnectorNameCommit: (id: string, newName: string) => void;
+  onConnectorNameCancel: (id: string) => void;
 }
+
+const LABEL_OFFSET = 12;
 
 export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
   cards,
@@ -18,6 +26,12 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
   selectedTool,
   selectedConnectorIds,
   onConnectorSelect,
+  editingConnectorId,
+  connectorNameDraft,
+  onConnectorNameStart,
+  onConnectorNameChange,
+  onConnectorNameCommit,
+  onConnectorNameCancel,
 }) => {
   // Preview line during active connection drag
   let previewLine = null;
@@ -89,38 +103,119 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
       const ody = tip.y - osy;
       const odist = Math.sqrt(odx * odx + ody * ody);
       const angle = Math.atan2(ody, odx) * 180 / Math.PI;
+      const isEditing = conn.id === editingConnectorId;
       const isSelected = selectedConnectorIds.includes(conn.id);
       const handleConnectorClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (selectedTool === 'connection') return;
         onConnectorSelect(conn.id, e.ctrlKey);
       };
+      const handleLabelClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        onConnectorNameStart?.(conn.id);
+      };
+      const handleLabelInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        e.stopPropagation();
+        onConnectorNameChange(conn.id, e.target.value);
+      };
+      const handleLabelInputBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        e.stopPropagation();
+        onConnectorNameCommit(conn.id, e.target.value);
+      };
+      const handleLabelInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        e.stopPropagation();
+        if (e.key === 'Enter') {
+          onConnectorNameCommit(conn.id, e.currentTarget.value);
+        } else if (e.key === 'Escape') {
+          onConnectorNameCancel(conn.id);
+        }
+      };
+
+      // Label position: midpoint of the visible line, offset 12px along the
+      // left-hand normal so it never sits on top of the connector line.
+      let lx = (osx + tip.x) / 2;
+      let ly = (osy + tip.y) / 2;
+      if (odist > 0) {
+        lx = lx - (ody / odist) * LABEL_OFFSET;
+        ly = ly + (odx / odist) * LABEL_OFFSET;
+      }
+
+      const labelValue = isEditing ? connectorNameDraft : (conn.name || '');
+      const labelDisplay = isEditing ? labelValue : (conn.name || '<->');
+
       return (
-        <div key={conn.id} className="absolute" style={{
-          left: osx,
-          top: osy,
-          width: odist,
-          height: 2,
-          backgroundColor: '#3b82f6',
-          zIndex: 2,
-          transformOrigin: '0% 50%',
-          transform: `rotate(${angle}deg)`,
-          boxShadow: isSelected ? `0 0 3px #3b82f6` : 'none',
-        }}
-        onClick={handleConnectorClick}
-        >
-          <div style={{
+        <>
+          <div key={conn.id + '-line'} className="absolute" style={{
+            left: osx,
+            top: osy,
+            width: odist,
+            height: 2,
+            backgroundColor: '#3b82f6',
+            zIndex: 2,
+            transformOrigin: '0% 50%',
+            transform: `rotate(${angle}deg)`,
+            boxShadow: isSelected ? `0 0 3px #3b82f6` : 'none',
+          }}
+          onClick={handleConnectorClick}
+          >
+            <div style={{
+              position: 'absolute',
+              right: 0,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: 0,
+              height: 0,
+              borderStyle: 'solid',
+              borderWidth: '6px 0 6px 8px',
+              borderColor: 'transparent transparent transparent #3b82f6',
+            }} />
+          </div>
+          <div key={conn.id + '-label'} style={{
             position: 'absolute',
-            right: 0,
-            top: '50%',
-            transform: 'translateY(-50%)',
-            width: 0,
-            height: 0,
-            borderStyle: 'solid',
-            borderWidth: '6px 0 6px 8px',
-            borderColor: 'transparent transparent transparent #3b82f6',
-          }} />
-        </div>
+            left: lx,
+            top: ly,
+            transform: 'translate(-50%, -50%)',
+            zIndex: 2,
+            pointerEvents: 'auto',
+            userSelect: 'none',
+          }}
+          onClick={handleLabelClick}
+          >
+            {isEditing ? (
+              <input
+                autoFocus
+                value={labelValue}
+                onChange={handleLabelInputChange}
+                onBlur={handleLabelInputBlur}
+                onKeyDown={handleLabelInputKeyDown}
+                style={{
+                  fontSize: '12px',
+                  padding: '2px 4px',
+                  border: '1px solid #3b82f6',
+                  borderRadius: '3px',
+                  outline: 'none',
+                  width: 'auto',
+                  minWidth: '60px',
+                  textAlign: 'center',
+                  background: '#fff',
+                }}
+              />
+            ) : (
+              <span style={{
+                fontSize: '11px',
+                padding: '1px 4px',
+                border: '1px solid #9ca3af',
+                borderRadius: '3px',
+                background: '#f3f4f6',
+                color: '#111827',
+                cursor: 'default',
+                whiteSpace: 'nowrap',
+              }}>
+                {labelDisplay}
+              </span>
+            )}
+          </div>
+        </>
       );
     });
   });

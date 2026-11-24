@@ -265,6 +265,24 @@ class BoardService {
       throw error;
     }
   }
+
+  async updateConnectionName(cardId: string, connectionId: string, name: string): Promise<void> {
+    try {
+      WebSocketService.getInstance().markLocalMutation();
+      const response = await fetch(`${API_BASE_URL}/board/card/${cardId}/connections/${connectionId}/name`, {
+        method: 'PUT',
+        headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to update connection name: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Failed to update connection name:', error);
+      throw error;
+    }
+  }
 }
 
 export default BoardService;

@@ -213,6 +213,25 @@ app.delete('/api/board/card/:id/connections/:connectionId', async (req, res) => 
   }
 });
 
+app.put('/api/board/card/:id/connections/:connectionId/name', async (req, res) => {
+  try {
+    const cardId = req.params.id;
+    const connectionId = req.params.connectionId;
+    const { name }: { name?: string } = req.body || {};
+    const board = await localMutation((b) => {
+      const sourceCard = b.cards.find(card => card.id === cardId);
+      if (!sourceCard || !sourceCard.connections) return;
+      const conn = sourceCard.connections.find((c: { id: string }) => c.id === connectionId);
+      if (!conn) return;
+      conn.name = name ?? '';
+    }, senderSocketId(req));
+    res.json(board);
+  } catch (error) {
+    console.error('Failed to update connection name:', error);
+    res.status(500).json({ error: 'Failed to update connection name' });
+  }
+});
+
 app.put('/api/board/group/:id', async (req, res) => {
   try {
     const groupId = req.params.id;

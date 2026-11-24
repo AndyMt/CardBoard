@@ -63,6 +63,9 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   // Connection tool state
   const [connectionSourceId, setConnectionSourceId] = useState<string | null>(null);
   const [connectionPointer, setConnectionPointer] = useState<{ x: number; y: number } | null>(null);
+  // Connector label editing state
+  const [editingConnectorId, setEditingConnectorId] = useState<string | null>(null);
+  const [connectorNameDraft, setConnectorNameDraft] = useState('');
 
   // Tracks the last known board version so we can ignore stale broadcasts
   const lastBoardVersionRef = useRef<string | null>(null);
@@ -71,6 +74,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   const isLocallyDraggingRef = useRef(false);
   const editingCardIdsRef = useRef<Set<string>>(new Set());
   const editingGroupIdsRef = useRef<Set<string>>(new Set());
+  const editingConnectorIdsRef = useRef<Set<string>>(new Set());
+  const originalConnectorNameRef = useRef<Map<string, string>>(new Map());
   const cardsRef = useRef<CardType[]>([]);
   const groupsRef = useRef<GroupType[]>([]);
   const selectedItemsRef = useRef<string[]>([]);
@@ -125,6 +130,22 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
       if (editingCardIdsRef.current.has(card.id)) {
         const local = prev.find(c => c.id === card.id);
         return local ? { ...normalized, text: local.text } : normalized;
+      }
+      // Preserve local connection names for connections currently being edited
+      if (card.connections && card.connections.length > 0 && normalized.connections) {
+        const hasEditing = card.connections.some((c: { id: string }) => editingConnectorIdsRef.current.has(c.id));
+        if (hasEditing) {
+          const local = prev.find(c => c.id === card.id);
+          if (local?.connections) {
+            normalized.connections = normalized.connections.map((nc: { id: string; name?: string }) => {
+              const lc = local.connections.find((c: { id: string }) => c.id === nc.id);
+              if (lc && editingConnectorIdsRef.current.has(nc.id)) {
+                return { ...nc, name: lc.name };
+              }
+              return nc;
+            });
+          }
+        }
       }
       return normalized;
     }));
@@ -675,6 +696,63 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     setSelectedConnectorIds(prev => new ElementSelectionController().select(prev, id, ctrlKey));
   };
 
+  const handleConnectorNameStart = (id: string) => {
+    if (selectedTool === 'connection') return;
+    setEditingConnectorId(id);
+    const card = cards.find(c => (c.connections || []).some((conn: { id: string }) => conn.id === id));
+    const conn = card?.connections?.find((c: { id: string; name?: string }) => c.id === id);
+    originalConnectorNameRef.current.set(id, conn?.name ?? '');
+    setConnectorNameDraft(conn?.name ?? '');
+  };
+
+  const handleConnectorNameChange = (id: string, newName: string) => {
+    setConnectorNameDraft(newName);
+    setCards(prevCards => prevCards.map(card => {
+      if (!card.connections) return card;
+      return {
+        ...card,
+        connections: card.connections.map((conn: { id: string; name?: string }) =>
+          conn.id === id ? { ...conn, name: newName } : conn),
+      };
+    }));
+    editingConnectorIdsRef.current.add(id);
+  };
+
+  const handleConnectorNameCommit = async (id: string, newName: string) => {
+    setEditingConnectorId(null);
+    setConnectorNameDraft('');
+    editingConnectorIdsRef.current.delete(id);
+    originalConnectorNameRef.current.delete(id);
+    try {
+      const boardService = BoardService.getInstance();
+      // Find the source card that owns this connection
+      const card = cards.find(c => (c.connections || []).some((conn: { id: string }) => conn.id === id));
+      if (card) {
+        await boardService.updateConnectionName(card.id, id, newName);
+      }
+    } catch (err) {
+      console.error('Failed to update connector name:', err);
+    }
+  };
+
+  const handleConnectorNameCancel = (id: string) => {
+    setEditingConnectorId(null);
+    setConnectorNameDraft('');
+    editingConnectorIdsRef.current.delete(id);
+    const original = originalConnectorNameRef.current.get(id);
+    originalConnectorNameRef.current.delete(id);
+    if (original !== undefined) {
+      setCards(prevCards => prevCards.map(card => {
+        if (!card.connections) return card;
+        return {
+          ...card,
+          connections: card.connections.map((conn: { id: string; name?: string }) =>
+            conn.id === id ? { ...conn, name: original } : conn),
+        };
+      }));
+    }
+  };
+
   const handleCardClick = (id: string, ctrlKey: boolean) => {
     if (selectedTool === 'card' || selectedTool === 'group') {
       onToolChange?.('select');
@@ -810,8 +888,13 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     if (targetId && targetId !== connectionSourceId) {
       try {
         const boardService = BoardService.getInstance();
-        const { cards } = await boardService.addConnection(connectionSourceId, targetId);
-        setCards(cards);
+        const { cards: updatedCards, connectionId } = await boardService.addConnection(connectionSourceId, targetId);
+        setCards(updatedCards);
+        if (connectionId) {
+          setEditingConnectorId(connectionId);
+          setConnectorNameDraft('');
+          originalConnectorNameRef.current.set(connectionId, '');
+        }
       } catch (err) {
         console.error('Failed to add connection:', err);
       }
@@ -902,6 +985,12 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
           selectedTool={selectedTool}
           selectedConnectorIds={selectedConnectorIds}
           onConnectorSelect={handleConnectorSelect}
+          editingConnectorId={editingConnectorId}
+          connectorNameDraft={connectorNameDraft}
+          onConnectorNameStart={handleConnectorNameStart}
+          onConnectorNameChange={handleConnectorNameChange}
+          onConnectorNameCommit={handleConnectorNameCommit}
+          onConnectorNameCancel={handleConnectorNameCancel}
         />
 
         {/* Groups rendered after cards in DOM */}
