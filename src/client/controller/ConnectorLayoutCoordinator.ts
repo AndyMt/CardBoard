@@ -62,15 +62,6 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.min(Math.max(v, lo), hi);
 }
 
-function opposite(side: Side): Side {
-  switch (side) {
-    case 'left': return 'right';
-    case 'right': return 'left';
-    case 'top': return 'bottom';
-    case 'bottom': return 'top';
-  }
-}
-
 function portOnSide(r: Rect, side: Side, offset: number, inset: number): Point {
   const midX = r.x + r.width / 2;
   const midY = r.y + r.height / 2;
@@ -183,13 +174,19 @@ export class ConnectorLayoutCoordinator {
       for (let i = 1; i < route.points.length; i++) {
         occupied.push(rectInflated(segmentRect(route.points[i - 1], route.points[i]), laneGap));
       }
-      let labelSegment = { a: route.points[0], b: route.points[route.points.length - 1] };
-      let bestLen = -1;
-      for (let i = 1; i < route.points.length; i++) {
-        const len = Math.abs(route.points[i].x - route.points[i - 1].x) + Math.abs(route.points[i].y - route.points[i - 1].y);
-        if (len > bestLen) {
-          bestLen = len;
-          labelSegment = { a: route.points[i - 1], b: route.points[i] };
+      // Label anchors on the first segment when it is long enough to hold it
+      // (matches the intended look: label next to the exit segment), otherwise
+      // on the longest segment.
+      const segLen = (a: Point, b: Point): number => Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+      let labelSegment = { a: route.points[0], b: route.points[1] ?? route.points[0] };
+      if (segLen(labelSegment.a, labelSegment.b) < 20) {
+        let bestLen = -1;
+        for (let i = 1; i < route.points.length; i++) {
+          const len = segLen(route.points[i - 1], route.points[i]);
+          if (len > bestLen) {
+            bestLen = len;
+            labelSegment = { a: route.points[i - 1], b: route.points[i] };
+          }
         }
       }
       routed.push({ connId: entry.conn.id, name: entry.conn.name || '', labelSegment });
@@ -224,68 +221,77 @@ export class ConnectorLayoutCoordinator {
     bendPenalty: number,
     crossPenalty: number,
   ): ConnectorRoute {
+    // Consider ALL 16 side pairs, ordered by port distance, and keep the
+    // lowest-cost valid route across them — so a clean side bracket (e.g.
+    // right→right around a blocker) beats a border-hugging zigzag. Ties prefer
+    // the side the target lies toward (right when dx >= 0).
     const c1 = centerOf(srcRect);
     const c2 = centerOf(tgtRect);
-    const dx = c2.x - c1.x;
-    const dy = c2.y - c1.y;
-    const horiz = Math.abs(dx) >= Math.abs(dy);
-    const srcMain: Side = horiz ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'bottom' : 'top');
-    const tgtMain: Side = opposite(srcMain);
-    const srcAlt: Side = horiz ? (dy >= 0 ? 'bottom' : 'top') : (dx >= 0 ? 'right' : 'left');
-    const tgtAlt: Side = opposite(srcAlt);
-    const pairs: { src: Side; tgt: Side }[] = [
-      { src: srcMain, tgt: tgtMain },
-      { src: srcAlt, tgt: tgtMain },
-      { src: srcMain, tgt: tgtAlt },
-      { src: srcAlt, tgt: tgtAlt },
-    ];
+    const srcPref: Side = c2.x - c1.x >= 0 ? 'right' : 'left';
+    const sides: Side[] = ['left', 'right', 'top', 'bottom'];
+    const pairs: { src: Side; tgt: Side; srcPort: Point; tgtPort: Point; portDist: number }[] = [];
+    for (const src of sides) {
+      for (const tgt of sides) {
+        const srcPort = portOnSide(srcRect, src, fanOffset, tipInset);
+        const tgtPort = portOnSide(tgtRect, tgt, fanOffset, 0);
+        pairs.push({
+          src,
+          tgt,
+          srcPort,
+          tgtPort,
+          portDist: Math.abs(tgtPort.x - srcPort.x) + Math.abs(tgtPort.y - srcPort.y),
+        });
+      }
+    }
+    pairs.sort((a, b) =>
+      a.portDist - b.portDist || (a.src === srcPref ? 0 : 1) - (b.src === srcPref ? 0 : 1)
+    );
 
+    const segLen = (a: Point, b: Point): number => Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
+    const costOf = (points: Point[]): number => {
+      const len = pathLength(points);
+      let crossings = 0;
+      for (let i = 1; i < points.length; i++) {
+        for (const o of occupied) {
+          if (segmentIntersectsRect(points[i - 1], points[i], o)) crossings++;
+        }
+      }
+      return len + bendPenalty * (points.length - 2) + crossings * crossPenalty * len;
+    };
+    const blockedByObstacle = (points: Point[]): boolean => {
+      for (let i = 1; i < points.length; i++) {
+        for (const o of obstacles) {
+          if (segmentIntersectsRect(points[i - 1], points[i], o)) return true;
+        }
+      }
+      return false;
+    };
+
+    // Cheap stage: orientation-valid L/Z candidates for every side pair.
     let best: ConnectorRoute | null = null;
     let bestCost = Infinity;
     for (const pair of pairs) {
-      const srcPort = portOnSide(srcRect, pair.src, fanOffset, tipInset);
-      const tgtPort = portOnSide(tgtRect, pair.tgt, fanOffset, 0);
-      for (const cand of orthogonalCandidates(srcPort, tgtPort)) {
+      for (const cand of orthogonalCandidates(pair.srcPort, pair.tgtPort)) {
         if (!endsPerpendicular(cand, pair.src, pair.tgt)) continue;
-        let blocked = false;
-        let crossings = 0;
-        for (let i = 1; i < cand.length && !blocked; i++) {
-          const a = cand[i - 1];
-          const b = cand[i];
-          for (const o of obstacles) {
-            if (segmentIntersectsRect(a, b, o)) {
-              blocked = true;
-              break;
-            }
-          }
-          if (!blocked) {
-            for (const o of occupied) {
-              if (segmentIntersectsRect(a, b, o)) crossings++;
-            }
-          }
-        }
-        if (blocked) continue;
-        const len = pathLength(cand);
-        const cost = len + bendPenalty * (cand.length - 2) + crossings * crossPenalty * len;
+        if (blockedByObstacle(cand)) continue;
+        const cost = costOf(cand);
         if (cost < bestCost) {
           bestCost = cost;
           best = { points: cand };
         }
       }
     }
-    if (best) return best;
 
-    // Fallback: A* on the visibility grid, trying each side pair in order.
-    // firstDir/lastDir force the route to leave perpendicular to the source
-    // side and arrive perpendicular to the target side, so the rendered tips
-    // sit at the side centers exactly on the borders.
-    let fallback: ConnectorRoute | null = null;
+    // Fallback: A* on the visibility grid per side pair. firstDir/lastDir force
+    // the route to leave perpendicular to the source side and arrive
+    // perpendicular to the target side, so the rendered tips sit at the side
+    // centers exactly on the borders. Pairs whose port distance already exceeds
+    // the best cost are skipped (a path between the ports is never shorter).
     for (const pair of pairs) {
-      const srcPort = portOnSide(srcRect, pair.src, fanOffset, tipInset);
-      const tgtPort = portOnSide(tgtRect, pair.tgt, fanOffset, 0);
+      if (pair.portDist >= bestCost) continue;
       const nS = sideNormal(pair.src);
       const nT = sideNormal(pair.tgt);
-      const path = findOrthogonalPath(srcPort, tgtPort, {
+      const path = findOrthogonalPath(pair.srcPort, pair.tgtPort, {
         obstacles,
         occupied,
         bendPenalty,
@@ -293,14 +299,21 @@ export class ConnectorLayoutCoordinator {
         firstDir: nS,
         lastDir: { axis: nT.axis, sign: -nT.sign },
       });
-      if (path) return { points: path };
-      if (!fallback) {
-        const cands = orthogonalCandidates(srcPort, tgtPort);
-        const valid = cands.find((c) => endsPerpendicular(c, pair.src, pair.tgt));
-        fallback = { points: compressPoints(valid ?? cands[0]) };
+      if (!path) continue;
+      const cost = costOf(path);
+      if (cost < bestCost) {
+        bestCost = cost;
+        best = { points: path };
       }
     }
-    return fallback ?? { points: [{ x: 0, y: 0 }, { x: 0, y: 0 }] };
+
+    if (best) return best;
+
+    // Last resort: orientation-valid L/straight line for the closest pair.
+    const pair = pairs[0];
+    const cands = orthogonalCandidates(pair.srcPort, pair.tgtPort);
+    const valid = cands.find((c) => endsPerpendicular(c, pair.src, pair.tgt));
+    return { points: compressPoints(valid ?? cands[0]) };
   }
 
   private resolveLabels(
