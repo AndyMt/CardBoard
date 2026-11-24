@@ -71,7 +71,7 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
             left: Math.min(a.x, b.x),
             top: Math.min(a.y, b.y),
             width: horizontal ? Math.max(Math.abs(dx), 2) : 2,
-            height: horizontal ? 2 : Math.max(Math.abs(dy), 2),
+            height: horizontal ? 2 : Math.max(Math.abs(dy), 2) + 2,
             backgroundColor: CONNECTOR_COLOR,
             zIndex: 2,
             pointerEvents: opts.connId ? 'auto' : 'none',
