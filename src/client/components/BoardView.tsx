@@ -104,6 +104,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     selectedItemsRef.current = selectedItems;
   }, [selectedItems]);
 
+  useEffect(() => {
+    setSelectedItems([]);
+    setSelectedConnectorIds([]);
+  }, [selectedTool]);
+
   const getDirectoryUsers = async (): Promise<User[] | null> => {
     try {
       const users = await UserService.getInstance().getUsers();
