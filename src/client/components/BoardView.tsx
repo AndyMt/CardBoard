@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { DndContext, DragEndEvent, DragMoveEvent, DragStartEvent } from '@dnd-kit/core';
 import Card from './Card.js';
 import Group from './Group.js';
 import { ConnectionRenderer } from './ConnectionRenderer.js';
@@ -12,7 +11,7 @@ import UserService from '../services/UserService.js';
 import { ElementSelectionController } from '../controller/ElementSelectionController.js';
 import { CursorController } from '../controller/CursorController.js';
 import type { CursorPosition } from '../../types/Cursor.js';
-import { quantizeGeometry, quantizeNonNegative, quantizeScalar } from '../../shared/geometry.js';
+import { quantizeGeometry, quantizeNonNegative, quantizePreciseNonNegative, quantizeScalar } from '../../shared/geometry.js';
 import { normalizeBoardModel, UNKNOWN_USER_COLOR } from '../../shared/userColorNormalization.js';
 
 interface BoardViewProps {
@@ -55,8 +54,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   const [error, setError] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [selectedConnectorIds, setSelectedConnectorIds] = useState<string[]>([]);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [dragDelta, setDragDelta] = useState<{ x: number; y: number } | null>(null);
 
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ scrollX: number; scrollY: number; clientX: number; clientY: number } | null>(null);
@@ -76,6 +73,17 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   const editingGroupIdsRef = useRef<Set<string>>(new Set());
   const cardsRef = useRef<CardType[]>([]);
   const groupsRef = useRef<GroupType[]>([]);
+  const selectedItemsRef = useRef<string[]>([]);
+  // Native drag state (replaces @dnd-kit)
+  const dragRef = useRef<{
+    id: string | null;
+    type: 'card' | 'group' | null;
+    startClient: { x: number; y: number };
+    startPos: Map<string, { x: number; y: number }>;
+    hasMoved: boolean;
+    wasAlreadySelected: boolean;
+  } | null>(null);
+  let rafRef = useRef<number | null>(null);
   // ID of the card or group that should enter edit mode after creation
   const [autoFocusId, setAutoFocusId] = useState<string | null>(null);
 
@@ -86,6 +94,10 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   useEffect(() => {
     groupsRef.current = groups;
   }, [groups]);
+
+  useEffect(() => {
+    selectedItemsRef.current = selectedItems;
+  }, [selectedItems]);
 
   const getDirectoryUsers = async (): Promise<User[] | null> => {
     try {
@@ -236,6 +248,31 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     };
   }, []);
 
+  // Native pointer drag listeners on window so dragging survives leaving the
+  // board container and pointerup is always received.
+  useEffect(() => {
+    const handleMove = (e: globalThis.PointerEvent) => handleDragMove(e);
+    const handleUp = (e: globalThis.PointerEvent) => handleDragEnd(e);
+    const handleCancel = () => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      dragRef.current = null;
+      isLocallyDraggingRef.current = false;
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointercancel', handleCancel);
+    window.addEventListener('blur', handleCancel);
+    return () => {
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointercancel', handleCancel);
+      window.removeEventListener('blur', handleCancel);
+    };
+  }, []);
+
   // Connect the remote-cursor controller: emit local cursor moves and render
   // remote cursors (excluding the local user) on every other user's session.
   // Cursors are rendered via direct DOM manipulation to avoid board re-renders.
@@ -310,113 +347,157 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     return () => window.removeEventListener('board:changed', handleChanged);
   }, []);
 
-  if (isLoading) {
-    return (
-      <div className="relative w-full h-full bg-gray-100 overflow-auto flex items-center justify-center">
-        <div>Loading board...</div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="relative w-full h-full bg-gray-100 overflow-auto flex items-center justify-center">
-        <div className="text-red-500">{error}</div>
-      </div>
-    );
-  }
-
-  const handleDragStart = (event: DragStartEvent) => {
+  const handleDragStart = (e: React.PointerEvent, id: string, type: 'card' | 'group') => {
     if (selectedTool === 'connection') return;
-    const id = event.active.id as string;
-    setActiveDragId(id);
-    setDragDelta({ x: 0, y: 0 });
-    // Clear pending selection set by useElementSelection.handleMouseDown so
-    // handleMouseUp doesn't deselect the item after drag end
-    const element = document.querySelector(`[data-card-id="${id}"], [data-group-id="${id}"]`);
-    if (element) {
-      delete (element as any)._pendingSelection;
+    e.stopPropagation();
+    const board = boardContainerRef.current;
+    if (!board) return;
+    const boardRect = board.getBoundingClientRect();
+    const startClient = { x: e.clientX - boardRect.left + board.scrollLeft, y: e.clientY - boardRect.top + board.scrollTop };
+
+    // Compute moving set: active element (or all selected items if activeId is selected), plus cards contained in any moving group.
+    const movingIds: string[] = [];
+    if (selectedItems.includes(id) && selectedItems.length > 1) {
+      selectedItems.forEach(itemId => { if (!movingIds.includes(itemId)) movingIds.push(itemId); });
+    } else {
+      movingIds.push(id);
     }
-    // We are now the active dragger; ignore our own server echoes
+    const movingGroupIds = movingIds.filter(itemId => groups.some(g => g.id === itemId));
+    cards.forEach(c => {
+      if (c.groupId && movingGroupIds.includes(c.groupId) && !movingIds.includes(c.id)) {
+        movingIds.push(c.id);
+      }
+    });
+
+    const startPos = new Map<string, { x: number; y: number }>();
+    movingIds.forEach(itemId => {
+      const card = cards.find(c => c.id === itemId);
+      const group = groups.find(g => g.id === itemId);
+      if (card) startPos.set(itemId, { x: card.x, y: card.y });
+      else if (group) startPos.set(itemId, { x: group.x, y: group.y });
+    });
+
+    const el = e.currentTarget as HTMLElement;
+    dragRef.current = { id, type, startClient, startPos, hasMoved: false, wasAlreadySelected: selectedItems.includes(id) };
     isLocallyDraggingRef.current = true;
-    // Emit a live preview so other users see the drag start immediately
+    // Set pending selection so click-to-select works even though preventDefault()
+    // suppresses the compatibility mousedown event.
+    const cardEl = el.closest('[data-card-id], [data-group-id]');
+    if (cardEl) {
+      (cardEl as any)._pendingSelection = { id, ctrlKey: e.ctrlKey };
+    }
     emitLivePreview();
   };
 
-  const handleDragMove = (event: DragMoveEvent) => {
-    setDragDelta({ x: event.delta.x, y: event.delta.y });
-    // Broadcast live positions to other users (throttled server-side)
-    emitLivePreview();
+  const handleDragMove = (e: globalThis.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const { id, type, startClient, startPos } = drag;
+    const board = boardContainerRef.current;
+    if (!board) return;
+    const boardRect = board.getBoundingClientRect();
+    const clientX = e.clientX - boardRect.left + board.scrollLeft;
+    const clientY = e.clientY - boardRect.top + board.scrollTop;
+    const dx = clientX - startClient.x;
+    const dy = clientY - startClient.y;
+
+    if (!drag.hasMoved) {
+      const dist = Math.hypot(dx, dy);
+      if (dist > 1 && id !== null) {
+        drag.hasMoved = true;
+        // L74: dragging an unselected element clears other selections once
+        // actual movement starts; an already-selected element preserves them.
+        setSelectedItems(prev => (drag.wasAlreadySelected ? prev : [id]));
+        // Clear pending selection so click doesn't fire after a drag
+        const element = document.querySelector(`[data-card-id="${id}"], [data-group-id="${id}"]`);
+        if (element) {
+          delete (element as any)._pendingSelection;
+        }
+      }
+    }
+
+    const movingIds = Array.from(startPos.keys());
+    const nextCards = cardsRef.current.map(c => {
+      if (!movingIds.includes(c.id)) return c;
+      const pos = startPos.get(c.id)!;
+      return { ...c, x: quantizePreciseNonNegative(pos.x + dx), y: quantizePreciseNonNegative(pos.y + dy) };
+    });
+    const nextGroups = groupsRef.current.map(g => {
+      if (!movingIds.includes(g.id)) return g;
+      const pos = startPos.get(g.id)!;
+      return { ...g, x: quantizePreciseNonNegative(pos.x + dx), y: quantizePreciseNonNegative(pos.y + dy) };
+    });
+    setCards(nextCards);
+    setGroups(nextGroups);
+
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      emitLivePreview({ dx, dy });
+    });
   };
 
-  const emitLivePreview = () => {
+  const emitLivePreview = (delta?: { dx: number; dy: number }) => {
     const ws = WebSocketService.getInstance();
     if (!ws.isConnected()) return;
+    const drag = dragRef.current;
+    if (!drag || !isLocallyDraggingRef.current) return;
 
-    const delta = dragDelta;
-    const activeId = activeDragId;
-    if (!activeId || !delta) return;
+    const { id, startPos } = drag;
+    const dx = delta?.dx ?? 0;
+    const dy = delta?.dy ?? 0;
 
     const movedCards: { id: string; x: number; y: number }[] = [];
     const movedGroups: { id: string; x: number; y: number }[] = [];
 
-    // Determine which items are moving (the active item, or all selected items)
-    const movingIds = selectedItems.includes(activeId) && selectedItems.length > 0
-      ? selectedItems
-      : [activeId];
-
-    cards.forEach((c) => {
-      if (movingIds.includes(c.id)) {
-        movedCards.push({ id: c.id, x: quantizeNonNegative(c.x + delta.x), y: quantizeNonNegative(c.y + delta.y) });
+    startPos.forEach((pos, itemId) => {
+      const card = cardsRef.current.find(c => c.id === itemId);
+      const group = groupsRef.current.find(g => g.id === itemId);
+      if (card) {
+        movedCards.push({ id: card.id, x: quantizeNonNegative(pos.x + dx), y: quantizeNonNegative(pos.y + dy) });
+      } else if (group) {
+        movedGroups.push({ id: group.id, x: quantizeNonNegative(pos.x + dx), y: quantizeNonNegative(pos.y + dy) });
       }
     });
-    groups.forEach((g) => {
-      if (movingIds.includes(g.id)) {
-        movedGroups.push({ id: g.id, x: quantizeNonNegative(g.x + delta.x), y: quantizeNonNegative(g.y + delta.y) });
-      }
-    });
-
-    // Cards contained inside any moved group travel with it.
-    const movedGroupIds = movedGroups.map(mg => mg.id);
-    // Also include contained cards of selected groups being dragged together.
-    const selectedGroupIds = selectedItems.filter(id => groups.some(g => g.id === id));
-    const allMovedGroupIds = Array.from(new Set([...movedGroupIds, ...selectedGroupIds]));
-    if (allMovedGroupIds.length > 0) {
-      cards.forEach((c) => {
-        if (movedCards.some(mc => mc.id === c.id)) return; // already moved (e.g. selected)
-        if (c.groupId && allMovedGroupIds.includes(c.groupId)) {
-          const group = groups.find(g => g.id === c.groupId);
-          if (group && c.x >= group.x && c.x <= group.x + (group.width || 440) && c.y >= group.y && c.y <= group.y + (group.height || 300)) {
-            movedCards.push({ id: c.id, x: quantizeNonNegative(c.x + delta.x), y: quantizeNonNegative(c.y + delta.y) });
-          }
-        }
-      });
-    }
 
     if (movedCards.length > 0 || movedGroups.length > 0) {
       ws.emitLiveDrag({ cards: movedCards, groups: movedGroups });
     }
   };
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    if (selectedTool === 'connection') {
-      setActiveDragId(null);
-      setDragDelta(null);
+  const handleDragEnd = (e: globalThis.PointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+
+    // No actual movement — plain click, don't clear _pendingSelection so click selects
+    if (!drag.hasMoved) {
+      dragRef.current = null;
       isLocallyDraggingRef.current = false;
       return;
     }
-    const { active, delta } = event;
-    const boardService = BoardService.getInstance();
 
-    const activeId = active.id as string;
-    const activeType = active.data.current?.type;
-    const dx = quantizeScalar(delta.x);
-    const dy = quantizeScalar(delta.y);
+    const { id, startPos } = drag;
+    if (!id) return;
+    const board = boardContainerRef.current;
+    if (!board) return;
+    const boardRect = board.getBoundingClientRect();
+    const clientX = e.clientX - boardRect.left + board.scrollLeft;
+    const clientY = e.clientY - boardRect.top + board.scrollTop;
+    const dx = quantizeScalar(clientX - drag.startClient.x);
+    const dy = quantizeScalar(clientY - drag.startClient.y);
+
+    const boardService = BoardService.getInstance();
+    const activeId = id;
+    const activeType = drag.type;
 
     const finishDrag = () => {
-      setActiveDragId(null);
-      setDragDelta(null);
+      dragRef.current = null;
       isLocallyDraggingRef.current = false;
+      // Clear pending selection so click doesn't fire after drag
+      const element = document.querySelector(`[data-card-id="${id}"], [data-group-id="${id}"]`);
+      if (element) {
+        delete (element as any)._pendingSelection;
+      }
     };
 
     const insideGroup = (gx: number, gy: number, g: GroupType) => {
@@ -427,27 +508,29 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
     const cardUpdatesMap = new Map<string, { id: string; x: number; y: number; groupId?: string | null }>();
     const groupUpdatesMap = new Map<string, { id: string; x: number; y: number }>();
-    let nextCards = cards;
-    let nextGroups = groups;
+    let nextCards = cardsRef.current;
+    let nextGroups = groupsRef.current;
 
     // If the dragged item is part of a multi-selection, move all selected items
-    if (selectedItems.includes(activeId) && selectedItems.length > 1) {
-      selectedItems.forEach(itemId => {
-        const card = cards.find(c => c.id === itemId);
-        if (card) {
-          const newBoardX = quantizeNonNegative(card.x + dx);
-          const newBoardY = quantizeNonNegative(card.y + dy);
-          const targetGroup = groups.find(g => insideGroup(newBoardX, newBoardY, g));
+    if (selectedItemsRef.current.includes(activeId) && selectedItemsRef.current.length > 1) {
+      selectedItemsRef.current.forEach(itemId => {
+        const card = cardsRef.current.find(c => c.id === itemId);
+        const pos = startPos.get(itemId);
+        if (card && pos) {
+          const newBoardX = quantizeNonNegative(pos.x + dx);
+          const newBoardY = quantizeNonNegative(pos.y + dy);
+          const targetGroup = groupsRef.current.find(g => insideGroup(newBoardX, newBoardY, g));
           const newGroupId = targetGroup ? targetGroup.id : undefined;
           cardUpdatesMap.set(card.id, { id: card.id, x: newBoardX, y: newBoardY, groupId: newGroupId ?? null });
           nextCards = nextCards.map(c => (c.id === card.id ? { ...c, x: newBoardX, y: newBoardY, groupId: newGroupId } : c));
         }
       });
 
-      selectedItems.forEach(itemId => {
-        const group = groups.find(g => g.id === itemId);
-        if (group) {
-          const updated = { id: group.id, x: quantizeNonNegative(group.x + dx), y: quantizeNonNegative(group.y + dy) };
+      selectedItemsRef.current.forEach(itemId => {
+        const group = groupsRef.current.find(g => g.id === itemId);
+        const pos = startPos.get(itemId);
+        if (group && pos) {
+          const updated = { id: group.id, x: quantizeNonNegative(pos.x + dx), y: quantizeNonNegative(pos.y + dy) };
           groupUpdatesMap.set(group.id, updated);
           nextGroups = nextGroups.map(g => (g.id === group.id ? { ...g, x: updated.x, y: updated.y } : g));
         }
@@ -455,13 +538,15 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
 
       // Cards contained inside any moved group travel with it.
       groupUpdatesMap.forEach((moved, groupId) => {
-        const group = groups.find(g => g.id === groupId);
+        const group = groupsRef.current.find(g => g.id === groupId);
         if (!group) return;
-        cards.forEach(card => {
+        cardsRef.current.forEach(card => {
           if (cardUpdatesMap.has(card.id)) return;
           if (card.groupId !== groupId) return;
           if (!insideGroup(card.x, card.y, group)) return;
-          const updatedCard = { id: card.id, x: quantizeNonNegative(card.x + dx), y: quantizeNonNegative(card.y + dy) };
+          const cpos = startPos.get(card.id);
+          if (!cpos) return;
+          const updatedCard = { id: card.id, x: quantizeNonNegative(cpos.x + dx), y: quantizeNonNegative(cpos.y + dy) };
           cardUpdatesMap.set(card.id, updatedCard);
           nextCards = nextCards.map(c => (c.id === card.id ? { ...c, x: updatedCard.x, y: updatedCard.y } : c));
         });
@@ -472,31 +557,36 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
       boardService.batchUpdate({ cards: Array.from(cardUpdatesMap.values()), groups: Array.from(groupUpdatesMap.values()) }).catch(err => {
         console.error('Failed to batch update board positions:', err);
       });
-      setSelectedItems(selectedItems); // Preserve selection
+      setSelectedItems(selectedItemsRef.current); // Preserve selection
       finishDrag();
       return;
     }
 
     if (activeType === 'card') {
-      const card = cards.find(c => c.id === activeId);
-      if (!card) { finishDrag(); return; }
-      const newBoardX = quantizeNonNegative(card.x + dx);
-      const newBoardY = quantizeNonNegative(card.y + dy);
-      const targetGroup = groups.find(g => insideGroup(newBoardX, newBoardY, g));
+      const card = cardsRef.current.find(c => c.id === activeId);
+      const pos = startPos.get(activeId);
+      if (!card || !pos) { finishDrag(); return; }
+      const newBoardX = quantizeNonNegative(pos.x + dx);
+      const newBoardY = quantizeNonNegative(pos.y + dy);
+      const targetGroup = groupsRef.current.find(g => insideGroup(newBoardX, newBoardY, g));
       const newGroupId = targetGroup ? targetGroup.id : undefined;
       setCards(prevCards => prevCards.map(c => (c.id === card.id ? { ...c, x: newBoardX, y: newBoardY, groupId: newGroupId } : c)));
       boardService.batchUpdate({ cards: [{ id: card.id, x: newBoardX, y: newBoardY, groupId: newGroupId ?? null }] }).catch(err => {
         console.error('Failed to update card position:', err);
       });
     } else if (activeType === 'group') {
-      const group = groups.find(g => g.id === activeId);
-      if (!group) { finishDrag(); return; }
-      const gx = quantizeNonNegative(group.x + dx);
-      const gy = quantizeNonNegative(group.y + dy);
+      const group = groupsRef.current.find(g => g.id === activeId);
+      const pos = startPos.get(activeId);
+      if (!group || !pos) { finishDrag(); return; }
+      const gx = quantizeNonNegative(pos.x + dx);
+      const gy = quantizeNonNegative(pos.y + dy);
       const movedGroups = [{ id: group.id, x: gx, y: gy }];
-      const movedCards = cards
+      const movedCards = cardsRef.current
         .filter(c => c.groupId === activeId && insideGroup(c.x, c.y, group))
-        .map(c => ({ id: c.id, x: quantizeNonNegative(c.x + dx), y: quantizeNonNegative(c.y + dy) }));
+        .map(c => {
+          const cpos = startPos.get(c.id);
+          return { id: c.id, x: quantizeNonNegative((cpos ? cpos.x : c.x) + dx), y: quantizeNonNegative((cpos ? cpos.y : c.y) + dy) };
+        });
       setGroups(prevGroups => prevGroups.map(g => (g.id === group.id ? { ...g, x: gx, y: gy } : g)));
       setCards(prevCards => prevCards.map(c => {
         const moved = movedCards.find(m => m.id === c.id);
@@ -619,7 +709,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   };
 
   const handlePanStart = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (selectedTool !== 'select' || e.button !== 0) return;
+    if (selectedTool !== 'select' || e.button !== 0 || isLocallyDraggingRef.current) return;
+    if (e.target instanceof Element && e.target.closest('[data-drag-handle]')) return;
     setIsPanning(true);
     setPanStart({
       scrollX: e.currentTarget.scrollLeft,
@@ -653,10 +744,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   };
 
   const handleBoardClick = async (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isLocallyDraggingRef.current) return; // Skip if dragging
-    // Only handle clicks on the board background (empty space)
-    if (e.target !== e.currentTarget) return;
-
     setSelectedItems([]);
     
     // Handle tool-specific actions
@@ -734,72 +821,78 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
     setConnectionPointer(null);
   };
 
+  if (isLoading) {
+    return (
+      <div className="relative w-full h-full bg-gray-100 overflow-auto flex items-center justify-center">
+        <div>Loading board...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="relative w-full h-full bg-gray-100 overflow-auto flex items-center justify-center">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
+
   return (
-    <DndContext onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd} modifiers={[({ transform, active }) => {
-     const data = active?.data?.current as { x?: number; y?: number } | undefined;
-     const x = data?.x ?? 0;
-     const y = data?.y ?? 0;
-     return {
-       ...transform,
-       x: Math.max(-x, transform.x),
-       y: Math.max(-y, transform.y),
-     };
-   }]}>
-      <div
-        ref={boardContainerRef}
-        className="relative w-full h-full bg-gray-100 overflow-auto board-container"
-        onClick={(e) => {
-          handleBoardClick(e);
-          handleBoardFocus();
-        }}
-        onMouseDown={handlePanStart}
-        onMouseMove={(e) => {
-          handlePanMove(e);
-          emitCursorPosition(e);
-          handleConnectionMouseMove(e);
-        }}
-        onMouseLeave={handlePanEnd}
-        onMouseUp={(e) => {
-          handlePanEnd(e);
-          handleConnectionMouseUp(e);
-        }}
-        style={{ cursor: isPanning ? 'grabbing' : 'default', userSelect: connectionSourceId ? 'none' : 'auto' }}
-        tabIndex={0}
-      >
-         {/* All cards rendered first in DOM (below groups visually via z-index) */}
-         {cards.map(card => {
-          const isCardSelected = selectedItems.includes(card.id);
-          return (
-            <Card
-              key={card.id}
-              id={card.id}
-              text={card.text}
-              x={card.x}
-              y={card.y}
-              width={card.width || 200}
-              height={card.height || 60}
-              isSelected={isCardSelected}
-              tool={selectedTool}
-              dragOffset={(isCardSelected || (activeDragId !== null && (cards.find(c => c.id === card.id)?.groupId === activeDragId || selectedItems.includes(cards.find(c => c.id === card.id)?.groupId ?? '')))) && card.id !== activeDragId && dragDelta ? dragDelta : null}
-              onCardClick={handleCardClick}
-              onSelect={handleSelect}
-              onCardMouseDown={(id) => {
-                if (selectedTool === 'connection') {
-                  setConnectionSourceId(id);
-                  setConnectionPointer(null);
-                }
-              }}
-              onTextChange={handleCardTextChange}
-              onTextCommit={handleCardTextCommit}
-              onEditingChange={handleCardEditingChange}
-              onHeightChange={handleCardHeightChange}
-              onEditEnd={handleCardEditEnd}
-              createdBy={card.createdBy}
-              createdColor={card.createdColor}
-              autoFocus={autoFocusId === card.id}
-            />
-          );
-        })}
+    <div
+      ref={boardContainerRef}
+      className="relative w-full h-full bg-gray-100 overflow-auto board-container"
+      onClick={(e) => {
+        handleBoardClick(e);
+        handleBoardFocus();
+      }}
+      onMouseDown={handlePanStart}
+      onMouseMove={(e) => {
+        handlePanMove(e);
+        emitCursorPosition(e);
+        handleConnectionMouseMove(e);
+      }}
+      onMouseLeave={handlePanEnd}
+      onMouseUp={(e) => {
+        handlePanEnd(e);
+        handleConnectionMouseUp(e);
+      }}
+      style={{ cursor: isPanning ? 'grabbing' : 'default', userSelect: connectionSourceId ? 'none' : 'auto' }}
+      tabIndex={0}
+    >
+       {/* All cards rendered first in DOM (below groups visually via z-index) */}
+       {cards.map(card => {
+        const isCardSelected = selectedItems.includes(card.id);
+        return (
+          <Card
+            key={card.id}
+            id={card.id}
+            text={card.text}
+            x={card.x}
+            y={card.y}
+            width={card.width || 200}
+            height={card.height || 60}
+            isSelected={isCardSelected}
+            tool={selectedTool}
+            onCardClick={handleCardClick}
+            onSelect={handleSelect}
+            onDragStart={handleDragStart}
+            onCardMouseDown={(id) => {
+              if (selectedTool === 'connection') {
+                setConnectionSourceId(id);
+                setConnectionPointer(null);
+              }
+            }}
+            onTextChange={handleCardTextChange}
+            onTextCommit={handleCardTextCommit}
+            onEditingChange={handleCardEditingChange}
+            onHeightChange={handleCardHeightChange}
+            onEditEnd={handleCardEditEnd}
+            createdBy={card.createdBy}
+            createdColor={card.createdColor}
+            autoFocus={autoFocusId === card.id}
+          />
+        );
+      })}
 
         {/* Connector lines rendered between cards and groups in z-order */}
         <ConnectionRenderer
@@ -825,7 +918,6 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
               height={group.height || 300}
               isSelected={isGroupSelected}
               tool={selectedTool}
-              dragOffset={isGroupSelected && group.id !== activeDragId && dragDelta ? dragDelta : null}
               cards={[]}
               selectedIds={selectedItems}
               onLabelChange={handleGroupLabelChange}
@@ -841,11 +933,11 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
               createdBy={group.createdBy}
               createdColor={group.createdColor}
               autoFocus={autoFocusId === group.id}
+              onDragStart={handleDragStart}
             />
           );
         })}
       </div>
-    </DndContext>
   );
 };
 

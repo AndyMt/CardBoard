@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useDraggable } from '@dnd-kit/core';
 import { useElementSelection } from '../hooks/useElementSelection.js';
 import ToolService from '../services/ToolService.js';
 import Card from './Card.js';
@@ -19,7 +18,6 @@ interface GroupProps {
   width?: number;
   height?: number;
   isSelected: boolean;
-  dragOffset?: { x: number; y: number } | null;
   cards?: CardType[];
   selectedIds?: string[];
   onLabelChange?: (id: string, newLabel: string) => void;
@@ -32,6 +30,7 @@ interface GroupProps {
   onCardTextChange?: (id: string, newText: string) => void;
   onCardTextCommit?: (id: string, newText: string) => void;
   onCardEditingChange?: (id: string, editing: boolean) => void;
+  onDragStart?: (e: React.PointerEvent, id: string, type: 'card' | 'group') => void;
   createdBy?: string;
   createdColor?: string;
   autoFocus?: boolean;
@@ -46,7 +45,6 @@ export const Group: React.FC<GroupProps> = ({
   width = DEFAULT_WIDTH,
   height = DEFAULT_HEIGHT,
   isSelected = false,
-  dragOffset = null,
   cards = [],
   selectedIds = [],
   onLabelChange,
@@ -59,6 +57,7 @@ export const Group: React.FC<GroupProps> = ({
   onCardTextChange,
   onCardTextCommit,
   onCardEditingChange,
+  onDragStart,
   createdBy,
   createdColor,
   autoFocus = false,
@@ -68,7 +67,7 @@ export const Group: React.FC<GroupProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const autoFocusRef = useRef(false);
-  const stableNoopRef = useRef(() => {}).current;
+  const groupRef = useRef<HTMLDivElement>(null);
   const { handleMouseDown: handleMouseDownSelection, handleMouseUp } = useElementSelection(
     id,
     onGroupClick,
@@ -85,16 +84,7 @@ export const Group: React.FC<GroupProps> = ({
     onEditingChange?.(id, isEditing);
   }, [id, isEditing, onEditingChange]);
 
-  const draggable = useDraggable({
-    id,
-    data: { type: 'group', x, y }
-  });
-  const { attributes, listeners, setNodeRef, transform } = tool === 'connection'
-    ? { attributes: {}, listeners: {}, setNodeRef: stableNoopRef, transform: null }
-    : draggable;
-
   const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : (dragOffset ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` : undefined),
     left: `${x}px`,
     top: `${y}px`,
     width: `${width}px`,
@@ -154,7 +144,7 @@ export const Group: React.FC<GroupProps> = ({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={groupRef}
       style={style}
       data-group-id={id}
       onMouseDown={(e) => { if (tool !== 'connection') handleMouseDownSelection(e); }}
@@ -176,12 +166,10 @@ onClick={(e) => {
       <div className="flex flex-col">
         {/* 8px visible colored bar, 14px active drag handle */}
         <div
-          {...listeners}
-          {...attributes}
+          data-drag-handle="group"
+          onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onDragStart?.(e, id, 'group'); }}
+          style={{ touchAction: 'none', userSelect: 'none', background: `linear-gradient(to bottom, ${createdColor || UNKNOWN_USER_COLOR} 8px, transparent 8px)` }}
           className={`h-[14px] w-full drag-handle-area ${tool === 'select' ? 'cursor-move' : ''}`}
-          style={{
-            background: `linear-gradient(to bottom, ${createdColor || UNKNOWN_USER_COLOR} 8px, transparent 8px)`
-          }}
         ></div>
         
         {/* Label area - centered */}

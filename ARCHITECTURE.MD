@@ -12,7 +12,7 @@ This document outlines the **frameworks, libraries, and architecture** used in t
 |---------------------------|-----------------------------|-------------|---------------------------------------------------------------------------------------------|
 | **UI Framework**          | [React](https://react.dev/) | ^18.2.0     | Component-based architecture, virtual DOM for performance, and a rich ecosystem.           |
 | **State Management**      | [Zustand](https://zustand-demo.pmnd.rs/) | ^4.4.1 | Simpler than Redux, lightweight, and works well with React.                                |
-| **Drag-and-Drop**         | [Dnd Kit](https://dndkit.com/) | ^6.0.8      | Modern, flexible, and performant drag-and-drop library for React.                          |
+| **Drag-and-Drop**         | Native browser pointer events | n/a | Removed @dnd-kit for stability; drag driven by native pointerdown/pointermove/pointerup on the board container and window. |
 | **Styling**               | [TailwindCSS](https://tailwindcss.com/) | ^3.3.3      | Utility-first CSS framework for rapid UI development.                                      |
 | **Real-Time Updates**     | [Socket.IO Client](https://socket.io/) | ^4.7.2      | Real-time bidirectional communication with the backend.                                    |
 
@@ -160,3 +160,4 @@ The following items were described in an earlier version of this document but ar
 - **Nodemon** — server is started via `npm run server` (build then run `dist/server/server.js`).
 - **Jest** and **Cypress** — no test framework is installed.
 - **SQLite3** — persistence uses JSON files only (`fs-extra` + `lockfile`); SQLite is not installed.
+- **@dnd-kit/core**, **@dnd-kit/utilities**, **@dnd-kit/sortable** — drag-and-drop replaced with native browser pointer events.

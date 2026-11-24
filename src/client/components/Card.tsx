@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { useDraggable } from '@dnd-kit/core';
 import { useElementSelection } from '../hooks/useElementSelection.js';
 import { UNKNOWN_USER_COLOR } from '../../shared/userColorNormalization.js';
 
@@ -14,7 +13,6 @@ interface CardProps {
   width?: number;
   height?: number;
   isSelected: boolean;
-  dragOffset?: { x: number; y: number } | null;
   onTextChange?: (id: string, newText: string) => void;
   onTextCommit?: (id: string, newText: string) => void;
   onEditingChange?: (id: string, editing: boolean) => void;
@@ -23,6 +21,7 @@ interface CardProps {
   onSelect?: (id: string, ctrlKey?: boolean) => void;
   onCardClick?: (id: string, ctrlKey: boolean) => void;
   onCardMouseDown?: (id: string) => void;
+  onDragStart?: (e: React.PointerEvent, id: string, type: 'card' | 'group') => void;
   tool?: string;
   createdBy?: string;
   createdColor?: string;
@@ -37,7 +36,6 @@ export const Card: React.FC<CardProps> = ({
   width = CARD_WIDTH,
   height = 60,
   isSelected = false,
-  dragOffset = null,
   onTextChange,
   onTextCommit,
   onEditingChange,
@@ -46,6 +44,7 @@ export const Card: React.FC<CardProps> = ({
   onSelect,
   onCardClick,
   onCardMouseDown,
+  onDragStart,
   tool = 'select',
   createdBy,
   createdColor,
@@ -56,8 +55,8 @@ export const Card: React.FC<CardProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const autoFocusRef = useRef(false);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(20);
-  const stableNoopRef = useRef(() => {}).current;
   const { handleMouseDown, handleMouseUp } = useElementSelection(
     id,
     onCardClick,
@@ -101,15 +100,7 @@ export const Card: React.FC<CardProps> = ({
     return contentHeight;
   };
 
-  const draggable = useDraggable({
-    id,
-    data: { type: 'card', x, y }
-  });
-  const { attributes, listeners, setNodeRef, transform } = tool === 'connection'
-    ? { attributes: {}, listeners: {}, setNodeRef: stableNoopRef, transform: null }
-    : draggable;
   const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : (dragOffset ? `translate3d(${dragOffset.x}px, ${dragOffset.y}px, 0)` : undefined),
     left: `${x}px`,
     top: `${y}px`,
     width: `${width}px`,
@@ -161,7 +152,7 @@ export const Card: React.FC<CardProps> = ({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={cardRef}
       style={style}
       data-card-id={id}
       onMouseDown={(e) => { if (tool !== 'connection') handleMouseDown(e); handleCardMouseDown(e); }}
@@ -171,12 +162,10 @@ export const Card: React.FC<CardProps> = ({
     >
       {/* Drag handle - 8px visible bar, 14px active area */}
       <div
-        {...listeners}
-        {...attributes}
+        data-drag-handle="card"
+        onPointerDown={(e) => { e.stopPropagation(); e.preventDefault(); onDragStart?.(e, id, 'card'); }}
+        style={{ touchAction: 'none', userSelect: 'none', background: `linear-gradient(to bottom, ${createdColor || UNKNOWN_USER_COLOR} 8px, transparent 8px)` }}
         className={`h-[14px] w-full drag-handle-area ${tool === 'select' ? 'cursor-move' : ''}`}
-        style={{
-          background: `linear-gradient(to bottom, ${createdColor || UNKNOWN_USER_COLOR} 8px, transparent 8px)`
-        }}
       ></div>
       
       {/* Content area */}

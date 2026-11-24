@@ -3,11 +3,19 @@ export type BoardScalar = number;
 export function quantizeScalar(value: number): BoardScalar {
   if (!Number.isFinite(value)) return 0;
   return Math.round(value / 15) * 15;
-  //return Math.round(value * 10) / 10;
+}
+
+export function quantizePrecise(value: number): BoardScalar {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value * 10) / 10;
 }
 
 export function quantizeNonNegative(value: number): BoardScalar {
   return Math.max(0, quantizeScalar(value));
+}
+
+export function quantizePreciseNonNegative(value: number): BoardScalar {
+  return Math.max(0, quantizePrecise(value));
 }
 
 export function quantizePoint<T extends { x: number; y: number }>(point: T): T {

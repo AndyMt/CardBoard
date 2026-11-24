@@ -18,10 +18,10 @@ export function useElementSelection(
     const zone = 6;
 
     const inInner =
-      clickX >= innerLeft &&
-      clickX <= innerRight &&
-      clickY >= innerTop &&
-      clickY <= innerBottom;
+      clickX >= 0 &&
+      clickX <= rect.width &&
+      clickY >= 0 &&
+      clickY <= rect.height;
     const isInSelectionZone =
       inInner &&
       (clickX < innerLeft + zone ||
