@@ -217,6 +217,11 @@ export interface OrthogonalPathOptions {
   // If set, the path is only accepted when the last edge into `goal` arrives
   // along this direction.
   lastDir?: Dir;
+  // Minimum length of any route leg (segment). Defaults to 16px.
+  minLeg?: number;
+  // Obstacle inflation margin used to build `obstacles`; used to place grid
+  // lines at minLeg clearance so corridors stay reachable under minLeg.
+  obstacleMargin?: number;
 }
 
 // A* on the visibility grid (grid lines at start/goal and obstacle borders),
@@ -229,6 +234,8 @@ export function findOrthogonalPath(start: Point, goal: Point, options: Orthogona
   const crossPenalty = options.crossPenalty ?? 10;
   const firstDir = options.firstDir;
   const lastDir = options.lastDir;
+  const minLeg = options.minLeg ?? 16;
+  const margin = options.obstacleMargin ?? 0;
 
   const xs = new Set<number>([start.x, goal.x]);
   const ys = new Set<number>([start.y, goal.y]);
@@ -237,6 +244,17 @@ export function findOrthogonalPath(start: Point, goal: Point, options: Orthogona
     xs.add(o.x + o.width);
     ys.add(o.y);
     ys.add(o.y + o.height);
+  }
+  // Grid lines at minLeg clearance from every obstacle so stub legs from card
+  // borders to lane corridors satisfy the minimum leg length.
+  const extra = minLeg - margin;
+  if (extra > 0) {
+    for (const o of obstacles) {
+      xs.add(o.x - extra);
+      xs.add(o.x + o.width + extra);
+      ys.add(o.y - extra);
+      ys.add(o.y + o.height + extra);
+    }
   }
   const xList = [...xs].sort((a, b) => a - b);
   const yList = [...ys].sort((a, b) => a - b);
@@ -384,6 +402,7 @@ export function findOrthogonalPath(start: Point, goal: Point, options: Orthogona
         const b = { x: qx, y: qy };
         if (edgeBlocked(a, b)) continue;
         const len = Math.abs(qx - px) + Math.abs(qy - py);
+        if (len < minLeg) continue;
         let cost = len + (dir !== 2 && dir !== dir2 ? bendPenalty : 0);
         const crossings = edgeCrossings(a, b);
         if (crossings > 0) cost += crossings * crossPenalty * len;

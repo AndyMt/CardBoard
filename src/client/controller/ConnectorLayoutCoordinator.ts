@@ -40,6 +40,8 @@ export interface ConnectorLayoutOptions {
   crossPenalty?: number;
   labelCharWidth?: number;
   labelHeight?: number;
+  // Minimum length of any route leg (segment). Defaults to 2 * obstacleMargin.
+  minLeg?: number;
 }
 
 const DEFAULT_CARD_WIDTH = 200;
@@ -79,6 +81,10 @@ function portOnSide(r: Rect, side: Side, offset: number, inset: number): Point {
 
 function rectsOverlap(a: Rect, b: Rect): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+function segLen(a: Point, b: Point): number {
+  return Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
 }
 
 // First segment leaves perpendicular to `side`, pointing outward.
@@ -126,6 +132,7 @@ export class ConnectorLayoutCoordinator {
     const tipInset = options?.tipInset ?? 0;
     const bendPenalty = options?.bendPenalty ?? 20;
     const crossPenalty = options?.crossPenalty ?? 10;
+    const minLeg = options?.minLeg ?? obstacleMargin * 2;
     const labelCharWidth = options?.labelCharWidth ?? 6;
     const labelHeight = options?.labelHeight ?? 15;
 
@@ -169,7 +176,7 @@ export class ConnectorLayoutCoordinator {
         else obstacles.push(rectInflated(r, obstacleMargin));
       }
       const fanOffset = (entry.index - (entry.total - 1) / 2) * fanSpacing;
-      const route = this.routeBetween(srcRect, tgtRect, fanOffset, tipInset, obstacles, occupied, bendPenalty, crossPenalty);
+      const route = this.routeBetween(srcRect, tgtRect, fanOffset, tipInset, obstacles, occupied, bendPenalty, crossPenalty, minLeg, obstacleMargin);
       routes.set(entry.conn.id, route);
       for (let i = 1; i < route.points.length; i++) {
         occupied.push(rectInflated(segmentRect(route.points[i - 1], route.points[i]), laneGap));
@@ -196,7 +203,7 @@ export class ConnectorLayoutCoordinator {
     return { routes, labels };
   }
 
-  computePreviewRoute(cards: Card[], sourceId: string, pointer: Point, tipInset = 0): ConnectorRoute | null {
+  computePreviewRoute(cards: Card[], sourceId: string, pointer: Point, tipInset = 0, minLeg = 16): ConnectorRoute | null {
     const source = cards.find((c) => c.id === sourceId);
     if (!source) return null;
     const srcRect = cardRect(source);
@@ -207,7 +214,7 @@ export class ConnectorLayoutCoordinator {
     const side: Side = horiz ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'bottom' : 'top');
     const srcPort = portOnSide(srcRect, side, 0, tipInset);
     const cands = orthogonalCandidates(srcPort, pointer);
-    const valid = cands.find((c) => firstSegmentOutward(c, side));
+    const valid = cands.find((c) => firstSegmentOutward(c, side) && segLen(c[0], c[1]) >= minLeg);
     return { points: compressPoints(valid ?? cands[0]) };
   }
 
@@ -220,6 +227,8 @@ export class ConnectorLayoutCoordinator {
     occupied: Rect[],
     bendPenalty: number,
     crossPenalty: number,
+    minLeg: number,
+    obstacleMargin: number,
   ): ConnectorRoute {
     // Consider ALL 16 side pairs, ordered by port distance, and keep the
     // lowest-cost valid route across them — so a clean side bracket (e.g.
@@ -247,7 +256,6 @@ export class ConnectorLayoutCoordinator {
       a.portDist - b.portDist || (a.src === srcPref ? 0 : 1) - (b.src === srcPref ? 0 : 1)
     );
 
-    const segLen = (a: Point, b: Point): number => Math.abs(b.x - a.x) + Math.abs(b.y - a.y);
     const costOf = (points: Point[]): number => {
       const len = pathLength(points);
       let crossings = 0;
@@ -273,7 +281,14 @@ export class ConnectorLayoutCoordinator {
     for (const pair of pairs) {
       for (const cand of orthogonalCandidates(pair.srcPort, pair.tgtPort)) {
         if (!endsPerpendicular(cand, pair.src, pair.tgt)) continue;
-        if (blockedByObstacle(cand)) continue;
+        let tooShort = false;
+        for (let i = 1; i < cand.length; i++) {
+          if (segLen(cand[i - 1], cand[i]) < minLeg) {
+            tooShort = true;
+            break;
+          }
+        }
+        if (tooShort || blockedByObstacle(cand)) continue;
         const cost = costOf(cand);
         if (cost < bestCost) {
           bestCost = cost;
@@ -298,6 +313,8 @@ export class ConnectorLayoutCoordinator {
         crossPenalty,
         firstDir: nS,
         lastDir: { axis: nT.axis, sign: -nT.sign },
+        minLeg,
+        obstacleMargin,
       });
       if (!path) continue;
       const cost = costOf(path);
