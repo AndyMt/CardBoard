@@ -191,22 +191,22 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
                 style={{
                   fontSize: '12px',
                   padding: '2px 4px',
-                  border: '1px solid #3b82f6',
-                  borderRadius: '3px',
+                  border: 'none',
+                  borderRadius: 0,
                   outline: 'none',
                   width: 'auto',
                   minWidth: '60px',
                   textAlign: 'center',
-                  background: '#fff',
+                  background: 'transparent',
                 }}
               />
             ) : (
               <span style={{
                 fontSize: '11px',
                 padding: '1px 4px',
-                border: '1px solid #9ca3af',
-                borderRadius: '3px',
-                background: '#f3f4f6',
+                border: 'none',
+                borderRadius: 0,
+                background: 'transparent',
                 color: '#111827',
                 cursor: 'default',
                 whiteSpace: 'nowrap',
