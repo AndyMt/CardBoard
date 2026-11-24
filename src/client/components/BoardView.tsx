@@ -676,7 +676,8 @@ export const BoardView: React.FC<BoardViewProps> = ({ selectedTool, onToolChange
   };
 
   const handleConnectorSelect = (id: string, ctrlKey: boolean = false) => {
-    if (selectedTool === 'connection') return;
+    if (selectedTool !== 'select' && selectedTool !== 'connection') return;
+    setSelectedItems([]);
     setSelectedConnectorIds(prev => new ElementSelectionController().select(prev, id, ctrlKey));
   };
 
