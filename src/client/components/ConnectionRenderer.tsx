@@ -93,14 +93,20 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
         otx = tx + px * offset;
         oty = ty + py * offset;
       }
+      const sourceTip = lineRectEntryPoint(otx, oty, osx, osy, {
+        x: sourceCard.x || 0,
+        y: sourceCard.y || 0,
+        width: sourceCard.width || 200,
+        height: sourceCard.height || 60,
+      });
       const tip = lineRectEntryPoint(osx, osy, otx, oty, {
         x: target.x || 0,
         y: target.y || 0,
         width: target.width || 200,
         height: target.height || 60,
       });
-      const odx = tip.x - osx;
-      const ody = tip.y - osy;
+      const odx = tip.x - sourceTip.x;
+      const ody = tip.y - sourceTip.y;
       const odist = Math.sqrt(odx * odx + ody * ody);
       const angle = Math.atan2(ody, odx) * 180 / Math.PI;
       const isEditing = conn.id === editingConnectorId;
@@ -131,13 +137,29 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
         }
       };
 
-      // Label position: midpoint of the visible line, offset 12px along the
-      // left-hand normal so it never sits on top of the connector line.
-      let lx = (osx + tip.x) / 2;
-      let ly = (osy + tip.y) / 2;
-      if (odist > 0) {
-        lx = lx - (ody / odist) * LABEL_OFFSET;
-        ly = ly + (odx / odist) * LABEL_OFFSET;
+      // Label position: anchor the label's inner edge at a gap distance from
+      // the connector line so longer labels never overlap the line.
+      // Roughly vertical connectors -> label to the right of the line.
+      // Roughly horizontal connectors -> label below the line.
+      const absAngle = Math.abs(angle);
+      const isVertical = absAngle > 45 && absAngle < 135;
+      const mx = (sourceTip.x + tip.x) / 2;
+      const my = (sourceTip.y + tip.y) / 2;
+      let labelLeft: number | null = null;
+      let labelTop: number | null = null;
+      let labelTransform: string;
+      if (isVertical) {
+        // Label to the right of the line; left edge of box at the gap,
+        // text left-aligned so it extends rightward (away from the line).
+        labelLeft = mx + LABEL_OFFSET;
+        labelTop = my;
+        labelTransform = 'translateY(-50%)';
+      } else {
+        // Label below the line; left edge of box at midpoint,
+        // text left-aligned so it extends rightward below the line.
+        labelLeft = mx;
+        labelTop = my + LABEL_OFFSET;
+        labelTransform = 'none';
       }
 
       const labelValue = isEditing ? connectorNameDraft : (conn.name || '');
@@ -146,8 +168,8 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
       return (
         <>
           <div key={conn.id + '-line'} className="absolute" style={{
-            left: osx,
-            top: osy,
+            left: sourceTip.x,
+            top: sourceTip.y,
             width: odist,
             height: 2,
             backgroundColor: '#3b82f6',
@@ -172,9 +194,12 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
           </div>
           <div key={conn.id + '-label'} style={{
             position: 'absolute',
-            left: lx,
-            top: ly,
-            transform: 'translate(-50%, -50%)',
+            left: labelLeft,
+            top: labelTop,
+            transform: labelTransform,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'flex-start',
             zIndex: 2,
             pointerEvents: 'auto',
             userSelect: 'none',
@@ -196,7 +221,8 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
                   outline: 'none',
                   width: 'auto',
                   minWidth: '60px',
-                  textAlign: 'center',
+                  textAlign: 'left',
+                  lineHeight: 1,
                   background: 'transparent',
                 }}
               />
@@ -210,6 +236,8 @@ export const ConnectionRenderer: React.FC<ConnectionRendererProps> = ({
                 color: '#111827',
                 cursor: 'default',
                 whiteSpace: 'nowrap',
+                lineHeight: 1,
+                textAlign: 'left',
               }}>
                 {labelDisplay}
               </span>
