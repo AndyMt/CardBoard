@@ -1,6 +1,8 @@
 import fs from 'fs-extra';
 import lockfile from 'lockfile';
 import { Board } from '../../types/Board.js';
+import type { View } from '../../types/View.js';
+import type { Reference } from '../../types/Reference.js';
 
 export class JSONPersistence {
   private filePath: string;
@@ -15,8 +17,7 @@ export class JSONPersistence {
     try {
       return await fs.readJson(this.filePath);
     } catch (error) {
-      // Return empty board if file doesn't exist
-      return { cards: [], groups: [], groupCards: [] };
+      return { cards: [], groups: [], views: [], references: [] };
     }
   }
 

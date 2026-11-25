@@ -68,18 +68,6 @@ export class BoardController {
     return this.getBoard();
   }
 
-  async moveCard(cardId: string, x: number, y: number): Promise<BoardModel> {
-    this.boardManager.moveCard(cardId, quantizeScalar(x), quantizeScalar(y));
-    await this.saveBoard();
-    return this.getBoard();
-  }
-
-  async moveGroup(groupId: string, x: number, y: number): Promise<BoardModel> {
-    this.boardManager.moveGroup(groupId, quantizeScalar(x), quantizeScalar(y));
-    await this.saveBoard();
-    return this.getBoard();
-  }
-
   private async saveBoard(): Promise<void> {
     try {
       const users = await this.userPersistence.loadUsers();

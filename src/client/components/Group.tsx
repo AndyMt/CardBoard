@@ -202,31 +202,8 @@ onClick={(e) => {
         </div>
       </div>
       
-      {/* Content area */}
-      <div className="flex-1" style={{ padding: '0.5rem', paddingTop: '0', position: 'relative' }}>
-        {cards.map(card => {
-          const isCardSelected = selectedIds.includes(card.id);
-          return (
-            <Card
-              key={card.id}
-              id={card.id}
-              text={card.text}
-              x={card.x}
-              y={card.y}
-              width={card.width || 200}
-              height={card.height || 60}
-              isSelected={isCardSelected}
-              onCardClick={onCardClick}
-              onSelect={onSelect}
-              onTextChange={onCardTextChange}
-              onTextCommit={onCardTextCommit}
-              onEditingChange={onCardEditingChange}
-              createdBy={card.createdBy}
-              createdColor={card.createdColor}
-            />
-          );
-        })}
-      </div>
+      {/* Content area (cards are positioned on the canvas via their own references) */}
+      <div className="flex-1" style={{ padding: '0.5rem', paddingTop: '0' }}></div>
     </div>
   );
 };

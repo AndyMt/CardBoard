@@ -47,7 +47,10 @@ export interface ConnectorLayoutOptions {
 const DEFAULT_CARD_WIDTH = 200;
 const DEFAULT_CARD_HEIGHT = 60;
 
-function cardRect(card: Card): Rect {
+type PlacedCard = Card & { x: number; y: number; width: number; height: number };
+type PlacedGroup = Group & { x: number; y: number; width: number; height: number };
+
+function cardRect(card: PlacedCard): Rect {
   return {
     x: card.x || 0,
     y: card.y || 0,
@@ -123,7 +126,7 @@ interface RoutedEntry {
 // (routing around cards, avoiding already-routed connectors) plus de-overlapped
 // label anchors. Never mutates the Card/Group/Connection models.
 export class ConnectorLayoutCoordinator {
-  computeLayout(cards: Card[], groups: Group[], options?: ConnectorLayoutOptions): ConnectorLayout {
+  computeLayout(cards: PlacedCard[], groups: PlacedGroup[], options?: ConnectorLayoutOptions): ConnectorLayout {
     void groups; // groups are crossable, deliberately not obstacles
     const obstacleMargin = options?.obstacleMargin ?? 8;
     const laneGap = options?.laneGap ?? 4;
@@ -203,7 +206,7 @@ export class ConnectorLayoutCoordinator {
     return { routes, labels };
   }
 
-  computePreviewRoute(cards: Card[], sourceId: string, pointer: Point, tipInset = 0, minLeg = 16): ConnectorRoute | null {
+  computePreviewRoute(cards: PlacedCard[], sourceId: string, pointer: Point, tipInset = 0, minLeg = 16): ConnectorRoute | null {
     const source = cards.find((c) => c.id === sourceId);
     if (!source) return null;
     const srcRect = cardRect(source);

@@ -1,37 +1,24 @@
 import { Card } from '../../types/Card.js';
-import { ElementModel } from './ElementModel.js';
-import { quantizeScalar } from '../../shared/geometry.js';
 
-const CARD_WIDTH = 200;
 const CARD_MIN_HEIGHT = 60;
 const LINE_HEIGHT = 20;
 
-export class CardModel extends ElementModel {
-  static createDefault(x: number, y: number, createdBy?: string, createdColor?: string): Card {
-    const base = super.createBase(x - CARD_WIDTH / 2, y - 30, CARD_WIDTH, CARD_MIN_HEIGHT);
+export class CardModel {
+  static createDefault(_x: number, _y: number, createdBy?: string, createdColor?: string): Card {
     return {
       id: `card-${Date.now()}`,
       text: '',
       createdBy,
       createdColor,
-      ...base,
     };
   }
 
   static createFromData(data: Partial<Card>): Card {
-    const base = super.createBase(
-      quantizeScalar(data.x ?? 0),
-      quantizeScalar(data.y ?? 0),
-      quantizeScalar(data.width ?? CARD_WIDTH),
-      quantizeScalar(data.height ?? CARD_MIN_HEIGHT)
-    );
     return {
       id: data.id || `card-${Date.now()}`,
       text: data.text || '',
-      groupId: data.groupId,
       createdBy: data.createdBy,
       createdColor: data.createdColor,
-      ...base,
     };
   }
 

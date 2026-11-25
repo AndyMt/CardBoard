@@ -1,6 +1,8 @@
 import { WebSocketService } from './WebSocketService.js';
 import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
+import type { View } from '../../types/View.js';
+import type { Reference } from '../../types/Reference.js';
 import { quantizeGeometry, quantizeGeometryUpdates } from '../../shared/geometry.js';
 // API configuration
 const API_BASE_URL = '/api';
@@ -24,7 +26,12 @@ class BoardService {
     return BoardService.instance;
   }
 
-  async getBoard(): Promise<{ cards: Card[]; groups: Group[] }> {
+  async getBoard(): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
     try {
       const response = await fetch(`${API_BASE_URL}/board`);
       if (!response.ok) {
@@ -33,34 +40,38 @@ class BoardService {
       const board = await response.json();
       return {
         cards: board.cards || [],
-        groups: board.groups || []
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
       };
     } catch (error) {
       console.error('Failed to get board:', error);
-      // Return empty board if there's an error
-      return { cards: [], groups: [] };
+      return { cards: [], groups: [], views: [], references: [] };
     }
   }
 
-  async addCard(card: Card): Promise<{ cards: Card[]; groups: Group[] }> {
+  async addCard(card: Card): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/card`, {
         method: 'POST',
-        headers: { ...socketHeaders(),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(quantizeGeometry(card)),
+        headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(card),
       });
-
       if (!response.ok) {
         throw new Error(`Failed to add card: ${response.statusText}`);
       }
-
       const board = await response.json();
       return {
         cards: board.cards || [],
-        groups: board.groups || []
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
       };
     } catch (error) {
       console.error('Failed to add card:', error);
@@ -68,25 +79,28 @@ class BoardService {
     }
   }
 
-  async addGroup(group: Group): Promise<{ cards: Card[]; groups: Group[] }> {
+  async addGroup(group: Group): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/group`, {
         method: 'POST',
-        headers: { ...socketHeaders(),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(quantizeGeometry(group)),
+        headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(group),
       });
-
       if (!response.ok) {
         throw new Error(`Failed to add group: ${response.statusText}`);
       }
-
       const board = await response.json();
       return {
         cards: board.cards || [],
-        groups: board.groups || []
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
       };
     } catch (error) {
       console.error('Failed to add group:', error);
@@ -94,25 +108,114 @@ class BoardService {
     }
   }
 
-  async updateCard(cardId: string, updates: Partial<Card>): Promise<{ cards: Card[]; groups: Group[] }> {
+  async addReference(reference: Reference): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
+    try {
+      WebSocketService.getInstance().markLocalMutation();
+      const response = await fetch(`${API_BASE_URL}/board/reference`, {
+        method: 'POST',
+        headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(quantizeGeometry(reference)),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to add reference: ${response.statusText}`);
+      }
+      const board = await response.json();
+      return {
+        cards: board.cards || [],
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
+      };
+    } catch (error) {
+      console.error('Failed to add reference:', error);
+      throw error;
+    }
+  }
+
+  async updateReference(referenceId: string, updates: Partial<Reference>): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
+    try {
+      WebSocketService.getInstance().markLocalMutation();
+      const response = await fetch(`${API_BASE_URL}/board/reference/${referenceId}`, {
+        method: 'PUT',
+        headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(quantizeGeometryUpdates(updates)),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to update reference: ${response.statusText}`);
+      }
+      const board = await response.json();
+      return {
+        cards: board.cards || [],
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
+      };
+    } catch (error) {
+      console.error('Failed to update reference:', error);
+      throw error;
+    }
+  }
+
+  async deleteReference(referenceId: string): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
+    try {
+      WebSocketService.getInstance().markLocalMutation();
+      const response = await fetch(`${API_BASE_URL}/board/reference/${referenceId}`, {
+        method: 'DELETE',
+        headers: socketHeaders(),
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to delete reference: ${response.statusText}`);
+      }
+      const board = await response.json();
+      return {
+        cards: board.cards || [],
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
+      };
+    } catch (error) {
+      console.error('Failed to delete reference:', error);
+      throw error;
+    }
+  }
+
+  async updateCard(cardId: string, updates: Partial<Card>): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/card/${cardId}`, {
         method: 'PUT',
-        headers: { ...socketHeaders(),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(quantizeGeometryUpdates(updates)),
+        headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
       });
-
       if (!response.ok) {
         throw new Error(`Failed to update card: ${response.statusText}`);
       }
-
       const board = await response.json();
       return {
         cards: board.cards || [],
-        groups: board.groups || []
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
       };
     } catch (error) {
       console.error('Failed to update card:', error);
@@ -120,25 +223,28 @@ class BoardService {
     }
   }
 
-  async updateGroup(groupId: string, updates: Partial<Group>): Promise<{ cards: Card[]; groups: Group[] }> {
+  async updateGroup(groupId: string, updates: Partial<Group>): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/group/${groupId}`, {
         method: 'PUT',
-        headers: { ...socketHeaders(),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(quantizeGeometryUpdates(updates)),
+        headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
       });
-
       if (!response.ok) {
         throw new Error(`Failed to update group: ${response.statusText}`);
       }
-
       const board = await response.json();
       return {
         cards: board.cards || [],
-        groups: board.groups || []
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
       };
     } catch (error) {
       console.error('Failed to update group:', error);
@@ -147,46 +253,62 @@ class BoardService {
   }
 
   async batchUpdate(payload: {
-    cards?: Array<{ id: string } & Partial<Card>>;
-    groups?: Array<{ id: string } & Partial<Group>>;
-  }): Promise<{ cards: Card[]; groups: Group[] }> {
+    references?: Array<{ id: string } & Partial<Reference>>;
+  }): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/batch`, {
         method: 'PUT',
         headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cards: (payload.cards || []).map((c) => ({ ...c, ...quantizeGeometryUpdates(c) })),
-          groups: (payload.groups || []).map((g) => ({ ...g, ...quantizeGeometryUpdates(g) })),
+          references: (payload.references || []).map((r) => ({
+            ...r,
+            ...quantizeGeometryUpdates(r),
+          })),
         }),
       });
       if (!response.ok) {
         throw new Error(`Failed to batch update board: ${response.statusText}`);
       }
       const board = await response.json();
-      return { cards: board.cards || [], groups: board.groups || [] };
+      return {
+        cards: board.cards || [],
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
+      };
     } catch (error) {
       console.error('Failed to batch update board:', error);
       throw error;
     }
   }
 
-  async deleteCard(cardId: string): Promise<{ cards: Card[]; groups: Group[] }> {
+  async deleteCard(cardId: string): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/card/${cardId}`, {
-         method: 'DELETE',
-         headers: socketHeaders(),
-       });
-      
+        method: 'DELETE',
+        headers: socketHeaders(),
+      });
       if (!response.ok) {
         throw new Error(`Failed to delete card: ${response.statusText}`);
       }
-      
       const board = await response.json();
       return {
         cards: board.cards || [],
-        groups: board.groups || []
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
       };
     } catch (error) {
       console.error('Failed to delete card:', error);
@@ -194,22 +316,27 @@ class BoardService {
     }
   }
 
-  async deleteGroup(groupId: string): Promise<{ cards: Card[]; groups: Group[] }> {
+  async deleteGroup(groupId: string): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/group/${groupId}`, {
-         method: 'DELETE',
-         headers: socketHeaders(),
-       });
-       
+        method: 'DELETE',
+        headers: socketHeaders(),
+      });
       if (!response.ok) {
         throw new Error(`Failed to delete group: ${response.statusText}`);
       }
-      
       const board = await response.json();
       return {
         cards: board.cards || [],
-        groups: board.groups || []
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
       };
     } catch (error) {
       console.error('Failed to delete group:', error);
@@ -217,7 +344,13 @@ class BoardService {
     }
   }
 
-  async addConnection(cardId: string, targetCardId: string): Promise<{ cards: Card[]; groups: Group[]; connectionId?: string }> {
+  async addConnection(cardId: string, targetCardId: string): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+    connectionId?: string;
+  }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/card/${cardId}/connections`, {
@@ -225,16 +358,16 @@ class BoardService {
         headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ targetCardId }),
       });
-
       if (!response.ok) {
         throw new Error(`Failed to add connection: ${response.statusText}`);
       }
-
       const board = await response.json();
       const connectionId = board.connectionId;
       return {
         cards: board.cards || [],
         groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
         connectionId,
       };
     } catch (error) {
@@ -243,22 +376,27 @@ class BoardService {
     }
   }
 
-  async removeConnection(cardId: string, connectionId: string): Promise<{ cards: Card[]; groups: Group[] }> {
+  async removeConnection(cardId: string, connectionId: string): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/card/${cardId}/connections/${connectionId}`, {
         method: 'DELETE',
         headers: socketHeaders(),
       });
-
       if (!response.ok) {
         throw new Error(`Failed to remove connection: ${response.statusText}`);
       }
-
       const board = await response.json();
       return {
         cards: board.cards || [],
-        groups: board.groups || []
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
       };
     } catch (error) {
       console.error('Failed to remove connection:', error);
@@ -266,7 +404,12 @@ class BoardService {
     }
   }
 
-  async updateConnectionName(cardId: string, connectionId: string, name: string): Promise<{ cards: Card[]; groups: Group[] }> {
+  async updateConnectionName(cardId: string, connectionId: string, name: string): Promise<{
+    cards: Card[];
+    groups: Group[];
+    views: View[];
+    references: Reference[];
+  }> {
     try {
       WebSocketService.getInstance().markLocalMutation();
       const response = await fetch(`${API_BASE_URL}/board/card/${cardId}/connections/${connectionId}/name`, {
@@ -274,15 +417,15 @@ class BoardService {
         headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
-
       if (!response.ok) {
         throw new Error(`Failed to update connection name: ${response.statusText}`);
       }
-
       const board = await response.json();
       return {
         cards: board.cards || [],
-        groups: board.groups || []
+        groups: board.groups || [],
+        views: board.views || [],
+        references: board.references || [],
       };
     } catch (error) {
       console.error('Failed to update connection name:', error);

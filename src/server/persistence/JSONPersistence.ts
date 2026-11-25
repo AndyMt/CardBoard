@@ -2,14 +2,32 @@ import fs from 'fs-extra';
 import lockfile from 'lockfile';
 import path from 'path';
 import { BoardModel } from '../model/BoardModel.js';
+import type { Card } from '../../types/Card.js';
+import type { Group } from '../../types/Group.js';
+import type { View } from '../../types/View.js';
+import type { Reference } from '../../types/Reference.js';
 import { quantizeGeometry } from '../../shared/geometry.js';
 
-// Define the default board structure
-export const createDefaultBoard = (): BoardModel => ({
-  cards: [],
-  groups: [],
-  lastUpdated: new Date().toISOString()
-});
+export const createDefaultBoard = (): BoardModel => {
+  const defaultView: View = {
+    id: `view-${Date.now()}`,
+    name: 'Usecase',
+    type: 'Usecase',
+    isDefault: true,
+  };
+  const functionalView: View = {
+    id: `view-${Date.now() + 1}`,
+    name: 'Functional',
+    type: 'Functional',
+  };
+  return {
+    cards: [],
+    groups: [],
+    views: [defaultView, functionalView],
+    references: [],
+    lastUpdated: new Date().toISOString(),
+  };
+};
 
 /** Lock files older than this are considered stale (e.g. from a killed process). */
 const STALE_LOCK_MS = 5000;
@@ -21,18 +39,12 @@ export class JSONPersistence {
   private backupDir: string;
 
   constructor(filePath: string = 'data/board.json') {
-    // Use absolute paths to ensure consistency
     this.filePath = path.resolve(process.cwd(), filePath);
     this.lockPath = `${this.filePath}.lock`;
     this.backupDir = path.resolve(process.cwd(), 'data/backups');
     this.ensureDataDirectory();
   }
 
-  /**
-   * Remove a lock file that is older than the stale threshold. This keeps the
-   * server alive after a hard kill (e.g. Ctrl+C mid-write) instead of blocking
-   * on a lock that will never be released.
-   */
   private clearStaleLock(): void {
     try {
       if (!fs.existsSync(this.lockPath)) return;
@@ -69,13 +81,10 @@ export class JSONPersistence {
 
   private ensureDataDirectory(): void {
     try {
-      // Ensure data directory exists
       const dataDir = path.dirname(this.filePath);
       if (!fs.existsSync(dataDir)) {
         fs.mkdirSync(dataDir, { recursive: true });
       }
-
-      // Ensure backup directory exists
       if (!fs.existsSync(this.backupDir)) {
         fs.mkdirSync(this.backupDir, { recursive: true });
       }
@@ -95,7 +104,7 @@ export class JSONPersistence {
   private writeBoardUnlocked(board: BoardModel): BoardModel {
     const boardToSave: BoardModel = {
       ...board,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     };
     fs.writeJsonSync(this.filePath, boardToSave, { spaces: 2 });
     return boardToSave;
@@ -154,28 +163,100 @@ export class JSONPersistence {
 
   async createBackup(): Promise<void> {
     try {
-      // Generate timestamp for backup file
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const backupPath = path.join(this.backupDir, `board-${timestamp}.json`);
-
-      // Check if the main file exists before creating backup
       if (await fs.pathExists(this.filePath)) {
-        // Copy current board file to backup location
         await fs.copy(this.filePath, backupPath);
       }
     } catch (backupErr) {
-      // If backup fails, just log the error but don't fail the operation
       console.error(`Failed to create backup: ${(backupErr as Error).message}`);
     }
   }
 
   private createBoardFromData(data: any): BoardModel {
-    const cards = Array.isArray(data.cards) ? data.cards.map((card: any) => quantizeGeometry(card)) : [];
-    const groups = Array.isArray(data.groups) ? data.groups.map((group: any) => quantizeGeometry(group)) : [];
+    const legacyCards = Array.isArray(data.cards) ? data.cards : [];
+    const legacyGroups = Array.isArray(data.groups) ? data.groups : [];
+
+    // If views/references already present, use them as-is (quantized).
+    if (Array.isArray(data.views) && Array.isArray(data.references)) {
+      const cards = legacyCards.map((card: any) => quantizeGeometry(card)) as Card[];
+      const groups = legacyGroups.map((group: any) => quantizeGeometry(group)) as Group[];
+      const views = data.views as View[];
+      const references = data.references.map((ref: any) => quantizeGeometry(ref)) as Reference[];
+      return {
+        cards,
+        groups,
+        views,
+        references,
+        lastUpdated: data.lastUpdated || new Date().toISOString(),
+      };
+    }
+
+    // Legacy migration: no views/references. Build default Usecase view + one
+    // reference per legacy card/group, preserving legacy x/y/width/height/groupId.
+    const defaultView: View = {
+      id: `view-${Date.now()}`,
+      name: 'Usecase',
+      type: 'Usecase',
+      isDefault: true,
+    };
+    const functionalView: View = {
+      id: `view-${Date.now() + 1}`,
+      name: 'Functional',
+      type: 'Functional',
+    };
+    const views: View[] = [defaultView, functionalView];
+
+    const cards: Card[] = legacyCards.map((card: any) => ({
+      id: card.id || `card-${Date.now()}`,
+      text: card.text ?? '',
+      createdBy: card.createdBy,
+      createdColor: card.createdColor,
+      connections: card.connections,
+    })) as Card[];
+    const groups: Group[] = legacyGroups.map((group: any) => ({
+      id: group.id || `group-${Date.now()}`,
+      label: group.label ?? '',
+      createdBy: group.createdBy,
+      createdColor: group.createdColor,
+    })) as Group[];
+
+    const references: Reference[] = [];
+    let refSeq = Date.now();
+    for (const card of cards) {
+      const src = legacyCards.find((c: any) => c.id === card.id) || {};
+      references.push({
+        id: `ref-${refSeq++}`,
+        elementId: card.id,
+        elementType: 'card',
+        x: src.x ?? 0,
+        y: src.y ?? 0,
+        width: src.width,
+        height: src.height,
+        viewId: defaultView.id,
+        groupId: src.groupId,
+      });
+    }
+    for (const group of groups) {
+      const src = legacyGroups.find((g: any) => g.id === group.id) || {};
+      references.push({
+        id: `ref-${refSeq++}`,
+        elementId: group.id,
+        elementType: 'group',
+        x: src.x ?? 0,
+        y: src.y ?? 0,
+        width: src.width,
+        height: src.height,
+        viewId: defaultView.id,
+      });
+    }
+
     return {
       cards,
       groups,
-      lastUpdated: data.lastUpdated || new Date().toISOString()
+      views,
+      references,
+      lastUpdated: data.lastUpdated || new Date().toISOString(),
     };
   }
 }

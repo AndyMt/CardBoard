@@ -1,5 +1,6 @@
 import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
+import type { Reference } from '../../types/Reference.js';
 
 export const SYSML_FILENAME = 'board.sysml';
 
@@ -77,9 +78,17 @@ function lowerFirst(value: string): string {
   return value.charAt(0).toLowerCase() + value.slice(1);
 }
 
-export function buildSysML(board: { cards: Card[]; groups: Group[] }): string {
+export function buildSysML(board: { cards: Card[]; groups: Group[]; references: Reference[] }): string {
   const cards = board.cards ?? [];
   const groups = board.groups ?? [];
+  const references = board.references ?? [];
+
+  const cardGroupIdByCardId = new Map<string, string>();
+  for (const ref of references) {
+    if (ref.elementType === 'card' && ref.groupId && !cardGroupIdByCardId.has(ref.elementId)) {
+      cardGroupIdByCardId.set(ref.elementId, ref.groupId);
+    }
+  }
 
   const actions = cards
     .map(parseActionCard)
@@ -173,7 +182,7 @@ export function buildSysML(board: { cards: Card[]; groups: Group[] }): string {
   for (const gp of groupPackages) {
     lines.push(`      package ${gp.name}{`);
     const members = actions
-      .filter((a) => a.card.groupId === gp.group.id)
+      .filter((a) => cardGroupIdByCardId.get(a.card.id) === gp.group.id)
       .sort((a, b) => compareCardIDs(a.cardID, b.cardID));
     for (const member of members) {
       lines.push(`         public import UseCaseActivities::overallUseCase::${member.name};`);
@@ -191,7 +200,7 @@ export async function downloadSysMLExport(): Promise<void> {
     throw new Error(`Failed to fetch board: ${response.statusText}`);
   }
   const board = await response.json();
-  const sysml = buildSysML({ cards: board.cards ?? [], groups: board.groups ?? [] });
+  const sysml = buildSysML({ cards: board.cards ?? [], groups: board.groups ?? [], references: board.references ?? [] });
   const blob = new Blob([sysml], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

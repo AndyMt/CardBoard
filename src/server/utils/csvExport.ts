@@ -1,5 +1,6 @@
 import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
+import type { Reference } from '../../types/Reference.js';
 
 export type BoardExportType = 'cards' | 'groups' | 'mapping';
 
@@ -32,16 +33,20 @@ export function buildGroupsCsv(groups: Group[]): string {
   return toCsv(['group'], dataRows, ',');
 }
 
-export function buildMappingCsv(cards: Card[], groups: Group[]): string {
+export function buildMappingCsv(cards: Card[], groups: Group[], references: Reference[]): string {
+  const cardById = new Map(cards.map((c) => [c.id, c]));
   const groupById = new Map(groups.map((g) => [g.id, g]));
   const dataRows: string[][] = [];
-  for (const group of groups) {
-    for (const card of cards) {
-      if (card.groupId !== group.id) continue;
-      const resolved = groupById.get(card.groupId);
-      if (!resolved) continue;
-      dataRows.push([resolved.label ?? '', card.text ?? '']);
-    }
+  const seen = new Set<string>();
+  for (const ref of references) {
+    if (!ref.groupId) continue;
+    const key = `${ref.groupId}|${ref.elementId}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const group = groupById.get(ref.groupId);
+    const card = cardById.get(ref.elementId);
+    if (!group || !card) continue;
+    dataRows.push([group.label ?? '', card.text ?? '']);
   }
   return toCsv(['group', 'card'], dataRows, '\t');
 }
@@ -59,7 +64,7 @@ export function getExportFilename(type: BoardExportType): string {
 
 export function buildBoardExportCsv(
   type: BoardExportType,
-  board: { cards: Card[]; groups: Group[] }
+  board: { cards: Card[]; groups: Group[]; references?: Reference[] }
 ): string {
   switch (type) {
     case 'cards':
@@ -67,6 +72,6 @@ export function buildBoardExportCsv(
     case 'groups':
       return buildGroupsCsv(board.groups ?? []);
     case 'mapping':
-      return buildMappingCsv(board.cards ?? [], board.groups ?? []);
+      return buildMappingCsv(board.cards ?? [], board.groups ?? [], board.references ?? []);
   }
 }

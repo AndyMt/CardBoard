@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../../types/User.js';
+import type { View } from '../../types/View.js';
 import UserService from '../services/UserService.js';
 import { downloadBoardExport, type ExportType } from '../services/ExportService.js';
 import { downloadSysMLExport } from '../services/exportServiceSysML.js';
@@ -13,6 +14,9 @@ interface ToolbarProps {
   user?: User | null;
   connectedUsers?: number;
   onlineUserIds?: string[];
+  views?: View[];
+  activeViewId?: string;
+  onViewChange?: (viewId: string) => void;
   onDeleteUser?: (user: User) => void;
   onLogoutUser?: (user: User) => void;
 }
@@ -23,6 +27,9 @@ const Toolbar: React.FC<ToolbarProps> = ({
   user = null,
   connectedUsers = 0,
   onlineUserIds = [],
+  views: viewsProp = [],
+  activeViewId: activeViewIdProp = '',
+  onViewChange,
   onDeleteUser,
   onLogoutUser,
 }) => {
@@ -126,6 +133,18 @@ const Toolbar: React.FC<ToolbarProps> = ({
               <span>{tool.label}</span>
             </button>
           ))}
+          <div className="flex items-center space-x-2 ml-4">
+            <label className="text-xs text-gray-500 uppercase">View</label>
+            <select
+              value={activeViewIdProp}
+              onChange={(e) => onViewChange?.(e.currentTarget.value)}
+              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm"
+            >
+              {viewsProp.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </div>
           <div className="relative">
             <button
               type="button"

@@ -1,11 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import BoardView from './components/BoardView.js';
 import Toolbar from './components/Toolbar.js';
+import ModelPanel from './components/ModelPanel.js';
 import UserPicker from './components/UserPicker.js';
 import ToolService, { ToolType } from './services/ToolService.js';
 import UserService from './services/UserService.js';
 import WebSocketService from './services/WebSocketService.js';
+import BoardService from './services/BoardService.js';
+import type { UsersUpdatePayload, UserDirectoryUpdatePayload } from './services/WebSocketService.js';
 import { User } from '../types/User.js';
+import type { Card } from '../types/Card.js';
+import type { Group } from '../types/Group.js';
+import type { Reference } from '../types/Reference.js';
+import type { View } from '../types/View.js';
+import { quantizeScalar } from '../shared/geometry.js';
+
+interface BoardData {
+  cards: unknown[];
+  groups: unknown[];
+  views: View[];
+  references: unknown[];
+}
 
 export interface AppProps {
   // Define props if needed
@@ -26,6 +41,78 @@ const App: React.FC<AppProps> = () => {
   const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [suggestedName, setSuggestedName] = useState<string>('');
   const [suggestedColor, setSuggestedColor] = useState<string | null>(null);
+
+  // Board views and the currently active view (MVC: view selection is controller state)
+  const [views, setViews] = useState<View[]>([]);
+  const [activeViewId, setActiveViewId] = useState<string>('');
+  // Full model (cards + groups) for the left-hand model panel.
+  const [boardCards, setBoardCards] = useState<Card[]>([]);
+  const [boardGroups, setBoardGroups] = useState<Group[]>([]);
+  const [boardReferences, setBoardReferences] = useState<Reference[]>([]);
+
+  const loadBoard = useCallback(async () => {
+    try {
+      const response = await fetch('/api/board');
+      if (!response.ok) return;
+      const board = await response.json();
+      const boardViews: View[] = Array.isArray(board.views) ? board.views : [];
+      setViews(boardViews);
+      const defaultView = boardViews.find((v) => v.isDefault) || boardViews[0];
+      if (defaultView && defaultView.id !== activeViewId) {
+        setActiveViewId(defaultView.id);
+      }
+      setBoardCards(Array.isArray(board.cards) ? board.cards : []);
+      setBoardGroups(Array.isArray(board.groups) ? board.groups : []);
+      setBoardReferences(Array.isArray(board.references) ? board.references : []);
+    } catch (err) {
+      console.error('Failed to load board:', err);
+    }
+  }, [activeViewId]);
+
+  useEffect(() => {
+    loadBoard();
+  }, [loadBoard]);
+
+  const handleViewChange = useCallback((viewId: string) => {
+    setActiveViewId(viewId);
+  }, []);
+
+  // Place a model element onto the current view: create a reference (or reposition
+  // an existing one) at the drop position.
+  const handlePlace = useCallback(
+    async (elementId: string, elementType: 'card' | 'group', x: number, y: number) => {
+      if (!activeViewId) return;
+      const existing = boardReferences.find(
+        (r) => r.elementId === elementId && r.elementType === elementType && r.viewId === activeViewId,
+      );
+      const width = elementType === 'card' ? 200 : 440;
+      const height = elementType === 'card' ? 60 : 300;
+      try {
+        if (existing) {
+          await BoardService.getInstance().updateReference(existing.id, {
+            x: quantizeScalar(x),
+            y: quantizeScalar(y),
+            width,
+            height,
+          });
+        } else {
+          await BoardService.getInstance().addReference({
+            id: `ref-${Date.now()}`,
+            elementId,
+            elementType,
+            x: quantizeScalar(x),
+            y: quantizeScalar(y),
+            width,
+            height,
+            viewId: activeViewId,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to place element:', err);
+      }
+    },
+    [activeViewId, boardReferences],
+  );
 
   // Handle tool selection through service
   const handleToolSelect = (tool: ToolType) => {
@@ -63,19 +150,24 @@ const App: React.FC<AppProps> = () => {
     const ws = WebSocketService.getInstance();
     ws.connect();
 
-    const unsubscribeBoard = ws.onBoardUpdate(() => {
+    const unsubscribeBoard = ws.onBoardUpdate((payload) => {
       if (ws.isRecentLocalMutation()) {
         return;
+      }
+      if (payload.board) {
+        setBoardCards(Array.isArray(payload.board.cards) ? payload.board.cards : []);
+        setBoardGroups(Array.isArray(payload.board.groups) ? payload.board.groups : []);
+        setBoardReferences(Array.isArray(payload.board.references) ? payload.board.references : []);
       }
       window.dispatchEvent(new CustomEvent('board:changed'));
     });
 
-    const unsubscribeUsers = ws.onUsersUpdate((payload) => {
+    const unsubscribeUsers = ws.onUsersUpdate((payload: UsersUpdatePayload) => {
       setConnectedUsers(payload.count);
       setOnlineUserIds(payload.onlineUserIds ?? []);
     });
 
-    const unsubscribeDirectory = ws.onUsersDirectoryUpdate((payload) => {
+    const unsubscribeDirectory = ws.onUsersDirectoryUpdate((payload: UserDirectoryUpdatePayload) => {
       UserService.getInstance().setUsers(payload.users);
     });
 
@@ -169,18 +261,33 @@ const App: React.FC<AppProps> = () => {
         user={user}
         connectedUsers={connectedUsers}
         onlineUserIds={onlineUserIds}
+        views={views}
+        activeViewId={activeViewId}
+        onViewChange={handleViewChange}
         onDeleteUser={handleDeleteUser}
         onLogoutUser={handleLogoutUser}
       />
 
       {/* Board view takes remaining space */}
-      <div className="flex-1 overflow-hidden pt-12">
-        {/* Add pt-12 to account for toolbar height */}
-        <BoardView
-        selectedTool={selectedTool}
-        onToolChange={handleToolSelect}
-          currentUser={user}
+      <div className="flex-1 overflow-hidden pt-12 flex h-full">
+        <ModelPanel
+          cards={boardCards}
+          groups={boardGroups}
+          activeViewId={activeViewId}
+          onPlace={handlePlace}
         />
+        <div className="flex-1 relative min-w-0">
+          {/* Add pt-12 to account for toolbar height */}
+          <BoardView
+            selectedTool={selectedTool}
+            onToolChange={handleToolSelect}
+            currentUser={user}
+            views={views}
+            activeViewId={activeViewId}
+            onViewChange={handleViewChange}
+            onPlace={handlePlace}
+          />
+        </div>
       </div>
     </div>
   );
