@@ -44,21 +44,28 @@ const App: React.FC<AppProps> = () => {
 
   // Board views and the currently active view (MVC: view selection is controller state)
   const [views, setViews] = useState<View[]>([]);
-  const [activeViewId, setActiveViewId] = useState<string>('');
+  const [activeViewId, setActiveViewId] = useState<string>('view-usecase');
   // Full model (cards + groups) for the left-hand model panel.
   const [boardCards, setBoardCards] = useState<Card[]>([]);
   const [boardGroups, setBoardGroups] = useState<Group[]>([]);
   const [boardReferences, setBoardReferences] = useState<Reference[]>([]);
 
   const loadBoard = useCallback(async () => {
+    const defaultViews: View[] = [
+      { id: 'view-usecase', name: 'Usecase', type: 'Usecase', isDefault: true },
+      { id: 'view-functional', name: 'Functional', type: 'Functional' },
+    ];
+    setViews(defaultViews);
+    setActiveViewId('view-usecase');
+
     try {
       const response = await fetch('/api/board');
       if (!response.ok) return;
       const board = await response.json();
-      const boardViews: View[] = Array.isArray(board.views) ? board.views : [];
-      setViews(boardViews);
-      const defaultView = boardViews.find((v) => v.isDefault) || boardViews[0];
-      if (defaultView && defaultView.id !== activeViewId) {
+      const serverViews: View[] = Array.isArray(board.views) ? board.views : [];
+      if (serverViews.length > 0) {
+        setViews(serverViews);
+        const defaultView = serverViews.find((v) => v.isDefault) || serverViews[0];
         setActiveViewId(defaultView.id);
       }
       setBoardCards(Array.isArray(board.cards) ? board.cards : []);
@@ -67,7 +74,7 @@ const App: React.FC<AppProps> = () => {
     } catch (err) {
       console.error('Failed to load board:', err);
     }
-  }, [activeViewId]);
+  }, []);
 
   useEffect(() => {
     loadBoard();

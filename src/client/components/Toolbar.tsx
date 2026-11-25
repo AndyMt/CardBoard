@@ -63,6 +63,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
 
   const [showUserList, setShowUserList] = useState(false);
   const [showDownload, setShowDownload] = useState(false);
+  const [showViewMenu, setShowViewMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [knownUsers, setKnownUsers] = useState<User[]>([]);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -133,19 +134,41 @@ const Toolbar: React.FC<ToolbarProps> = ({
               <span>{tool.label}</span>
             </button>
           ))}
-          <div className="flex items-center space-x-2 ml-4">
+          <div className="flex items-center space-x-2 ml-4 overflow-visible">
             <label className="text-xs text-gray-500 uppercase">View</label>
-            <select
-              value={activeViewIdProp}
-              onChange={(e) => onViewChange?.(e.currentTarget.value)}
-              className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm"
-            >
-              {viewsProp.map((v) => (
-                <option key={v.id} value={v.id}>{v.name}</option>
-              ))}
-            </select>
+            <div className="relative z-50 overflow-visible">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowViewMenu((v) => !v);
+                }}
+                className="relative z-50 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm flex items-center space-x-1 hover:bg-gray-50 focus:outline-none"
+              >
+                <span>{activeViewIdProp ? viewsProp.find((v) => v.id === activeViewIdProp)?.name : ''}</span>
+                <span className="material-symbols-outlined text-[10px] text-gray-400">expand_more</span>
+              </button>
+              {showViewMenu && (
+                <div className="absolute z-[60] left-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg py-1 overflow-visible">
+                  {viewsProp.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowViewMenu(false);
+                        onViewChange?.(v.id);
+                      }}
+                      className={`w-full text-left px-3 py-1.5 text-sm ${v.id === activeViewIdProp ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700 hover:bg-gray-100'}`}
+                    >
+                      {v.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <div className="relative">
+        <div className="relative">
             <button
               type="button"
               onClick={() => setShowDownload((v) => !v)}

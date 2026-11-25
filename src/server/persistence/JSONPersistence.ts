@@ -177,10 +177,23 @@ export class JSONPersistence {
     const legacyCards = Array.isArray(data.cards) ? data.cards : [];
     const legacyGroups = Array.isArray(data.groups) ? data.groups : [];
 
-    // If views/references already present, use them as-is (quantized).
+    // If views/references already present (new format), use them as-is.
+    // Only run legacy migration when views are missing (old format: cards/groups
+    // carried their own x/y/width/height/groupId).
     if (Array.isArray(data.views) && Array.isArray(data.references)) {
-      const cards = legacyCards.map((card: any) => quantizeGeometry(card)) as Card[];
-      const groups = legacyGroups.map((group: any) => quantizeGeometry(group)) as Group[];
+      const cards = legacyCards.map((card: any) => ({
+        id: card.id || `card-${Date.now()}`,
+        text: card.text ?? '',
+        createdBy: card.createdBy,
+        createdColor: card.createdColor,
+        connections: card.connections,
+      })) as Card[];
+      const groups = legacyGroups.map((group: any) => ({
+        id: group.id || `group-${Date.now()}`,
+        label: group.label ?? '',
+        createdBy: group.createdBy,
+        createdColor: group.createdColor,
+      })) as Group[];
       const views = data.views as View[];
       const references = data.references.map((ref: any) => quantizeGeometry(ref)) as Reference[];
       return {
@@ -192,21 +205,48 @@ export class JSONPersistence {
       };
     }
 
-    // Legacy migration: no views/references. Build default Usecase view + one
-    // reference per legacy card/group, preserving legacy x/y/width/height/groupId.
-    const defaultView: View = {
-      id: `view-${Date.now()}`,
-      name: 'Usecase',
-      type: 'Usecase',
-      isDefault: true,
-    };
-    const functionalView: View = {
-      id: `view-${Date.now() + 1}`,
-      name: 'Functional',
-      type: 'Functional',
-    };
-    const views: View[] = [defaultView, functionalView];
+    if (!Array.isArray(data.views)) {
+      // Legacy format (no views): strip unknown legacy attributes (x/y/width/height/groupId)
+      // and create no references. Elements become pure model entries, invisible until
+      // dragged from the model panel into a view.
+      const defaultView: View = {
+        id: 'view-usecase',
+        name: 'Usecase',
+        type: 'Usecase',
+        isDefault: true,
+      };
+      const functionalView: View = {
+        id: 'view-functional',
+        name: 'Functional',
+        type: 'Functional',
+      };
+      const views: View[] = [defaultView, functionalView];
 
+      const cards: Card[] = legacyCards.map((card: any) => ({
+        id: card.id || `card-${Date.now()}`,
+        text: card.text ?? '',
+        createdBy: card.createdBy,
+        createdColor: card.createdColor,
+        connections: card.connections,
+      })) as Card[];
+      const groups: Group[] = legacyGroups.map((group: any) => ({
+        id: group.id || `group-${Date.now()}`,
+        label: group.label ?? '',
+        createdBy: group.createdBy,
+        createdColor: group.createdColor,
+      })) as Group[];
+
+      return {
+        cards,
+        groups,
+        views,
+        references: [],
+        lastUpdated: data.lastUpdated || new Date().toISOString(),
+      };
+    }
+
+    // Views exist but references missing: keep views, start with empty references.
+    // Cards no longer carry geometry, so positions cannot be recovered.
     const cards: Card[] = legacyCards.map((card: any) => ({
       id: card.id || `card-${Date.now()}`,
       text: card.text ?? '',
@@ -221,41 +261,11 @@ export class JSONPersistence {
       createdColor: group.createdColor,
     })) as Group[];
 
-    const references: Reference[] = [];
-    let refSeq = Date.now();
-    for (const card of cards) {
-      const src = legacyCards.find((c: any) => c.id === card.id) || {};
-      references.push({
-        id: `ref-${refSeq++}`,
-        elementId: card.id,
-        elementType: 'card',
-        x: src.x ?? 0,
-        y: src.y ?? 0,
-        width: src.width,
-        height: src.height,
-        viewId: defaultView.id,
-        groupId: src.groupId,
-      });
-    }
-    for (const group of groups) {
-      const src = legacyGroups.find((g: any) => g.id === group.id) || {};
-      references.push({
-        id: `ref-${refSeq++}`,
-        elementId: group.id,
-        elementType: 'group',
-        x: src.x ?? 0,
-        y: src.y ?? 0,
-        width: src.width,
-        height: src.height,
-        viewId: defaultView.id,
-      });
-    }
-
     return {
       cards,
       groups,
-      views,
-      references,
+      views: data.views as View[],
+      references: [],
       lastUpdated: data.lastUpdated || new Date().toISOString(),
     };
   }

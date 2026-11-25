@@ -14,7 +14,7 @@ import { JSONPersistence } from './persistence/JSONPersistence.js';
 import { UserService } from './services/UserService.js';
 import { WebSocketController } from './controller/WebSocketController.js';
 import { CursorService } from './services/CursorService.js';
-import { quantizeGeometry } from '../shared/geometry.js';
+import { quantizeGeometry, quantizeGeometryUpdates } from '../shared/geometry.js';
 import { buildBoardExportCsv, getExportFilename, type BoardExportType } from './utils/csvExport.js';
 import { normalizeBoard } from './utils/boardNormalization.js';
 
@@ -201,7 +201,7 @@ app.put('/api/board/reference/:id', async (req, res) => {
       const idx = b.references.findIndex((r) => r.id === referenceId);
       if (idx === -1) return;
       found = true;
-      b.references[idx] = { ...b.references[idx], ...quantizeGeometry(updates as Reference) };
+      b.references[idx] = { ...b.references[idx], ...quantizeGeometryUpdates(updates) };
     }, senderSocketId(req));
     if (!found) return res.status(404).json({ error: 'Reference not found' });
     res.json(board);
@@ -350,7 +350,7 @@ app.put('/api/board/batch', async (req, res) => {
         const { id, ...updates } = item;
         const idx = b.references.findIndex((r) => r.id === id);
         if (idx === -1) continue;
-        b.references[idx] = { ...b.references[idx], ...quantizeGeometry(updates as Reference) };
+        b.references[idx] = { ...b.references[idx], ...quantizeGeometryUpdates(updates) };
       }
     }, senderSocketId(req));
     res.json(board);

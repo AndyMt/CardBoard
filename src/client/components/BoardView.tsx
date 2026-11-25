@@ -282,7 +282,6 @@ export const BoardView: React.FC<BoardViewProps> = ({
   useEffect(() => {
     const ws = WebSocketService.getInstance();
     const unsubscribeBoard = ws.onBoardUpdate(async (payload) => {
-      if (ws.isRecentLocalMutation()) return;
       if (isLocallyDraggingRef.current) return;
       const serverBoard = payload.board;
       if (!serverBoard) return;

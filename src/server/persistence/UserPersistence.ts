@@ -11,10 +11,47 @@ export class UserPersistence {
   private filePath: string;
   private lockPath: string;
 
+  private static readonly STALE_LOCK_MS = 5000;
+  private static readonly LOCK_WAIT_MS = 5000;
+
   constructor(filePath: string = 'data/users.json') {
     this.filePath = path.resolve(process.cwd(), filePath);
     this.lockPath = `${this.filePath}.lock`;
     this.ensureDataDirectory();
+  }
+
+  private clearStaleLock(): void {
+    try {
+      if (!fs.existsSync(this.lockPath)) return;
+      const stats = fs.statSync(this.lockPath);
+      const ageMs = Date.now() - stats.mtimeMs;
+      if (ageMs > UserPersistence.STALE_LOCK_MS) {
+        fs.removeSync(this.lockPath);
+      }
+    } catch {
+      // Best-effort; ignore errors
+    }
+  }
+
+  private acquireLock(): Promise<void> {
+    this.clearStaleLock();
+    return new Promise<void>((resolve, reject) => {
+      lockfile.lock(this.lockPath, { wait: UserPersistence.LOCK_WAIT_MS }, (lockErr) => {
+        if (lockErr) {
+          reject(new Error(`Could not acquire lock: ${lockErr.message}`));
+          return;
+        }
+        resolve();
+      });
+    });
+  }
+
+  private releaseLock(): void {
+    try {
+      lockfile.unlockSync(this.lockPath);
+    } catch (unlockErr) {
+      console.error(`Failed to release lock: ${(unlockErr as Error).message}`);
+    }
   }
 
   private ensureDataDirectory(): void {
@@ -29,73 +66,42 @@ export class UserPersistence {
   }
 
   async loadUsers(): Promise<{ users: User[] }> {
-    return new Promise<{ users: User[] }>((resolve, reject) => {
-      lockfile.lock(this.lockPath, { wait: 0 }, async (lockErr) => {
-        if (lockErr) {
-          console.error(`Could not acquire lock for loading users: ${lockErr.message}`);
-          reject(new Error(`Could not acquire lock for loading users: ${lockErr.message}`));
-          return;
-        }
+    await this.acquireLock();
+    try {
+      if (!await fs.pathExists(this.filePath)) {
+        const defaultUsers = createDefaultUsers();
+        await fs.writeJson(this.filePath, defaultUsers, { spaces: 2 });
+        return defaultUsers;
+      }
 
-        try {
-          if (!await fs.pathExists(this.filePath)) {
-            const defaultUsers = createDefaultUsers();
-            await fs.writeJson(this.filePath, defaultUsers, { spaces: 2 });
-            resolve(defaultUsers);
-            return;
-          }
-
-          try {
-            const data = await fs.readJson(this.filePath);
-            resolve({
-              users: Array.isArray(data.users) ? data.users : [],
-            });
-          } catch (readErr) {
-            console.error(`Failed to load users: ${(readErr as Error).message}`);
-            const defaultUsers = createDefaultUsers();
-            await fs.writeJson(this.filePath, defaultUsers, { spaces: 2 });
-            resolve(defaultUsers);
-          }
-        } finally {
-          try {
-            lockfile.unlockSync(this.lockPath);
-          } catch (unlockErr) {
-            console.error(`Failed to release lock: ${(unlockErr as Error).message}`);
-          }
-        }
-      });
-    });
+      try {
+        const data = await fs.readJson(this.filePath);
+        return {
+          users: Array.isArray(data.users) ? data.users : [],
+        };
+      } catch (readErr) {
+        console.error(`Failed to load users: ${(readErr as Error).message}`);
+        const defaultUsers = createDefaultUsers();
+        await fs.writeJson(this.filePath, defaultUsers, { spaces: 2 });
+        return defaultUsers;
+      }
+    } finally {
+      this.releaseLock();
+    }
   }
 
   async saveUsers(data: { users: User[] }): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      lockfile.lock(this.lockPath, { wait: 0 }, async (lockErr) => {
-        if (lockErr) {
-          console.error(`Could not acquire lock for saving users: ${lockErr.message}`);
-          reject(new Error(`Could not acquire lock for saving users: ${lockErr.message}`));
-          return;
-        }
-
-        try {
-          await fs.writeJson(this.filePath, data, { spaces: 2 });
-          resolve();
-        } catch (writeErr) {
-          console.error(`Failed to save users: ${(writeErr as Error).message}`);
-          reject(new Error(`Failed to save users: ${(writeErr as Error).message}`));
-        } finally {
-          try {
-            lockfile.unlockSync(this.lockPath);
-          } catch (unlockErr) {
-            console.error(`Failed to release lock: ${(unlockErr as Error).message}`);
-          }
-        }
-      });
-    });
+    await this.acquireLock();
+    try {
+      await fs.writeJson(this.filePath, data, { spaces: 2 });
+    } finally {
+      this.releaseLock();
+    }
   }
 
   async findUserByName(name: string): Promise<User | null> {
     const data = await this.loadUsers();
-    return data.users.find(user => user.name === name) || null;
+    return data.users.find((user) => user.name === name) || null;
   }
 
   async createUser(name: string, color: string): Promise<{ user: User; created: boolean }> {
@@ -122,12 +128,12 @@ export class UserPersistence {
 
   async findUserById(id: string): Promise<User | null> {
     const data = await this.loadUsers();
-    return data.users.find(user => user.id === id) || null;
+    return data.users.find((user) => user.id === id) || null;
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
     const data = await this.loadUsers();
-    const index = data.users.findIndex(user => user.id === id);
+    const index = data.users.findIndex((user) => user.id === id);
     if (index === -1) {
       return null;
     }
@@ -141,7 +147,7 @@ export class UserPersistence {
 
   async removeUser(id: string): Promise<boolean> {
     const data = await this.loadUsers();
-    const index = data.users.findIndex(user => user.id === id);
+    const index = data.users.findIndex((user) => user.id === id);
     if (index === -1) {
       return false;
     }
