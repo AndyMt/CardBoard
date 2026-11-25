@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User } from '../../types/User.js';
 import UserService from '../services/UserService.js';
 import { downloadBoardExport, type ExportType } from '../services/ExportService.js';
+import { downloadSysMLExport } from '../services/exportServiceSysML.js';
 
 // Define tool types
 export type ToolType = 'select' | 'card' | 'group' | 'connection';
@@ -65,6 +66,18 @@ const Toolbar: React.FC<ToolbarProps> = ({
     setExportError(null);
     try {
       await downloadBoardExport(type);
+    } catch (err) {
+      console.error('Failed to export:', err);
+      setExportError(err instanceof Error ? err.message : 'Export failed');
+      window.setTimeout(() => setExportError(null), 4000);
+    }
+  }, []);
+
+  const handleSysMLExport = useCallback(async () => {
+    setShowDownload(false);
+    setExportError(null);
+    try {
+      await downloadSysMLExport();
     } catch (err) {
       console.error('Failed to export:', err);
       setExportError(err instanceof Error ? err.message : 'Export failed');
@@ -139,15 +152,22 @@ const Toolbar: React.FC<ToolbarProps> = ({
                 >
                   Cards CSV
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleExport('groups')}
-                  className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-                >
-                  Groups CSV
-                </button>
-              </div>
-            )}
+                 <button
+                   type="button"
+                   onClick={() => handleExport('groups')}
+                   className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                 >
+                   Groups CSV
+                 </button>
+                 <button
+                   type="button"
+                   onClick={handleSysMLExport}
+                   className="w-full text-left px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+                 >
+                   SysML v2 (.sysml)
+                 </button>
+               </div>
+             )}
             {exportError && (
               <div className="absolute left-0 mt-2 top-full px-3 py-1.5 text-sm text-red-700 bg-red-50 border border-red-200 rounded-md shadow-sm whitespace-nowrap z-50">
                 {exportError}
