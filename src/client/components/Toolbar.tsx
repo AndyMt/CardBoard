@@ -48,7 +48,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
     },
     {
       type: 'connection',
-      label: 'Add Connection',
+      label: 'Add Flow',
       icon: 'link',
     },
   ];

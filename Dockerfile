@@ -1,7 +1,7 @@
-ARG BUILD_NUMBER=dev
-
 # ---- Build stage ----
 FROM node:20-alpine AS build
+ARG BUILD_NUMBER
+ENV BUILD_NUMBER=$BUILD_NUMBER
 WORKDIR /app
 
 # Install deps for build
