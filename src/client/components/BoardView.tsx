@@ -1018,6 +1018,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
             onGroupClick={(_id, ctrlKey) => handleGroupClick(ref?.id ?? group.id, ctrlKey)}
             onSelect={(_id, ctrlKey) => handleSelect(ref?.id ?? group.id, ctrlKey)}
             onDragStart={(e) => handleDragStart(e, ref?.id ?? group.id, 'group')}
+            onLabelChange={handleGroupLabelChange}
+            onLabelCommit={handleGroupLabelCommit}
+            onEditingChange={handleGroupEditingChange}
             createdBy={group.createdBy}
             createdColor={group.createdColor}
             autoFocus={autoFocusId === group.id}
