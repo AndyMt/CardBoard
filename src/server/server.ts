@@ -183,7 +183,14 @@ app.post('/api/board/reference', async (req, res) => {
   try {
     const reference: Reference = quantizeGeometry(req.body);
     const board = await localMutation((b) => {
-      b.references.push(reference);
+      const existing = b.references.find(
+        (r) => r.elementId === reference.elementId && r.elementType === reference.elementType && r.viewId === reference.viewId,
+      );
+      if (existing) {
+        Object.assign(existing, { ...reference, id: existing.id });
+      } else {
+        b.references.push(reference);
+      }
     }, senderSocketId(req));
     res.json(board);
   } catch (error) {
