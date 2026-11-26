@@ -22,7 +22,7 @@ export const ModelPanel: React.FC<ModelPanelProps> = ({
   };
 
   return (
-    <aside className="w-80 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
+    <aside className="w-60 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
       <div className="p-4 border-b border-gray-200">
         <h2 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Model</h2>
         <p className="text-xs text-gray-500 mt-1">
@@ -41,7 +41,6 @@ export const ModelPanel: React.FC<ModelPanelProps> = ({
             data-element-type="card"
           >
             <span title={card.text}>{card.text}</span>
-            <span className="text-[10px] text-gray-400 ml-2">{card.id}</span>
           </div>
         ))}
         {cards.length === 0 && (
@@ -58,7 +57,6 @@ export const ModelPanel: React.FC<ModelPanelProps> = ({
             data-element-type="group"
           >
             <span title={group.label}>{group.label}</span>
-            <span className="text-[10px] text-gray-400 ml-2">{group.id}</span>
           </div>
         ))}
         {groups.length === 0 && (
