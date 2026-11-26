@@ -1,0 +1,56 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "build"
+      ],
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "Builds the client with vite (vite build)"
+    },
+    {
+      "label": "Dev",
+      "type": "shell",
+      "command": "npm",
+      "args": [
+        "run",
+        "dev"
+      ],
+      "problemMatcher": [],
+      "group": "none",
+      "detail": "Starts the Vite dev server at http://localhost:5173"
+    },
+    {
+      "label": "Cleanup Kilo Plans",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-File",
+        "${workspaceFolder}/.kilo/scripts/archive-old-plans.ps1"
+      ],
+      "problemMatcher": [],
+      "group": "none",
+      "detail": "Archives all plans in .kilo/plans/ except the 10 latest by timestamp, moving them to .kilo/plans/archive/"
+    },
+    {
+      "label": "Cleanup Kilo Sessions",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-File",
+        "${workspaceFolder}/.kilo/scripts/cleanup-kilo-sessions.ps1"
+      ],
+      "problemMatcher": [],
+      "group": "none",
+      "detail": "Removes all Kilo sessions except the 10 latest, keeping the most recent sessions active."
+    }
+  ]
+}

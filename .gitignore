@@ -50,7 +50,6 @@ build/
 
 # IDE
 .idea/
-.vscode/
 *.suo
 *.ntvs*
 *.njsproj
