@@ -31,7 +31,7 @@ export const ModelPanel: React.FC<ModelPanelProps> = ({
       </div>
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
         <div className="text-xs font-semibold text-gray-400 uppercase px-2 mb-1">Cards</div>
-        {cards.map((card) => (
+        {cards.slice().sort((a, b) => (a.text || '').localeCompare(b.text || '')).map((card) => (
           <div
             key={card.id}
             draggable
@@ -48,7 +48,7 @@ export const ModelPanel: React.FC<ModelPanelProps> = ({
           <div className="px-3 py-2 text-xs text-gray-400">No cards</div>
         )}
         <div className="text-xs font-semibold text-gray-400 uppercase px-2 mb-1 mt-3">Groups</div>
-        {groups.map((group) => (
+        {groups.slice().sort((a, b) => (a.label || '').localeCompare(b.label || '')).map((group) => (
           <div
             key={group.id}
             draggable
