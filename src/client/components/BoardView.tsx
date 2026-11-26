@@ -650,10 +650,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
   };
 
   const handleCardHeightChange = (id: string, height: number) => {
-    const quantizedHeight = quantizeScalar(height);
     const refId = refByElementId.get(id);
     if (refId) {
-      setReferences(prev => prev.map(ref => (ref.id === refId ? { ...ref, height: quantizedHeight } : ref)));
+      setReferences(prev => prev.map(ref => (ref.id === refId ? { ...ref, height } : ref)));
     }
   };
 

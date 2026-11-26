@@ -57,6 +57,8 @@ export const Card: React.FC<CardProps> = ({
   const autoFocusRef = useRef(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(20);
+  const prevEditingRef = useRef(false);
+  const contentMeasuredRef = useRef(false);
   const { handleMouseDown, handleMouseUp } = useElementSelection(
     id,
     onCardClick,
@@ -74,11 +76,24 @@ export const Card: React.FC<CardProps> = ({
   }, [id, isEditing, onEditingChange]);
 
   useEffect(() => {
-    const contentHeight = updateHeight();
-    if (!isEditing) {
+    if (!contentMeasuredRef.current && !isEditing && textRef.current) {
+      const measuredHeight = textRef.current.scrollHeight;
+      const measuredContentHeight = Math.max(measuredHeight, 20);
+      setContentHeight(measuredContentHeight);
+      contentMeasuredRef.current = true;
+    }
+    return () => {
+      contentMeasuredRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (prevEditingRef.current && !isEditing) {
+      // Editing just ended (user committed). Persist final height without re-measuring.
       onEditEnd?.(id, 14 + contentHeight + 8);
     }
-  }, [isEditing]);
+    prevEditingRef.current = isEditing;
+  }, [id, isEditing, contentHeight, onEditEnd]);
 
   const updateHeight = (): number => {
     if (isEditing && textareaRef.current) {
