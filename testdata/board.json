@@ -1,0 +1,272 @@
+{
+  "cards": [
+    {
+      "id": "card-1794073197747",
+      "text": "= 1.2 sudWaermen",
+      "createdBy": "Adi",
+      "createdColor": "#009922",
+      "connections": [
+        {
+          "id": "conn-1795542440001",
+          "targetCardId": "card-1795542445422",
+          "name": "%3 Waerme"
+        }
+      ]
+    },
+    {
+      "id": "card-1795534033189",
+      "text": "= 2.1 wasserZufuehrenL",
+      "createdBy": "Andreas",
+      "createdColor": "#005599",
+      "connections": [
+        {
+          "id": "conn-1795542440002",
+          "targetCardId": "card-1795534048585",
+          "name": "%2 Leitungswasser"
+        },
+        {
+          "id": "conn-1795702689460",
+          "targetCardId": "card-1795702419104",
+          "name": "%2 Leitungswasser"
+        }
+      ]
+    },
+    {
+      "id": "card-1795542445422",
+      "text": "= 1.3 sudRuehren",
+      "createdBy": "Andreas",
+      "createdColor": "#005599",
+      "connections": []
+    },
+    {
+      "id": "card-1795627521093",
+      "text": "= 1.1 wasserZufuehrenQ",
+      "createdBy": "Andreas",
+      "createdColor": "#005599",
+      "connections": [
+        {
+          "id": "conn-1795542440003",
+          "targetCardId": "card-1795542445422",
+          "name": "%1 Quellwasser"
+        }
+      ]
+    },
+    {
+      "id": "card-1795702419104",
+      "text": "= 2.2 wasserRuehren",
+      "createdBy": "Andreas",
+      "createdColor": "#005599",
+      "connections": []
+    }
+  ],
+  "groups": [
+    {
+      "id": "group-1795546538305",
+      "label": "> Wasserzufuhr",
+      "createdBy": "Andreas",
+      "createdColor": "#005599"
+    },
+    {
+      "id": "group-1795546560821",
+      "label": "> Ruehreinheit",
+      "createdBy": "Andreas",
+      "createdColor": "#005599"
+    },
+    {
+      "id": "group-1795603749637",
+      "label": "> Heizeinheit",
+      "createdBy": "Andreas",
+      "createdColor": "#005599"
+    },
+    {
+      "id": "group-1795624808406",
+      "label": "= 1 Bier brauen",
+      "createdBy": "Andreas",
+      "createdColor": "#005599"
+    },
+    {
+      "id": "group-1795625162429",
+      "label": "= 2 Braumaschine reinigen",
+      "createdBy": "Andreas",
+      "createdColor": "#005599"
+    }
+  ],
+  "views": [
+    {
+      "id": "view-usecase",
+      "name": "Usecase",
+      "type": "Usecase",
+      "isDefault": true
+    },
+    {
+      "id": "view-functional",
+      "name": "Functional",
+      "type": "Functional"
+    }
+  ],
+  "references": [
+    {
+      "id": "ref-1795624808415",
+      "elementId": "group-1795624808406",
+      "elementType": "group",
+      "x": 15,
+      "y": 45,
+      "width": 435,
+      "height": 300,
+      "viewId": "view-usecase"
+    },
+    {
+      "id": "ref-1795625162438",
+      "elementId": "group-1795625162429",
+      "elementType": "group",
+      "x": 465,
+      "y": 45,
+      "width": 435,
+      "height": 300,
+      "viewId": "view-usecase"
+    },
+    {
+      "id": "ref-1795625201632",
+      "elementId": "card-1794073197747",
+      "elementType": "card",
+      "x": 45,
+      "y": 165,
+      "width": 195,
+      "height": 45,
+      "viewId": "view-usecase",
+      "groupId": "group-1795624808406"
+    },
+    {
+      "id": "ref-1795625230045",
+      "elementId": "card-1795542445422",
+      "elementType": "card",
+      "x": 45,
+      "y": 270,
+      "width": 195,
+      "height": 45,
+      "viewId": "view-usecase",
+      "groupId": "group-1795624808406"
+    },
+    {
+      "id": "ref-1795625239401",
+      "elementId": "card-1795534033189",
+      "elementType": "card",
+      "x": 480,
+      "y": 90,
+      "width": 195,
+      "height": 45,
+      "viewId": "view-usecase",
+      "groupId": "group-1795625162429"
+    },
+    {
+      "id": "ref-1795627521101",
+      "elementId": "card-1795627521093",
+      "elementType": "card",
+      "x": 45,
+      "y": 90,
+      "width": 195,
+      "height": 45,
+      "viewId": "view-usecase",
+      "groupId": "group-1795624808406"
+    },
+    {
+      "id": "ref-1795627659806",
+      "elementId": "group-1795546538305",
+      "elementType": "group",
+      "x": 15,
+      "y": 30,
+      "width": 435,
+      "height": 300,
+      "viewId": "view-functional"
+    },
+    {
+      "id": "ref-1795627665540",
+      "elementId": "group-1795546560821",
+      "elementType": "group",
+      "x": 465,
+      "y": 30,
+      "width": 435,
+      "height": 300,
+      "viewId": "view-functional",
+      "groupId": null
+    },
+    {
+      "id": "ref-1795627671588",
+      "elementId": "group-1795603749637",
+      "elementType": "group",
+      "x": 465,
+      "y": 345,
+      "width": 435,
+      "height": 300,
+      "viewId": "view-functional",
+      "groupId": null
+    },
+    {
+      "id": "ref-1795627695499",
+      "elementId": "card-1795534033189",
+      "elementType": "card",
+      "x": 30,
+      "y": 180,
+      "width": 195,
+      "height": 45,
+      "viewId": "view-functional",
+      "groupId": "group-1795546538305"
+    },
+    {
+      "id": "ref-1795627730023",
+      "elementId": "card-1795627521093",
+      "elementType": "card",
+      "x": 30,
+      "y": 105,
+      "width": 195,
+      "height": 45,
+      "viewId": "view-functional",
+      "groupId": "group-1795546538305"
+    },
+    {
+      "id": "ref-1795627736393",
+      "elementId": "card-1795542445422",
+      "elementType": "card",
+      "x": 645,
+      "y": 105,
+      "width": 195,
+      "height": 45,
+      "viewId": "view-functional",
+      "groupId": "group-1795546560821"
+    },
+    {
+      "id": "ref-1795627743535",
+      "elementId": "card-1794073197747",
+      "elementType": "card",
+      "x": 645,
+      "y": 405,
+      "width": 195,
+      "height": 45,
+      "viewId": "view-functional",
+      "groupId": "group-1795603749637"
+    },
+    {
+      "id": "ref-1795702419145",
+      "elementId": "card-1795702419104",
+      "elementType": "card",
+      "x": 480,
+      "y": 210,
+      "width": 195,
+      "height": 45,
+      "viewId": "view-usecase",
+      "groupId": "group-1795625162429"
+    },
+    {
+      "id": "ref-1795703607420",
+      "elementId": "card-1795702419104",
+      "elementType": "card",
+      "x": 525,
+      "y": 180,
+      "width": 195,
+      "height": 45,
+      "viewId": "view-functional",
+      "groupId": "group-1795546560821"
+    }
+  ],
+  "lastUpdated": "2026-11-26T15:57:22.754Z"
+}
