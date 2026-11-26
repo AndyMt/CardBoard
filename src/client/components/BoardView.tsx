@@ -463,7 +463,6 @@ export const BoardView: React.FC<BoardViewProps> = ({
       const dist = Math.hypot(dx, dy);
       if (dist > 1 && id !== null) {
         drag.hasMoved = true;
-        setSelectedItems(prev => (drag.wasAlreadySelected ? prev : [id]));
         const element = document.querySelector(`[data-card-id="${id}"], [data-group-id="${id}"]`);
         if (element) {
           delete (element as any)._pendingSelection;
