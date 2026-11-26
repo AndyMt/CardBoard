@@ -28,8 +28,6 @@ interface BoardViewProps {
   onPlace?: (elementId: string, elementType: 'card' | 'group', x: number, y: number) => void;
   onCardAdded?: (cards: CardType[]) => void;
   onGroupAdded?: (groups: GroupType[]) => void;
-  onCardDeleted?: (cardId: string) => void;
-  onGroupDeleted?: (groupId: string) => void;
   onCardTextChanged?: (id: string, newText: string) => void;
   onGroupLabelChanged?: (id: string, newLabel: string) => void;
 }
@@ -79,8 +77,6 @@ export const BoardView: React.FC<BoardViewProps> = ({
   onPlace,
   onCardAdded,
   onGroupAdded,
-  onCardDeleted,
-  onGroupDeleted,
   onCardTextChanged,
   onGroupLabelChanged,
 }) => {
@@ -260,11 +256,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
           const ref = refs.find((r) => r.id === refId);
           if (!ref) continue;
           if (ref.elementType === 'card') {
-            await boardService.deleteCard(ref.elementId);
-            onCardDeleted?.(ref.elementId);
+            await boardService.deleteReference(ref.id);
           } else if (ref.elementType === 'group') {
-            await boardService.deleteGroup(ref.elementId);
-            onGroupDeleted?.(ref.elementId);
+            await boardService.deleteReference(ref.id);
           }
         }
         for (const connId of selectedConnectorIds) {
@@ -274,18 +268,6 @@ export const BoardView: React.FC<BoardViewProps> = ({
             setCards(updatedCards);
           }
         }
-        const deletedGroupRefIds = selectedItems.filter(id => {
-          const r = refs.find((ref) => ref.id === id);
-          return r && r.elementType === 'group';
-        });
-        setCards(prev => prev.filter(card => !selectedItems.some(refId => {
-          const r = refs.find((ref) => ref.id === refId);
-          return r && r.elementType === 'card' && r.elementId === card.id;
-        })));
-        setGroups(prev => prev.filter(group => !selectedItems.some(refId => {
-          const r = refs.find((ref) => ref.id === refId);
-          return r && r.elementType === 'group' && r.elementId === group.id;
-        })));
         setReferences(prev => prev.filter(ref => !selectedItems.includes(ref.id)));
         setSelectedItems([]);
         setSelectedConnectorIds([]);

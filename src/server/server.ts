@@ -18,6 +18,15 @@ import { quantizeGeometry } from '../shared/geometry.js';
 import { buildBoardExportCsv, getExportFilename, type BoardExportType } from './utils/csvExport.js';
 import { normalizeBoard } from './utils/boardNormalization.js';
 
+class HttpError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+    this.name = 'HttpError';
+  }
+}
+
 const app = express();
 const port = process.env.PORT || 8080;
 
@@ -400,6 +409,8 @@ app.delete('/api/board/card/:id', async (req, res) => {
     const board = await localMutation((b) => {
       const idx = b.cards.findIndex((card) => card.id === cardId);
       if (idx === -1) return;
+      const referenced = b.references.some((r) => r.elementId === cardId && r.elementType === 'card');
+      if (referenced) throw new HttpError('Cannot delete card: it is referenced in one or more views', 409);
       found = true;
       b.cards.splice(idx, 1);
       b.references = b.references.filter((r) => !(r.elementId === cardId && r.elementType === 'card'));
@@ -407,6 +418,7 @@ app.delete('/api/board/card/:id', async (req, res) => {
     if (!found) return res.status(404).json({ error: 'Card not found' });
     res.json(board);
   } catch (error) {
+    if (error instanceof HttpError) return res.status(error.status).json({ error: error.message });
     console.error('Failed to delete card:', error);
     res.status(500).json({ error: 'Failed to delete card' });
   }
@@ -419,6 +431,8 @@ app.delete('/api/board/group/:id', async (req, res) => {
     const board = await localMutation((b) => {
       const idx = b.groups.findIndex((group) => group.id === groupId);
       if (idx === -1) return;
+      const referenced = b.references.some((r) => r.elementId === groupId && r.elementType === 'group');
+      if (referenced) throw new HttpError('Cannot delete group: it is referenced in one or more views', 409);
       found = true;
       b.groups.splice(idx, 1);
       b.references = b.references.filter((r) => !(r.elementId === groupId && r.elementType === 'group'));
@@ -427,6 +441,7 @@ app.delete('/api/board/group/:id', async (req, res) => {
     if (!found) return res.status(404).json({ error: 'Group not found' });
     res.json(board);
   } catch (error) {
+    if (error instanceof HttpError) return res.status(error.status).json({ error: error.message });
     console.error('Failed to delete group:', error);
     res.status(500).json({ error: 'Failed to delete group' });
   }
