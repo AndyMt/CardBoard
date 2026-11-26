@@ -1,6 +1,7 @@
 import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
 import type { Reference } from '../../types/Reference.js';
+import type { View } from '../../types/View.js';
 
 export const SYSML_FILENAME = 'board.sysml';
 
@@ -78,13 +79,15 @@ function lowerFirst(value: string): string {
   return value.charAt(0).toLowerCase() + value.slice(1);
 }
 
-export function buildSysML(board: { cards: Card[]; groups: Group[]; references: Reference[] }): string {
+export function buildSysML(board: { cards: Card[]; groups: Group[]; references: Reference[] }, viewId?: string): string {
   const cards = board.cards ?? [];
   const groups = board.groups ?? [];
   const references = board.references ?? [];
 
+  const relevantReferences = viewId ? references.filter((r) => r.viewId === viewId) : references;
+
   const cardGroupIdByCardId = new Map<string, string>();
-  for (const ref of references) {
+  for (const ref of relevantReferences) {
     if (ref.elementType === 'card' && ref.groupId && !cardGroupIdByCardId.has(ref.elementId)) {
       cardGroupIdByCardId.set(ref.elementId, ref.groupId);
     }
@@ -144,8 +147,15 @@ export function buildSysML(board: { cards: Card[]; groups: Group[]; references: 
     }
   }
 
+  const viewGroupIds = new Set<string>();
+  for (const ref of relevantReferences) {
+    if (ref.elementType === 'group') {
+      viewGroupIds.add(ref.elementId);
+    }
+  }
+
   const groupPackages = groups
-    .filter((g) => /^\s*>/.test(g.label ?? ''))
+    .filter((g) => /^\s*>/.test(g.label ?? '') && viewGroupIds.has(g.id))
     .map((g) => ({ group: g, name: toTypeName((g.label ?? '').replace(/^\s*>\s*/, '')) }));
   const usedGroupNames = new Set<string>();
   for (const gp of groupPackages) {
@@ -200,7 +210,8 @@ export async function downloadSysMLExport(): Promise<void> {
     throw new Error(`Failed to fetch board: ${response.statusText}`);
   }
   const board = await response.json();
-  const sysml = buildSysML({ cards: board.cards ?? [], groups: board.groups ?? [], references: board.references ?? [] });
+  const functionalView = board.views?.find((v: View) => v.type === 'Functional');
+  const sysml = buildSysML({ cards: board.cards ?? [], groups: board.groups ?? [], references: board.references ?? [] }, functionalView?.id);
   const blob = new Blob([sysml], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
