@@ -173,7 +173,7 @@ onClick={(e) => {
         ></div>
         
         {/* Label area - centered */}
-        <div className="px-2 py-1 flex justify-center">
+        <div className="px-2 py-1 flex justify-center" style={{ transform: 'translateY(-6px)' }}>
           {isEditing ? (
             <input
               ref={inputRef}
