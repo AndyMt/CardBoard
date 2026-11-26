@@ -409,11 +409,18 @@ app.delete('/api/board/card/:id', async (req, res) => {
     const board = await localMutation((b) => {
       const idx = b.cards.findIndex((card) => card.id === cardId);
       if (idx === -1) return;
-      const referenced = b.references.some((r) => r.elementId === cardId && r.elementType === 'card');
-      if (referenced) throw new HttpError('Cannot delete card: it is referenced in one or more views', 409);
       found = true;
       b.cards.splice(idx, 1);
-      b.references = b.references.filter((r) => !(r.elementId === cardId && r.elementType === 'card'));
+      // Remove all view references to this card
+      b.references = b.references.filter(
+        (r) => !(r.elementId === cardId && r.elementType === 'card'),
+      );
+      // Drop connections on other cards that target this card
+      for (const card of b.cards) {
+        if (card.connections) {
+          card.connections = card.connections.filter((c) => c.targetCardId !== cardId);
+        }
+      }
     }, senderSocketId(req));
     if (!found) return res.status(404).json({ error: 'Card not found' });
     res.json(board);
@@ -431,11 +438,13 @@ app.delete('/api/board/group/:id', async (req, res) => {
     const board = await localMutation((b) => {
       const idx = b.groups.findIndex((group) => group.id === groupId);
       if (idx === -1) return;
-      const referenced = b.references.some((r) => r.elementId === groupId && r.elementType === 'group');
-      if (referenced) throw new HttpError('Cannot delete group: it is referenced in one or more views', 409);
       found = true;
       b.groups.splice(idx, 1);
-      b.references = b.references.filter((r) => !(r.elementId === groupId && r.elementType === 'group'));
+      // Remove all view references to this group
+      b.references = b.references.filter(
+        (r) => !(r.elementId === groupId && r.elementType === 'group'),
+      );
+      // Clear groupId on references that belonged to this group
       b.references = b.references.map((r) => (r.groupId === groupId ? { ...r, groupId: undefined } : r));
     }, senderSocketId(req));
     if (!found) return res.status(404).json({ error: 'Group not found' });

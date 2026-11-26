@@ -8,6 +8,7 @@ interface ModelPanelProps {
   groups: Group[];
   activeViewId?: string;
   onPlace?: (elementId: string, elementType: 'card' | 'group', x: number, y: number) => void;
+  onDelete?: (elementId: string, elementType: 'card' | 'group') => void;
 }
 
 export const ModelPanel: React.FC<ModelPanelProps> = ({
@@ -15,11 +16,32 @@ export const ModelPanel: React.FC<ModelPanelProps> = ({
   groups,
   activeViewId,
   onPlace,
+  onDelete,
 }) => {
   const startDrag = (elementId: string, elementType: 'card' | 'group') => (e: React.DragEvent) => {
     e.dataTransfer.setData('application/cardboard-element', JSON.stringify({ elementId, elementType }));
     e.dataTransfer.effectAllowed = 'move';
   };
+
+  const handleDelete = (elementId: string, elementType: 'card' | 'group') => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.(elementId, elementType);
+  };
+
+  const deleteIcon = (elementId: string, elementType: 'card' | 'group') => (
+    <button
+      draggable={false}
+      onDragStart={(e) => e.stopPropagation()}
+      onClick={handleDelete(elementId, elementType)}
+      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded hover:bg-red-50 text-red-500 hover:text-red-700 focus:outline-none"
+      aria-label="Delete"
+      title="Delete element"
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  );
 
   return (
     <aside className="w-60 bg-gray-50 border-r border-gray-200 flex flex-col h-full">
@@ -41,6 +63,7 @@ export const ModelPanel: React.FC<ModelPanelProps> = ({
             data-element-type="card"
           >
             <span title={card.text}>{card.text}</span>
+            {deleteIcon(card.id, 'card')}
           </div>
         ))}
         {cards.length === 0 && (
@@ -57,6 +80,7 @@ export const ModelPanel: React.FC<ModelPanelProps> = ({
             data-element-type="group"
           >
             <span title={group.label}>{group.label}</span>
+            {deleteIcon(group.id, 'group')}
           </div>
         ))}
         {groups.length === 0 && (

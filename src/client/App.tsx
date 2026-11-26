@@ -123,6 +123,33 @@ const App: React.FC<AppProps> = () => {
     [activeViewId, boardReferences],
   );
 
+  // Delete a model element (card or group): the server removes the element and all
+  // references to it (view placements, plus connections targeting a deleted card).
+  const handleDeleteElement = useCallback(
+    async (elementId: string, elementType: 'card' | 'group') => {
+      const boardService = BoardService.getInstance();
+      try {
+        if (elementType === 'card') {
+          const { cards, groups, references } = await boardService.deleteCard(elementId);
+          setBoardCards(cards);
+          setBoardGroups(groups);
+          setBoardReferences(references);
+        } else {
+          const { cards, groups, references } = await boardService.deleteGroup(elementId);
+          setBoardCards(cards);
+          setBoardGroups(groups);
+          setBoardReferences(references);
+        }
+      } catch (err) {
+        console.error('Failed to delete element:', err);
+        alert(
+          `Failed to delete ${elementType}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    },
+    [],
+  );
+
   // Handle tool selection through service
   const handleToolSelect = (tool: ToolType) => {
     toolService.setSelectedTool(tool);
@@ -284,6 +311,7 @@ const App: React.FC<AppProps> = () => {
           groups={boardGroups}
           activeViewId={activeViewId}
           onPlace={handlePlace}
+          onDelete={handleDeleteElement}
         />
         <div className="flex-1 relative min-w-0">
           {/* Add pt-12 to account for toolbar height */}
