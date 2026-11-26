@@ -135,3 +135,24 @@ export class BoardModelManager {
     return d?.id;
   }
 }
+
+function idExists(board: BoardModel, id: string): boolean {
+  if (board.cards.some((c) => c.id === id)) return true;
+  if (board.groups.some((g) => g.id === id)) return true;
+  if (board.views.some((v) => v.id === id)) return true;
+  if (board.references.some((r) => r.id === id)) return true;
+  for (const card of board.cards) {
+    if (card.connections && card.connections.some((conn) => conn.id === id)) return true;
+  }
+  return false;
+}
+
+export function getNewId(board: BoardModel, prefix: string): string {
+  let ms = Date.now();
+  let id: string;
+  do {
+    id = `${prefix}-${ms}`;
+    ms += 1;
+  } while (idExists(board, id));
+  return id;
+}

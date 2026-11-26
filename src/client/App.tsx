@@ -103,8 +103,10 @@ const App: React.FC<AppProps> = () => {
             height,
           });
         } else {
-          await BoardService.getInstance().addReference({
-            id: `ref-${Date.now()}`,
+          const boardService = BoardService.getInstance();
+          const refId = await boardService.getNewId('ref');
+          await boardService.addReference({
+            id: refId,
             elementId,
             elementType,
             x: quantizeScalar(x),

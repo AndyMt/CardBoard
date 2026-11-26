@@ -34,16 +34,16 @@ interface BoardViewProps {
   onGroupLabelChanged?: (id: string, newLabel: string) => void;
 }
 
-const createDefaultCardModel = (createdBy?: string, createdColor?: string): CardType => ({
-  id: `card-${Date.now()}`,
+const createDefaultCardModel = (createdBy?: string, createdColor?: string, id?: string): CardType => ({
+  id: id || `card-${Date.now()}`,
   text: '',
   createdBy,
   createdColor: createdColor || UNKNOWN_USER_COLOR,
   connections: [],
 });
 
-const createDefaultGroupModel = (createdBy?: string, createdColor?: string): GroupType => ({
-  id: `group-${Date.now()}`,
+const createDefaultGroupModel = (createdBy?: string, createdColor?: string, id?: string): GroupType => ({
+  id: id || `group-${Date.now()}`,
   label: '',
   createdBy,
   createdColor: createdColor || UNKNOWN_USER_COLOR,
@@ -56,8 +56,9 @@ const createDefaultReference = (
   y: number,
   viewId: string,
   groupId?: string,
+  id?: string,
 ): ReferenceType => ({
-  id: `ref-${Date.now()}`,
+  id: id || `ref-${Date.now()}`,
   elementId,
   elementType,
   x: quantizeScalar(x),
@@ -844,7 +845,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
     if (targetCardId && targetCardId !== connectionSourceId) {
       try {
         const boardService = BoardService.getInstance();
-        const { cards: updatedCards, connectionId } = await boardService.addConnection(connectionSourceId, targetCardId);
+        const connectionId = await boardService.getNewId('conn');
+        const { cards: updatedCards } = await boardService.addConnection(connectionSourceId, targetCardId, connectionId);
         setCards(updatedCards);
         if (connectionId) {
           setEditingConnectorId(connectionId);
@@ -901,30 +903,34 @@ export const BoardView: React.FC<BoardViewProps> = ({
     if (!viewId) return;
 
     if (selectedTool === 'card') {
-      const newCard = createDefaultCardModel(currentUser?.name, currentUser?.color);
+      const boardService = BoardService.getInstance();
       try {
-        const boardService = BoardService.getInstance();
+        const cardId = await boardService.getNewId('card');
+        const newCard = createDefaultCardModel(currentUser?.name, currentUser?.color, cardId);
         const { cards } = await boardService.addCard(newCard);
         setCards(cards);
         onCardAdded?.(cards);
-        const ref = createDefaultReference(newCard.id, 'card', x, y, viewId);
+        const refId = await boardService.getNewId('ref');
+        const ref = createDefaultReference(cardId, 'card', x, y, viewId, undefined, refId);
         const { references } = await boardService.addReference(ref);
         setReferences(references);
-        setAutoFocusId(newCard.id);
+        setAutoFocusId(cardId);
       } catch (err) {
         console.error('Failed to add card:', err);
       }
     } else if (selectedTool === 'group') {
-      const newGroup = createDefaultGroupModel(currentUser?.name, currentUser?.color);
+      const boardService = BoardService.getInstance();
       try {
-        const boardService = BoardService.getInstance();
+        const groupId = await boardService.getNewId('group');
+        const newGroup = createDefaultGroupModel(currentUser?.name, currentUser?.color, groupId);
         const { groups } = await boardService.addGroup(newGroup);
         setGroups(groups);
         onGroupAdded?.(groups);
-        const ref = createDefaultReference(newGroup.id, 'group', x, y, viewId);
+        const refId = await boardService.getNewId('ref');
+        const ref = createDefaultReference(groupId, 'group', x, y, viewId, undefined, refId);
         const { references } = await boardService.addReference(ref);
         setReferences(references);
-        setAutoFocusId(newGroup.id);
+        setAutoFocusId(groupId);
       } catch (err) {
         console.error('Failed to add group:', err);
       }

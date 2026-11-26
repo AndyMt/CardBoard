@@ -3,13 +3,13 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import path from 'path';
-import { randomUUID } from 'crypto';
 import type { Card } from '../types/Card.js';
 import type { Group } from '../types/Group.js';
 import type { User } from '../types/User.js';
 import type { View } from '../types/View.js';
 import type { Reference } from '../types/Reference.js';
 import type { BoardModel } from './model/BoardModel.js';
+import { getNewId } from './model/BoardModel.js';
 import { JSONPersistence } from './persistence/JSONPersistence.js';
 import { UserService } from './services/UserService.js';
 import { WebSocketController } from './controller/WebSocketController.js';
@@ -108,6 +108,30 @@ app.get('/api/board', async (req, res) => {
   } catch (error) {
     console.error('Failed to load board:', error);
     res.status(500).json({ error: 'Failed to load board' });
+  }
+});
+
+// Generate a globally unique id under the board file lock.
+// The client obtains the id here and passes it to the creation route;
+// the server never overrides client-provided ids.
+app.get('/api/board/new-id', async (req, res) => {
+  try {
+    const prefix = req.query.prefix;
+    if (typeof prefix !== 'string' || !prefix) {
+      return res.status(400).json({ error: 'prefix is required' });
+    }
+    let newId: string | undefined;
+    await persistence.mutateBoard((b) => {
+      newId = getNewId(b, prefix);
+      return b;
+    });
+    if (!newId) {
+      return res.status(500).json({ error: 'Failed to generate id' });
+    }
+    res.json({ id: newId });
+  } catch (error) {
+    console.error('Failed to get new id:', error);
+    res.status(500).json({ error: 'Failed to get new id' });
   }
 });
 
@@ -273,14 +297,16 @@ app.put('/api/board/card/:id', async (req, res) => {
 app.put('/api/board/card/:id/connections', async (req, res) => {
   try {
     const cardId = req.params.id;
-    const { targetCardId }: { targetCardId?: string } = req.body || {};
+    const { targetCardId, connectionId }: { targetCardId?: string; connectionId?: string } = req.body || {};
     if (!targetCardId) {
       return res.status(400).json({ error: 'targetCardId is required' });
+    }
+    if (!connectionId) {
+      return res.status(400).json({ error: 'connectionId is required' });
     }
     if (cardId === targetCardId) {
       return res.status(400).json({ error: 'Cannot connect a card to itself' });
     }
-    const connectionId = randomUUID();
     const board = await localMutation((b) => {
       const sourceCard = b.cards.find((card) => card.id === cardId);
       const targetCard = b.cards.find((card) => card.id === targetCardId);

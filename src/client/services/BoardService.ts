@@ -49,6 +49,23 @@ class BoardService {
     }
   }
 
+  async getNewId(prefix: string): Promise<string> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/board/new-id?prefix=${encodeURIComponent(prefix)}`);
+      if (!response.ok) {
+        throw new Error(`Failed to get new id: ${response.statusText}`);
+      }
+      const data = await response.json();
+      if (!data || !data.id) {
+        throw new Error('Failed to get new id: no id returned');
+      }
+      return data.id;
+    } catch (error) {
+      console.error('Failed to get new id:', error);
+      throw error;
+    }
+  }
+
   async addCard(card: Card): Promise<{
     cards: Card[];
     groups: Group[];
@@ -345,7 +362,7 @@ class BoardService {
     }
   }
 
-  async addConnection(cardId: string, targetCardId: string): Promise<{
+  async addConnection(cardId: string, targetCardId: string, connectionId: string): Promise<{
     cards: Card[];
     groups: Group[];
     views: View[];
@@ -357,19 +374,19 @@ class BoardService {
       const response = await fetch(`${API_BASE_URL}/board/card/${cardId}/connections`, {
         method: 'PUT',
         headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetCardId }),
+        body: JSON.stringify({ targetCardId, connectionId }),
       });
       if (!response.ok) {
         throw new Error(`Failed to add connection: ${response.statusText}`);
       }
       const board = await response.json();
-      const connectionId = board.connectionId;
+      const id = board.connectionId ?? connectionId;
       return {
         cards: board.cards || [],
         groups: board.groups || [],
         views: board.views || [],
         references: board.references || [],
-        connectionId,
+        connectionId: id,
       };
     } catch (error) {
       console.error('Failed to add connection:', error);
