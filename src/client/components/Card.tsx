@@ -34,7 +34,7 @@ export const Card: React.FC<CardProps> = ({
   x,
   y,
   width = CARD_WIDTH,
-  height = 60,
+  height = 45,
   isSelected = false,
   onTextChange,
   onTextCommit,

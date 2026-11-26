@@ -93,7 +93,7 @@ const App: React.FC<AppProps> = () => {
         (r) => r.elementId === elementId && r.elementType === elementType && r.viewId === activeViewId,
       );
       const width = elementType === 'card' ? 200 : 440;
-      const height = elementType === 'card' ? 60 : 300;
+      const height = elementType === 'card' ? 45 : 300;
       try {
         if (existing) {
           await BoardService.getInstance().updateReference(existing.id, {

@@ -45,7 +45,7 @@ export interface ConnectorLayoutOptions {
 }
 
 const DEFAULT_CARD_WIDTH = 200;
-const DEFAULT_CARD_HEIGHT = 60;
+const DEFAULT_CARD_HEIGHT = 45;
 
 type PlacedCard = Card & { x: number; y: number; width: number; height: number };
 type PlacedGroup = Group & { x: number; y: number; width: number; height: number };

@@ -64,7 +64,7 @@ const createDefaultReference = (
   x: quantizeScalar(x),
   y: quantizeScalar(y),
   width: elementType === 'card' ? 200 : 440,
-  height: elementType === 'card' ? 60 : 300,
+  height: elementType === 'card' ? 45 : 300,
   viewId,
   groupId,
 });
@@ -891,43 +891,56 @@ export const BoardView: React.FC<BoardViewProps> = ({
   };
 
   const handleBoardClick = async (e: React.MouseEvent<HTMLDivElement>) => {
+    console.log('BoardView handleBoardClick', { selectedTool, x: e.clientX, y: e.clientY });
     setSelectedItems([]);
     if (selectedTool === 'select' || selectedTool === 'connection') {
+      console.log('BoardView handleBoardClick early return, tool not card/group:', selectedTool);
       return;
     }
     const boardRect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - boardRect.left + e.currentTarget.scrollLeft;
     const y = e.clientY - boardRect.top + e.currentTarget.scrollTop;
     const viewId = activeView?.id;
+    console.log('BoardView handleBoardClick coords', { x, y, viewId });
     if (!viewId) return;
 
     if (selectedTool === 'card') {
+      console.log('BoardView handleBoardClick add card start');
       const boardService = BoardService.getInstance();
       try {
         const cardId = await boardService.getNewId('card');
+        console.log('BoardView handleBoardClick new card id', cardId);
         const newCard = createDefaultCardModel(currentUser?.name, currentUser?.color, cardId);
         const { cards } = await boardService.addCard(newCard);
+        console.log('BoardView handleBoardClick addCard result cards=', cards.length);
         setCards(cards);
         onCardAdded?.(cards);
         const refId = await boardService.getNewId('ref');
+        console.log('BoardView handleBoardClick new ref id', refId);
         const ref = createDefaultReference(cardId, 'card', x, y, viewId, undefined, refId);
         const { references } = await boardService.addReference(ref);
+        console.log('BoardView handleBoardClick addReference result refs=', references.length);
         setReferences(references);
         setAutoFocusId(cardId);
       } catch (err) {
         console.error('Failed to add card:', err);
       }
     } else if (selectedTool === 'group') {
+      console.log('BoardView handleBoardClick add group start');
       const boardService = BoardService.getInstance();
       try {
         const groupId = await boardService.getNewId('group');
+        console.log('BoardView handleBoardClick new group id', groupId);
         const newGroup = createDefaultGroupModel(currentUser?.name, currentUser?.color, groupId);
         const { groups } = await boardService.addGroup(newGroup);
+        console.log('BoardView handleBoardClick addGroup result groups=', groups.length);
         setGroups(groups);
         onGroupAdded?.(groups);
         const refId = await boardService.getNewId('ref');
+        console.log('BoardView handleBoardClick new ref id', refId);
         const ref = createDefaultReference(groupId, 'group', x, y, viewId, undefined, refId);
         const { references } = await boardService.addReference(ref);
+        console.log('BoardView handleBoardClick addReference result refs=', references.length);
         setReferences(references);
         setAutoFocusId(groupId);
       } catch (err) {
@@ -987,7 +1000,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
             x={ref?.x ?? 0}
             y={ref?.y ?? 0}
             width={ref?.width ?? 200}
-            height={ref?.height ?? 60}
+            height={ref?.height ?? 45}
             isSelected={isCardSelected}
             tool={selectedTool}
             onCardClick={(_id, ctrlKey) => handleCardClick(ref?.id ?? card.id, ctrlKey)}
