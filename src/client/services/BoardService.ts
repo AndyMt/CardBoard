@@ -147,7 +147,7 @@ class BoardService {
       const response = await fetch(`${API_BASE_URL}/board/reference/${referenceId}`, {
         method: 'PUT',
         headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(updates, (_k, v) => (v === undefined ? null : v)),
       });
       if (!response.ok) {
         throw new Error(`Failed to update reference: ${response.statusText}`);
@@ -264,11 +264,14 @@ class BoardService {
       const response = await fetch(`${API_BASE_URL}/board/batch`, {
         method: 'PUT',
         headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          references: (payload.references || []).map((r) => ({
-            ...r,
-          })),
-        }),
+        body: JSON.stringify(
+          {
+            references: (payload.references || []).map((r) => ({
+              ...r,
+            })),
+          },
+          (_k, v) => (v === undefined ? null : v)
+        ),
       });
       if (!response.ok) {
         throw new Error(`Failed to batch update board: ${response.statusText}`);

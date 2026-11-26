@@ -554,7 +554,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
         const newBoardY = quantizeNonNegative(pos.y + dy);
         let newGroupId = ref.groupId;
         if (ref.elementType === 'card') {
-          const targetGroup = refs.find((g) => g.elementType === 'group' && insideGroupRef(newBoardX, newBoardY, g));
+          const targetGroup = refs.find((g) => g.elementType === 'group' && g.viewId === activeViewIdRef.current && insideGroupRef(newBoardX, newBoardY, g));
           newGroupId = targetGroup ? targetGroup.elementId : undefined;
         }
         refUpdates.push({ id: ref.id, x: newBoardX, y: newBoardY, groupId: newGroupId });
@@ -589,7 +589,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
       if (!ref || !pos) { finishDrag(); return; }
       const newBoardX = quantizeNonNegative(pos.x + dx);
       const newBoardY = quantizeNonNegative(pos.y + dy);
-      const targetGroup = refs.find((g) => g.elementType === 'group' && insideGroupRef(newBoardX, newBoardY, g));
+      const targetGroup = refs.find((g) => g.elementType === 'group' && g.viewId === activeViewIdRef.current && insideGroupRef(newBoardX, newBoardY, g));
       const newGroupId = targetGroup ? targetGroup.elementId : undefined;
       setReferences(prev => prev.map(r => (r.id === activeId ? { ...r, x: newBoardX, y: newBoardY, groupId: newGroupId } : r)));
       await boardService.updateReference(activeId, { x: newBoardX, y: newBoardY, groupId: newGroupId }).catch(err => console.error('Failed to update card position:', err));
