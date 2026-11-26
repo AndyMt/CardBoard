@@ -293,6 +293,12 @@ const App: React.FC<AppProps> = () => {
             activeViewId={activeViewId}
             onViewChange={handleViewChange}
             onPlace={handlePlace}
+            onCardAdded={setBoardCards}
+            onGroupAdded={setBoardGroups}
+            onCardDeleted={(cardId) => setBoardCards((prev) => prev.filter((c) => c.id !== cardId))}
+            onGroupDeleted={(groupId) => setBoardGroups((prev) => prev.filter((g) => g.id !== groupId))}
+            onCardTextChanged={(id, text) => setBoardCards((prev) => prev.map((c) => c.id === id ? { ...c, text } : c))}
+            onGroupLabelChanged={(id, label) => setBoardGroups((prev) => prev.map((g) => g.id === id ? { ...g, label } : g))}
           />
         </div>
       </div>

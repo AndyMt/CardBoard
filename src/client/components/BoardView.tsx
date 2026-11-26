@@ -26,6 +26,12 @@ interface BoardViewProps {
   activeViewId?: string;
   onViewChange?: (viewId: string) => void;
   onPlace?: (elementId: string, elementType: 'card' | 'group', x: number, y: number) => void;
+  onCardAdded?: (cards: CardType[]) => void;
+  onGroupAdded?: (groups: GroupType[]) => void;
+  onCardDeleted?: (cardId: string) => void;
+  onGroupDeleted?: (groupId: string) => void;
+  onCardTextChanged?: (id: string, newText: string) => void;
+  onGroupLabelChanged?: (id: string, newLabel: string) => void;
 }
 
 const createDefaultCardModel = (createdBy?: string, createdColor?: string): CardType => ({
@@ -70,6 +76,12 @@ export const BoardView: React.FC<BoardViewProps> = ({
   activeViewId: activeViewIdProp,
   onViewChange,
   onPlace,
+  onCardAdded,
+  onGroupAdded,
+  onCardDeleted,
+  onGroupDeleted,
+  onCardTextChanged,
+  onGroupLabelChanged,
 }) => {
   const [cards, setCards] = useState<CardType[]>([]);
   const [groups, setGroups] = useState<GroupType[]>([]);
@@ -246,8 +258,13 @@ export const BoardView: React.FC<BoardViewProps> = ({
         for (const refId of selectedItems) {
           const ref = refs.find((r) => r.id === refId);
           if (!ref) continue;
-          if (ref.elementType === 'card') await boardService.deleteCard(ref.elementId);
-          else if (ref.elementType === 'group') await boardService.deleteGroup(ref.elementId);
+          if (ref.elementType === 'card') {
+            await boardService.deleteCard(ref.elementId);
+            onCardDeleted?.(ref.elementId);
+          } else if (ref.elementType === 'group') {
+            await boardService.deleteGroup(ref.elementId);
+            onGroupDeleted?.(ref.elementId);
+          }
         }
         for (const connId of selectedConnectorIds) {
           const sourceCard = cardsRef.current.find(c => (c.connections || []).some((conn: { id: string }) => conn.id === connId));
@@ -628,6 +645,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
   const handleCardTextCommit = (id: string, newText: string) => {
     const boardService = BoardService.getInstance();
     boardService.updateCard(id, { text: newText }).catch(err => console.error('Failed to update card text:', err));
+    onCardTextChanged?.(id, newText);
   };
 
   const handleCardHeightChange = (id: string, height: number) => {
@@ -665,6 +683,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
   const handleGroupLabelCommit = (id: string, newLabel: string) => {
     const boardService = BoardService.getInstance();
     boardService.updateGroup(id, { label: newLabel }).catch(err => console.error('Failed to update group label:', err));
+    onGroupLabelChanged?.(id, newLabel);
   };
 
   const handleGroupEditingChange = (id: string, editing: boolean) => {
@@ -887,6 +906,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
         const boardService = BoardService.getInstance();
         const { cards } = await boardService.addCard(newCard);
         setCards(cards);
+        onCardAdded?.(cards);
         const ref = createDefaultReference(newCard.id, 'card', x, y, viewId);
         const { references } = await boardService.addReference(ref);
         setReferences(references);
@@ -900,6 +920,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
         const boardService = BoardService.getInstance();
         const { groups } = await boardService.addGroup(newGroup);
         setGroups(groups);
+        onGroupAdded?.(groups);
         const ref = createDefaultReference(newGroup.id, 'group', x, y, viewId);
         const { references } = await boardService.addReference(ref);
         setReferences(references);
