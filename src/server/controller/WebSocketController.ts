@@ -1,7 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { BoardModel } from '../model/BoardModel.js';
 import type { User } from '../../types/User.js';
-import { quantizeScalar } from '../../shared/geometry.js';
 
 /**
  * WebSocketController manages real-time synchronization of board state
@@ -71,8 +70,8 @@ export class WebSocketController {
     socket.on(LIVE_DRAG_EVENT, (payload: LiveDragPayload) => {
       this.scheduleLiveUpdate(
         {
-          cards: (payload.cards || []).map((card) => ({ ...card, x: quantizeScalar(card.x), y: quantizeScalar(card.y) })),
-          groups: (payload.groups || []).map((group) => ({ ...group, x: quantizeScalar(group.x), y: quantizeScalar(group.y) })),
+          cards: (payload.cards || []).map((card) => ({ ...card })),
+          groups: (payload.groups || []).map((group) => ({ ...group })),
         },
         socket.id
       );

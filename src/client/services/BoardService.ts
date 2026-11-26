@@ -3,7 +3,6 @@ import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
 import type { View } from '../../types/View.js';
 import type { Reference } from '../../types/Reference.js';
-import { quantizeGeometry, quantizeGeometryUpdates } from '../../shared/geometry.js';
 // API configuration
 const API_BASE_URL = '/api';
 
@@ -119,7 +118,7 @@ class BoardService {
       const response = await fetch(`${API_BASE_URL}/board/reference`, {
         method: 'POST',
         headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(quantizeGeometry(reference)),
+        body: JSON.stringify(reference),
       });
       if (!response.ok) {
         throw new Error(`Failed to add reference: ${response.statusText}`);
@@ -148,7 +147,7 @@ class BoardService {
       const response = await fetch(`${API_BASE_URL}/board/reference/${referenceId}`, {
         method: 'PUT',
         headers: { ...socketHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify(quantizeGeometryUpdates(updates)),
+        body: JSON.stringify(updates),
       });
       if (!response.ok) {
         throw new Error(`Failed to update reference: ${response.statusText}`);
@@ -268,7 +267,6 @@ class BoardService {
         body: JSON.stringify({
           references: (payload.references || []).map((r) => ({
             ...r,
-            ...quantizeGeometryUpdates(r),
           })),
         }),
       });

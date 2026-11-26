@@ -14,7 +14,7 @@ import { JSONPersistence } from './persistence/JSONPersistence.js';
 import { UserService } from './services/UserService.js';
 import { WebSocketController } from './controller/WebSocketController.js';
 import { CursorService } from './services/CursorService.js';
-import { quantizeGeometry, quantizeGeometryUpdates } from '../shared/geometry.js';
+import { quantizeGeometry } from '../shared/geometry.js';
 import { buildBoardExportCsv, getExportFilename, type BoardExportType } from './utils/csvExport.js';
 import { normalizeBoard } from './utils/boardNormalization.js';
 
@@ -181,7 +181,7 @@ app.post('/api/board/group', async (req, res) => {
 // References (view-specific placement: position, size, group membership)
 app.post('/api/board/reference', async (req, res) => {
   try {
-    const reference: Reference = quantizeGeometry(req.body);
+    const reference: Reference = req.body;
     const board = await localMutation((b) => {
       const existing = b.references.find(
         (r) => r.elementId === reference.elementId && r.elementType === reference.elementType && r.viewId === reference.viewId,
@@ -208,7 +208,7 @@ app.put('/api/board/reference/:id', async (req, res) => {
       const idx = b.references.findIndex((r) => r.id === referenceId);
       if (idx === -1) return;
       found = true;
-      b.references[idx] = { ...b.references[idx], ...quantizeGeometryUpdates(updates) };
+      b.references[idx] = { ...b.references[idx], ...updates };
     }, senderSocketId(req));
     if (!found) return res.status(404).json({ error: 'Reference not found' });
     res.json(board);
@@ -357,7 +357,7 @@ app.put('/api/board/batch', async (req, res) => {
         const { id, ...updates } = item;
         const idx = b.references.findIndex((r) => r.id === id);
         if (idx === -1) continue;
-        b.references[idx] = { ...b.references[idx], ...quantizeGeometryUpdates(updates) };
+        b.references[idx] = { ...b.references[idx], ...updates };
       }
     }, senderSocketId(req));
     res.json(board);

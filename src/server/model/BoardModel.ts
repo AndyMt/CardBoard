@@ -2,7 +2,6 @@ import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
 import type { View } from '../../types/View.js';
 import type { Reference } from '../../types/Reference.js';
-import { quantizeScalar, quantizeGeometry } from '../../shared/geometry.js';
 
 export interface BoardModel {
   cards: Card[];
@@ -64,7 +63,7 @@ export class BoardModelManager {
   }
 
   addReference(reference: Reference): void {
-    this.board.references.push(quantizeGeometry(reference));
+    this.board.references.push(reference);
     this.board.lastUpdated = new Date().toISOString();
   }
 
@@ -74,7 +73,7 @@ export class BoardModelManager {
   ): void {
     const idx = this.board.references.findIndex((r) => r.id === referenceId);
     if (idx === -1) return;
-    const next = { ...this.board.references[idx], ...quantizeGeometry(updates as Reference) };
+    const next = { ...this.board.references[idx], ...updates };
     this.board.references[idx] = next;
     this.board.lastUpdated = new Date().toISOString();
   }

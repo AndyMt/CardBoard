@@ -15,7 +15,7 @@ import { ElementSelectionController } from '../controller/ElementSelectionContro
 import { ConnectorLayoutCoordinator } from '../controller/ConnectorLayoutCoordinator.js';
 import { CursorController } from '../controller/CursorController.js';
 import type { CursorPosition } from '../../types/Cursor.js';
-import { quantizeGeometry, quantizeNonNegative, quantizePreciseNonNegative, quantizeScalar } from '../../shared/geometry.js';
+import { quantizeNonNegative, quantizePreciseNonNegative, quantizeScalar } from '../../shared/geometry.js';
 import { normalizeBoardModel, UNKNOWN_USER_COLOR } from '../../shared/userColorNormalization.js';
 
 interface BoardViewProps {
@@ -208,7 +208,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
       }
       return group;
     }));
-    if (serverReferences) setReferences(serverReferences.map(quantizeGeometry));
+    if (serverReferences) setReferences(serverReferences);
     if (serverBoard.lastUpdated) {
       lastBoardVersionRef.current = serverBoard.lastUpdated;
     }
@@ -296,12 +296,12 @@ export const BoardView: React.FC<BoardViewProps> = ({
       if (!payload) return;
       setReferences(prev => prev.map(c => {
         const live = (payload.cards as { id: string; x: number; y: number }[]).find((lc) => lc.id === c.id);
-        if (live) return { ...c, x: quantizeScalar(live.x), y: quantizeScalar(live.y) };
+        if (live) return { ...c, x: live.x, y: live.y };
         return c;
       }));
       setReferences(prev => prev.map(g => {
         const live = (payload.groups as { id: string; x: number; y: number }[]).find((lg) => lg.id === g.id);
-        if (live) return { ...g, x: quantizeScalar(live.x), y: quantizeScalar(live.y) };
+        if (live) return { ...g, x: live.x, y: live.y };
         return g;
       }));
     });
@@ -529,9 +529,10 @@ export const BoardView: React.FC<BoardViewProps> = ({
     const activeId = id;
     const activeType = drag.type;
 
+    dragRef.current = null;
+    isLocallyDraggingRef.current = false;
+
     const finishDrag = () => {
-      dragRef.current = null;
-      isLocallyDraggingRef.current = false;
       const element = document.querySelector(`[data-card-id="${id}"], [data-group-id="${id}"]`);
       if (element) {
         delete (element as any)._pendingSelection;
