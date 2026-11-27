@@ -96,16 +96,20 @@ const App: React.FC<AppProps> = () => {
       const height = elementType === 'card' ? 45 : 300;
       try {
         if (existing) {
-          await BoardService.getInstance().updateReference(existing.id, {
+          const boardService = BoardService.getInstance();
+          const board = await boardService.updateReference(existing.id, {
             x: quantizeScalar(x),
             y: quantizeScalar(y),
             width,
             height,
           });
+          setBoardCards(Array.isArray(board.cards) ? board.cards : []);
+          setBoardGroups(Array.isArray(board.groups) ? board.groups : []);
+          setBoardReferences(Array.isArray(board.references) ? board.references : []);
         } else {
           const boardService = BoardService.getInstance();
           const refId = await boardService.getNewId('ref');
-          await boardService.addReference({
+          const board = await boardService.addReference({
             id: refId,
             elementId,
             elementType,
@@ -115,6 +119,9 @@ const App: React.FC<AppProps> = () => {
             height,
             viewId: activeViewId,
           });
+          setBoardCards(Array.isArray(board.cards) ? board.cards : []);
+          setBoardGroups(Array.isArray(board.groups) ? board.groups : []);
+          setBoardReferences(Array.isArray(board.references) ? board.references : []);
         }
       } catch (err) {
         console.error('Failed to place element:', err);

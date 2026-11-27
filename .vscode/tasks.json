@@ -4,29 +4,41 @@
     {
       "label": "Build",
       "type": "shell",
-      "command": "npm",
+      "command": "powershell",
       "args": [
-        "run",
-        "build"
+        "-Command",
+        ". './.kilo/scripts/set-build-number.ps1'; npm run build"
       ],
       "problemMatcher": [],
       "group": {
         "kind": "build",
         "isDefault": true
       },
-      "detail": "Builds the client with vite (vite build)"
+      "detail": "Generates BUILD_NUMBER once, then builds the client with vite (vite build)"
     },
     {
       "label": "Dev",
       "type": "shell",
-      "command": "npm",
+      "command": "powershell",
       "args": [
-        "run",
-        "dev"
+        "-Command",
+        ". './.kilo/scripts/set-build-number.ps1'; npm run dev"
       ],
       "problemMatcher": [],
       "group": "none",
-      "detail": "Starts the Vite dev server at http://localhost:5173"
+      "detail": "Generates BUILD_NUMBER once, then starts the Vite dev server at http://localhost:5173"
+    },
+    {
+      "label": "PreProd",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-File",
+        ".kilo/scripts/preprod.ps1"
+      ],
+      "problemMatcher": [],
+      "group": "none",
+      "detail": "Generates BUILD_NUMBER once, builds server + client, then runs the production server on port 8080 (mirrors docker runtime without an image/container)"
     },
     {
       "label": "Cleanup Kilo Plans",
@@ -34,7 +46,7 @@
       "command": "powershell",
       "args": [
         "-File",
-        "${workspaceFolder}/.kilo/scripts/archive-old-plans.ps1"
+        ".kilo/scripts/archive-old-plans.ps1"
       ],
       "problemMatcher": [],
       "group": "none",
@@ -46,7 +58,7 @@
       "command": "powershell",
       "args": [
         "-File",
-        "${workspaceFolder}/.kilo/scripts/cleanup-kilo-sessions.ps1"
+        ".kilo/scripts/cleanup-kilo-sessions.ps1"
       ],
       "problemMatcher": [],
       "group": "none",
@@ -58,11 +70,11 @@
       "command": "powershell",
       "args": [
         "-Command",
-        "$bn = if ($env:BUILD_NUMBER) { $env:BUILD_NUMBER } else { (Get-Date -Format 'yyyyMMdd-HHmmss') }; docker login ghcr.io; docker build --build-arg BUILD_NUMBER=$bn -t ghcr.io/andymt/cardboard:$bn -t ghcr.io/andymt/cardboard:latest .; docker push ghcr.io/andymt/cardboard:$bn; docker push ghcr.io/andymt/cardboard:latest"
+        ". './.kilo/scripts/set-build-number.ps1'; docker login ghcr.io; docker build --no-cache --build-arg BUILD_NUMBER=$env:BUILD_NUMBER -t ghcr.io/andymt/cardboard:$env:BUILD_NUMBER -t ghcr.io/andymt/cardboard:latest .; docker push ghcr.io/andymt/cardboard:$env:BUILD_NUMBER; docker push ghcr.io/andymt/cardboard:latest"
       ],
       "problemMatcher": [],
       "group": "build",
-      "detail": "Logs in to ghcr.io, builds and pushes image tagged with BUILD_NUMBER (defaults to timestamp) and latest"
+      "detail": "Generates BUILD_NUMBER once, builds (--no-cache), and pushes image tagged with BUILD_NUMBER and latest"
     }
   ]
 }
