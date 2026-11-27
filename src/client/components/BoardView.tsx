@@ -54,6 +54,7 @@ const createDefaultReference = (
   x: number,
   y: number,
   viewId: string,
+  elementType: 'card' | 'group',
   groupId?: string,
   id?: string,
 ): ReferenceType => ({
@@ -61,8 +62,8 @@ const createDefaultReference = (
   elementId,
   x: quantizeScalar(x),
   y: quantizeScalar(y),
-  width: 200,
-  height: 45,
+  width: elementType === 'card' ? 200 : 440,
+  height: elementType === 'card' ? 45 : 300,
   viewId,
   groupId,
 });
@@ -906,7 +907,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
         onElementAdded?.(elements);
         const refId = await boardService.getNewId('ref');
         console.log('BoardView handleBoardClick new ref id', refId);
-        const ref = createDefaultReference(cardId, x, y, viewId, undefined, refId);
+        const ref = createDefaultReference(cardId, x, y, viewId, 'card', undefined, refId);
         const { references } = await boardService.addReference(ref);
         console.log('BoardView handleBoardClick addReference result refs=', references.length);
         setReferences(references);
@@ -927,7 +928,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
         onElementAdded?.(elements);
         const refId = await boardService.getNewId('ref');
         console.log('BoardView handleBoardClick new ref id', refId);
-        const ref = createDefaultReference(groupId, x, y, viewId, undefined, refId);
+        const ref = createDefaultReference(groupId, x, y, viewId, 'group', undefined, refId);
         const { references } = await boardService.addReference(ref);
         console.log('BoardView handleBoardClick addReference result refs=', references.length);
         setReferences(references);
