@@ -51,6 +51,18 @@
       "problemMatcher": [],
       "group": "none",
       "detail": "Removes all Kilo sessions except the 10 latest, keeping the most recent sessions active."
+    },
+    {
+      "label": "Docker Build & Push (GHCR)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-Command",
+        "docker login ghcr.io; docker build -t ghcr.io/andymt/cardboard:latest .; docker push ghcr.io/andymt/cardboard:latest"
+      ],
+      "problemMatcher": [],
+      "group": "build",
+      "detail": "Logs in to ghcr.io, builds the image, and pushes it to ghcr.io/andymt/cardboard:latest"
     }
   ]
 }
