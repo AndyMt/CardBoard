@@ -385,7 +385,6 @@ export const BoardView: React.FC<BoardViewProps> = ({
   useEffect(() => {
     const handleChanged = async () => {
       const ws = WebSocketService.getInstance();
-      if (ws.isRecentLocalMutation()) return;
       try {
         const boardService = BoardService.getInstance();
         const serverBoard = await boardService.getBoard();

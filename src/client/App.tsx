@@ -126,6 +126,7 @@ const App: React.FC<AppProps> = () => {
       } catch (err) {
         console.error('Failed to place element:', err);
       }
+      window.dispatchEvent(new CustomEvent('board:changed'));
     },
     [activeViewId, boardReferences],
   );
