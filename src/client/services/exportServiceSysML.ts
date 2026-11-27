@@ -1,5 +1,6 @@
 import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
+import type { Element } from '../../types/Element.js';
 import type { Reference } from '../../types/Reference.js';
 import type { View } from '../../types/View.js';
 
@@ -79,16 +80,18 @@ function lowerFirst(value: string): string {
   return value.charAt(0).toLowerCase() + value.slice(1);
 }
 
-export function buildSysML(board: { cards: Card[]; groups: Group[]; references: Reference[] }, viewId?: string): string {
-  const cards = board.cards ?? [];
-  const groups = board.groups ?? [];
+export function buildSysML(board: { elements: Element[]; references: Reference[] }, viewId?: string): string {
+  const cards = board.elements.filter((e) => e.elementType === 'card') as Card[];
+  const groups = board.elements.filter((e) => e.elementType === 'group') as Group[];
   const references = board.references ?? [];
 
   const relevantReferences = viewId ? references.filter((r) => r.viewId === viewId) : references;
 
+  const elementById = new Map(board.elements.map((e) => [e.id, e]));
   const cardGroupIdByCardId = new Map<string, string>();
   for (const ref of relevantReferences) {
-    if (ref.elementType === 'card' && ref.groupId && !cardGroupIdByCardId.has(ref.elementId)) {
+    const element = elementById.get(ref.elementId);
+    if (element && element.elementType === 'card' && ref.groupId && !cardGroupIdByCardId.has(ref.elementId)) {
       cardGroupIdByCardId.set(ref.elementId, ref.groupId);
     }
   }
@@ -149,7 +152,8 @@ export function buildSysML(board: { cards: Card[]; groups: Group[]; references: 
 
   const viewGroupIds = new Set<string>();
   for (const ref of relevantReferences) {
-    if (ref.elementType === 'group') {
+    const element = elementById.get(ref.elementId);
+    if (element && element.elementType === 'group') {
       viewGroupIds.add(ref.elementId);
     }
   }
@@ -211,7 +215,7 @@ export async function downloadSysMLExport(): Promise<void> {
   }
   const board = await response.json();
   const functionalView = board.views?.find((v: View) => v.type === 'Functional');
-  const sysml = buildSysML({ cards: board.cards ?? [], groups: board.groups ?? [], references: board.references ?? [] }, functionalView?.id);
+  const sysml = buildSysML({ elements: board.elements ?? [], references: board.references ?? [] }, functionalView?.id);
   const blob = new Blob([sysml], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

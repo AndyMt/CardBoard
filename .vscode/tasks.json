@@ -12,21 +12,9 @@
       "problemMatcher": [],
       "group": {
         "kind": "build",
-        "isDefault": true
+        "isDefault": false
       },
-      "detail": "Generates BUILD_NUMBER once, then builds the client with vite (vite build)"
-    },
-    {
-      "label": "Dev",
-      "type": "shell",
-      "command": "powershell",
-      "args": [
-        "-Command",
-        ". './scripts/set-build-number.ps1'; npm run dev"
-      ],
-      "problemMatcher": [],
-      "group": "none",
-      "detail": "Generates BUILD_NUMBER once, then starts the Vite dev server at http://localhost:5173"
+      "detail": "builds the client with vite (vite build)"
     },
     {
       "label": "Build & Run Dev",
@@ -37,8 +25,11 @@
         "scripts/build-run-dev.ps1"
       ],
       "problemMatcher": [],
-      "group": "none",
-      "detail": "Generates BUILD_NUMBER once, runs build:all, then starts the Vite dev server at http://localhost:5173"
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "detail": "runs build:all, then starts the Vite dev server at http://localhost:5173"
     },
     {
       "label": "Build & Run PreProd",
@@ -50,7 +41,7 @@
       ],
       "problemMatcher": [],
       "group": "none",
-      "detail": "Generates BUILD_NUMBER once, builds server + client, then runs the production server on port 8080 (mirrors docker runtime without an image/container)"
+      "detail": "builds server + client, then runs the production server on port 8080 (mirrors docker runtime without an image/container)"
     },
     {
       "label": "Cleanup Kilo Plans",

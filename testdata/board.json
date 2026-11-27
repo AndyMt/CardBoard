@@ -1,7 +1,8 @@
 {
-  "cards": [
+  "elements": [
     {
       "id": "card-1794073197747",
+      "elementType": "card",
       "text": "= 1.2 sudWaermen",
       "createdBy": "Adi",
       "createdColor": "#009922",
@@ -15,6 +16,7 @@
     },
     {
       "id": "card-1795534033189",
+      "elementType": "card",
       "text": "= 2.1 wasserZufuehrenL",
       "createdBy": "Andreas",
       "createdColor": "#005599",
@@ -33,6 +35,7 @@
     },
     {
       "id": "card-1795542445422",
+      "elementType": "card",
       "text": "= 1.3 sudRuehren",
       "createdBy": "Andreas",
       "createdColor": "#005599",
@@ -40,6 +43,7 @@
     },
     {
       "id": "card-1795627521093",
+      "elementType": "card",
       "text": "= 1.1 wasserZufuehrenQ",
       "createdBy": "Andreas",
       "createdColor": "#005599",
@@ -53,39 +57,43 @@
     },
     {
       "id": "card-1795702419104",
+      "elementType": "card",
       "text": "= 2.2 wasserRuehren",
       "createdBy": "Andreas",
       "createdColor": "#005599",
       "connections": []
-    }
-  ],
-  "groups": [
+    },
     {
       "id": "group-1795546538305",
+      "elementType": "group",
       "label": "> Wasserzufuhr",
       "createdBy": "Andreas",
       "createdColor": "#005599"
     },
     {
       "id": "group-1795546560821",
+      "elementType": "group",
       "label": "> Ruehreinheit",
       "createdBy": "Andreas",
       "createdColor": "#005599"
     },
     {
       "id": "group-1795603749637",
+      "elementType": "group",
       "label": "> Heizeinheit",
       "createdBy": "Andreas",
       "createdColor": "#005599"
     },
     {
       "id": "group-1795624808406",
+      "elementType": "group",
       "label": "= 1 Bier brauen",
       "createdBy": "Andreas",
       "createdColor": "#005599"
     },
     {
       "id": "group-1795625162429",
+      "elementType": "group",
       "label": "= 2 Braumaschine reinigen",
       "createdBy": "Andreas",
       "createdColor": "#005599"
@@ -108,7 +116,6 @@
     {
       "id": "ref-1795624808415",
       "elementId": "group-1795624808406",
-      "elementType": "group",
       "x": 15,
       "y": 45,
       "width": 435,
@@ -118,7 +125,6 @@
     {
       "id": "ref-1795625162438",
       "elementId": "group-1795625162429",
-      "elementType": "group",
       "x": 465,
       "y": 45,
       "width": 435,
@@ -128,7 +134,6 @@
     {
       "id": "ref-1795625201632",
       "elementId": "card-1794073197747",
-      "elementType": "card",
       "x": 45,
       "y": 165,
       "width": 195,
@@ -139,7 +144,6 @@
     {
       "id": "ref-1795625230045",
       "elementId": "card-1795542445422",
-      "elementType": "card",
       "x": 45,
       "y": 270,
       "width": 195,
@@ -150,7 +154,6 @@
     {
       "id": "ref-1795625239401",
       "elementId": "card-1795534033189",
-      "elementType": "card",
       "x": 480,
       "y": 90,
       "width": 195,
@@ -161,7 +164,6 @@
     {
       "id": "ref-1795627521101",
       "elementId": "card-1795627521093",
-      "elementType": "card",
       "x": 45,
       "y": 90,
       "width": 195,
@@ -172,7 +174,6 @@
     {
       "id": "ref-1795627659806",
       "elementId": "group-1795546538305",
-      "elementType": "group",
       "x": 15,
       "y": 30,
       "width": 435,
@@ -182,7 +183,6 @@
     {
       "id": "ref-1795627665540",
       "elementId": "group-1795546560821",
-      "elementType": "group",
       "x": 465,
       "y": 30,
       "width": 435,
@@ -193,7 +193,6 @@
     {
       "id": "ref-1795627671588",
       "elementId": "group-1795603749637",
-      "elementType": "group",
       "x": 465,
       "y": 345,
       "width": 435,
@@ -204,7 +203,6 @@
     {
       "id": "ref-1795627695499",
       "elementId": "card-1795534033189",
-      "elementType": "card",
       "x": 30,
       "y": 180,
       "width": 195,
@@ -215,7 +213,6 @@
     {
       "id": "ref-1795627730023",
       "elementId": "card-1795627521093",
-      "elementType": "card",
       "x": 30,
       "y": 105,
       "width": 195,
@@ -226,7 +223,6 @@
     {
       "id": "ref-1795627736393",
       "elementId": "card-1795542445422",
-      "elementType": "card",
       "x": 645,
       "y": 105,
       "width": 195,
@@ -237,7 +233,6 @@
     {
       "id": "ref-1795627743535",
       "elementId": "card-1794073197747",
-      "elementType": "card",
       "x": 645,
       "y": 405,
       "width": 195,
@@ -248,7 +243,6 @@
     {
       "id": "ref-1795702419145",
       "elementId": "card-1795702419104",
-      "elementType": "card",
       "x": 480,
       "y": 210,
       "width": 195,
@@ -259,7 +253,6 @@
     {
       "id": "ref-1795703607420",
       "elementId": "card-1795702419104",
-      "elementType": "card",
       "x": 525,
       "y": 180,
       "width": 195,
@@ -268,5 +261,6 @@
       "groupId": "group-1795546560821"
     }
   ],
-  "lastUpdated": "2026-11-26T15:57:22.754Z"
+  "lastUpdated": "2026-11-26T15:57:22.754Z",
+  "version": "1"
 }

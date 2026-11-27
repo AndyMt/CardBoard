@@ -2,12 +2,13 @@ import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
 import type { View } from '../../types/View.js';
 import type { Reference } from '../../types/Reference.js';
+import type { Element } from '../../types/Element.js';
 
 export interface BoardModel {
-  cards: Card[];
-  groups: Group[];
+  elements: Element[];
   views: View[];
   references: Reference[];
+  version?: string;
   lastUpdated: string;
 }
 
@@ -24,10 +25,10 @@ export const createDefaultBoard = (): BoardModel => {
     type: 'Functional',
   };
   return {
-    cards: [],
-    groups: [],
+    elements: [],
     views: [defaultView, functionalView],
     references: [],
+    version: undefined,
     lastUpdated: new Date().toISOString(),
   };
 };
@@ -48,12 +49,12 @@ export class BoardModelManager {
   }
 
   addCard(card: Card): void {
-    this.board.cards.push(card);
+    this.board.elements.push(card);
     this.board.lastUpdated = new Date().toISOString();
   }
 
   addGroup(group: Group): void {
-    this.board.groups.push(group);
+    this.board.elements.push(group);
     this.board.lastUpdated = new Date().toISOString();
   }
 
@@ -83,10 +84,8 @@ export class BoardModelManager {
     this.board.lastUpdated = new Date().toISOString();
   }
 
-  removeReferencesForElement(elementId: string, elementType: 'card' | 'group'): void {
-    this.board.references = this.board.references.filter(
-      (r) => !(r.elementId === elementId && r.elementType === elementType),
-    );
+  removeReferencesForElement(elementId: string): void {
+    this.board.references = this.board.references.filter((r) => r.elementId === elementId);
     this.board.lastUpdated = new Date().toISOString();
   }
 
@@ -98,34 +97,34 @@ export class BoardModelManager {
   }
 
   updateCard(cardId: string, updates: Partial<Card>): void {
-    const cardIndex = this.board.cards.findIndex((c) => c.id === cardId);
+    const cardIndex = this.board.elements.findIndex((c) => c.id === cardId && c.elementType === 'card');
     if (cardIndex >= 0) {
-      const next: Card = { ...this.board.cards[cardIndex] };
+      const next: Card = { ...this.board.elements[cardIndex] } as Card;
       if (updates.text !== undefined) next.text = updates.text;
       if (updates.createdBy !== undefined) next.createdBy = updates.createdBy;
       if (updates.createdColor !== undefined) next.createdColor = updates.createdColor;
-      this.board.cards[cardIndex] = next;
+      this.board.elements[cardIndex] = next;
       this.board.lastUpdated = new Date().toISOString();
     }
   }
 
   updateGroup(groupId: string, updates: Partial<Group>): void {
-    const groupIndex = this.board.groups.findIndex((g) => g.id === groupId);
+    const groupIndex = this.board.elements.findIndex((g) => g.id === groupId && g.elementType === 'group');
     if (groupIndex >= 0) {
-      this.board.groups[groupIndex] = { ...this.board.groups[groupIndex], ...updates };
+      this.board.elements[groupIndex] = { ...this.board.elements[groupIndex], ...updates };
       this.board.lastUpdated = new Date().toISOString();
     }
   }
 
   deleteCard(cardId: string): void {
-    this.board.cards = this.board.cards.filter((c) => c.id !== cardId);
-    this.removeReferencesForElement(cardId, 'card');
+    this.board.elements = this.board.elements.filter((c) => c.id !== cardId);
+    this.removeReferencesForElement(cardId);
     this.board.lastUpdated = new Date().toISOString();
   }
 
   deleteGroup(groupId: string): void {
-    this.board.groups = this.board.groups.filter((g) => g.id !== groupId);
-    this.removeReferencesForElement(groupId, 'group');
+    this.board.elements = this.board.elements.filter((g) => g.id !== groupId);
+    this.removeReferencesForElement(groupId);
     this.clearGroupIdOnReferences(groupId);
     this.board.lastUpdated = new Date().toISOString();
   }
@@ -137,12 +136,14 @@ export class BoardModelManager {
 }
 
 function idExists(board: BoardModel, id: string): boolean {
-  if (board.cards.some((c) => c.id === id)) return true;
-  if (board.groups.some((g) => g.id === id)) return true;
+  if (board.elements.some((e) => e.id === id)) return true;
   if (board.views.some((v) => v.id === id)) return true;
   if (board.references.some((r) => r.id === id)) return true;
-  for (const card of board.cards) {
-    if (card.connections && card.connections.some((conn) => conn.id === id)) return true;
+  for (const element of board.elements) {
+    if ('elementType' in element && element.elementType === 'card') {
+      const card = element as Card;
+      if (card.connections && card.connections.some((conn) => conn.id === id)) return true;
+    }
   }
   return false;
 }
@@ -155,4 +156,8 @@ export function getNewId(board: BoardModel, prefix: string): string {
     ms += 1;
   } while (idExists(board, id));
   return id;
+}
+
+export function getElementById(board: BoardModel, id: string): Element | undefined {
+  return board.elements.find((e) => e.id === id);
 }

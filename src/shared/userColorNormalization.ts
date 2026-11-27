@@ -1,12 +1,10 @@
-import type { Card } from '../types/Card.js';
-import type { Group } from '../types/Group.js';
+import type { Element } from '../types/Element.js';
 import type { User } from '../types/User.js';
 
 export const UNKNOWN_USER_COLOR = '#6b7280';
 
 export interface BoardLike {
-  cards: Card[];
-  groups: Group[];
+  elements: Element[];
   lastUpdated?: string;
 }
 
@@ -19,7 +17,9 @@ function hasEffectiveColor(color: string | undefined): color is string {
   return typeof color === 'string' && color.trim().length > 0;
 }
 
-function normalizeCreatedBy(element: Pick<Card, 'createdBy' | 'createdColor'>, usersByName: Map<string, User>): { createdBy?: string; createdColor?: string; changed: boolean } {
+type HasCreatedColor = { createdBy?: string; createdColor?: string };
+
+function normalizeCreatedBy(element: HasCreatedColor, usersByName: Map<string, User>): { createdBy?: string; createdColor?: string; changed: boolean } {
   const createdBy = element.createdBy?.trim() || undefined;
   if (createdBy) {
     const user = usersByName.get(createdBy);
@@ -63,24 +63,16 @@ export function normalizeBoardModel<T extends BoardLike>(board: T, users: User[]
 
   let changed = false;
 
-  const cards = board.cards.map((card) => {
-    const next = normalizeCreatedBy(card, usersByName);
-    if (!next.changed) return card;
+  const elements = board.elements.map((element) => {
+    const next = normalizeCreatedBy(element as HasCreatedColor, usersByName);
+    if (!next.changed) return element;
     changed = true;
-    return { ...card, createdBy: next.createdBy, createdColor: next.createdColor };
-  });
-
-  const groups = board.groups.map((group) => {
-    const next = normalizeCreatedBy(group, usersByName);
-    if (!next.changed) return group;
-    changed = true;
-    return { ...group, createdBy: next.createdBy, createdColor: next.createdColor };
+    return { ...element, createdBy: next.createdBy, createdColor: next.createdColor };
   });
 
   if (!changed) {
     return { board, changed: false };
   }
 
-  return { board: { ...board, cards, groups }, changed: true };
+  return { board: { ...board, elements }, changed: true };
 }
-

@@ -87,7 +87,7 @@ export class WebSocketController {
   /** Broadcast the full board to all clients except the sender. */
   broadcastBoardUpdate(board: BoardModel, excludeSocketId?: string): void {
     const payload: BoardUpdatePayload = { board };
-    console.log(`[WS] broadcasting board:update (cards=${board.cards?.length ?? 0}, groups=${board.groups?.length ?? 0}) exclude=${excludeSocketId ?? 'none'}`);
+    console.log(`[WS] broadcasting board:update (cards=${board.elements.filter((e: any) => e.elementType === 'card').length}, groups=${board.elements.filter((e: any) => e.elementType === 'group').length}) exclude=${excludeSocketId ?? 'none'}`);
     if (excludeSocketId) {
       this.io.to(BOARD_ROOM).except(excludeSocketId).emit(BOARD_UPDATE_EVENT, payload);
     } else {

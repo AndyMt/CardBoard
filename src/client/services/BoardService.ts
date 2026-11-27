@@ -1,6 +1,7 @@
 import { WebSocketService } from './WebSocketService.js';
 import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
+import type { Element } from '../../types/Element.js';
 import type { View } from '../../types/View.js';
 import type { Reference } from '../../types/Reference.js';
 // API configuration
@@ -26,8 +27,7 @@ class BoardService {
   }
 
   async getBoard(): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -38,14 +38,13 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
     } catch (error) {
       console.error('Failed to get board:', error);
-      return { cards: [], groups: [], views: [], references: [] };
+      return { elements: [], views: [], references: [] };
     }
   }
 
@@ -67,8 +66,7 @@ class BoardService {
   }
 
   async addCard(card: Card): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -84,8 +82,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -96,8 +93,7 @@ class BoardService {
   }
 
   async addGroup(group: Group): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -113,8 +109,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -125,8 +120,7 @@ class BoardService {
   }
 
   async addReference(reference: Reference): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -142,8 +136,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -154,8 +147,7 @@ class BoardService {
   }
 
   async updateReference(referenceId: string, updates: Partial<Reference>): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -171,8 +163,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -183,8 +174,7 @@ class BoardService {
   }
 
   async deleteReference(referenceId: string): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -199,8 +189,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -211,8 +200,7 @@ class BoardService {
   }
 
   async updateCard(cardId: string, updates: Partial<Card>): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -228,8 +216,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -240,8 +227,7 @@ class BoardService {
   }
 
   async updateGroup(groupId: string, updates: Partial<Group>): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -257,8 +243,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -271,8 +256,7 @@ class BoardService {
   async batchUpdate(payload: {
     references?: Array<{ id: string } & Partial<Reference>>;
   }): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -295,8 +279,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -307,8 +290,7 @@ class BoardService {
   }
 
   async deleteCard(cardId: string): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -323,8 +305,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -335,8 +316,7 @@ class BoardService {
   }
 
   async deleteGroup(groupId: string): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -351,8 +331,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -363,8 +342,7 @@ class BoardService {
   }
 
   async addConnection(cardId: string, targetCardId: string, connectionId: string): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
     connectionId?: string;
@@ -382,8 +360,7 @@ class BoardService {
       const board = await response.json();
       const id = board.connectionId ?? connectionId;
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
         connectionId: id,
@@ -395,8 +372,7 @@ class BoardService {
   }
 
   async removeConnection(cardId: string, connectionId: string): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -411,8 +387,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };
@@ -423,8 +398,7 @@ class BoardService {
   }
 
   async updateConnectionName(cardId: string, connectionId: string, name: string): Promise<{
-    cards: Card[];
-    groups: Group[];
+    elements: Element[];
     views: View[];
     references: Reference[];
   }> {
@@ -440,8 +414,7 @@ class BoardService {
       }
       const board = await response.json();
       return {
-        cards: board.cards || [],
-        groups: board.groups || [],
+        elements: board.elements || [],
         views: board.views || [],
         references: board.references || [],
       };

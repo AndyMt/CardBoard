@@ -1,11 +1,10 @@
-import { Card } from './Card.js';
-import { Group } from './Group.js';
-import { View } from './View.js';
-import { Reference } from './Reference.js';
+import type { Element } from './Element.js';
+import type { View } from './View.js';
+import type { Reference } from './Reference.js';
 
 export interface Board {
-  cards: Card[];
-  groups: Group[];
+  elements: Element[];
   views: View[];
   references: Reference[];
+  version?: string;
 }

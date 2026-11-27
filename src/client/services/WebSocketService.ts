@@ -1,6 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import type { Card } from '../../types/Card.js';
-import type { Group } from '../../types/Group.js';
+import type { Element } from '../../types/Element.js';
 import type { View } from '../../types/View.js';
 import type { Reference } from '../../types/Reference.js';
 import type { User } from '../../types/User.js';
@@ -26,7 +25,7 @@ export const CURSOR_MOVE_EVENT = 'cursor:move';
 export const CURSOR_UPDATE_EVENT = 'cursor:update';
 
 export interface BoardUpdatePayload {
-  board: { cards: Card[]; groups: Group[]; views?: View[]; references?: Reference[]; lastUpdated?: string };
+  board: { elements: Element[]; views?: View[]; references?: Reference[]; lastUpdated?: string };
 }
 
 export interface LiveUpdatePayload {

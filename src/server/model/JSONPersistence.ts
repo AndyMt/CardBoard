@@ -17,7 +17,7 @@ export class JSONPersistence {
     try {
       return await fs.readJson(this.filePath);
     } catch (error) {
-      return { cards: [], groups: [], views: [], references: [] };
+      return { elements: [], views: [], references: [] };
     }
   }
 

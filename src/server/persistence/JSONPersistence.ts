@@ -8,6 +8,8 @@ import type { View } from '../../types/View.js';
 import type { Reference } from '../../types/Reference.js';
 import { quantizeGeometry } from '../../shared/geometry.js';
 
+const MIN_BUILD_NUMBER = '202611271545';
+
 export const createDefaultBoard = (): BoardModel => {
   const defaultView: View = {
     id: `view-${Date.now()}`,
@@ -21,10 +23,10 @@ export const createDefaultBoard = (): BoardModel => {
     type: 'Functional',
   };
   return {
-    cards: [],
-    groups: [],
+    elements: [],
     views: [defaultView, functionalView],
     references: [],
+    version: undefined,
     lastUpdated: new Date().toISOString(),
   };
 };
@@ -93,17 +95,48 @@ export class JSONPersistence {
     }
   }
 
+  private rejectBoard(reason: string): void {
+    try {
+      if (fs.existsSync(this.filePath)) {
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupPath = path.join(this.backupDir, `board-rejected-${timestamp}.json`);
+        fs.moveSync(this.filePath, backupPath, { overwrite: true });
+        console.log(`Rejected board (${reason}) moved to ${backupPath}`);
+      }
+    } catch (moveErr) {
+      console.error(`Failed to move rejected board to backup: ${(moveErr as Error).message}`);
+    }
+  }
+
+  private versionIsStale(version: string | undefined): boolean {
+    if (!version) return true;
+    const min = Number(MIN_BUILD_NUMBER);
+    const current = Number(version);
+    if (Number.isNaN(min) || Number.isNaN(current)) return false;
+    return current < min;
+  }
+
   private readBoardUnlocked(): BoardModel {
     if (!fs.existsSync(this.filePath)) {
+      console.log(`Board file not found at ${this.filePath}; loading default empty board`);
       return createDefaultBoard();
     }
     const data = fs.readJsonSync(this.filePath);
+
+    // Version gating: disregard boards with missing or stale version
+    if (this.versionIsStale(data.version)) {
+      this.rejectBoard(`version ${data.version ?? 'missing'} below MIN_BUILD_NUMBER ${MIN_BUILD_NUMBER}`);
+      return createDefaultBoard();
+    }
+
     return this.createBoardFromData(data);
   }
 
   private writeBoardUnlocked(board: BoardModel): BoardModel {
+    const version = process.env.BUILD_NUMBER ?? board.version ?? '1';
     const boardToSave: BoardModel = {
       ...board,
+      version,
       lastUpdated: new Date().toISOString(),
     };
     fs.writeJsonSync(this.filePath, boardToSave, { spaces: 2 });
@@ -119,7 +152,7 @@ export class JSONPersistence {
         this.releaseLock();
       }
     } catch (err) {
-      console.error(`Failed to read board: ${(err as Error).message}`);
+      console.error(`Failed to read board from ${this.filePath}: ${(err as Error).message}`);
       return createDefaultBoard();
     }
   }
@@ -129,7 +162,7 @@ export class JSONPersistence {
     try {
       const current = this.readBoardUnlocked();
       const result = await mutator(current);
-      const next = (result && typeof result === 'object' && 'cards' in result && 'groups' in result)
+      const next = (result && typeof result === 'object' && 'elements' in result)
         ? result as BoardModel
         : current;
       return this.writeBoardUnlocked(next);
@@ -174,33 +207,19 @@ export class JSONPersistence {
   }
 
   private createBoardFromData(data: any): BoardModel {
-    const legacyCards = Array.isArray(data.cards) ? data.cards : [];
-    const legacyGroups = Array.isArray(data.groups) ? data.groups : [];
 
     // If views/references already present (new format), use them as-is.
     // Only run legacy migration when views are missing (old format: cards/groups
     // carried their own x/y/width/height/groupId).
     if (Array.isArray(data.views) && Array.isArray(data.references)) {
-      const cards = legacyCards.map((card: any) => ({
-        id: card.id || `card-${Date.now()}`,
-        text: card.text ?? '',
-        createdBy: card.createdBy,
-        createdColor: card.createdColor,
-        connections: card.connections,
-      })) as Card[];
-      const groups = legacyGroups.map((group: any) => ({
-        id: group.id || `group-${Date.now()}`,
-        label: group.label ?? '',
-        createdBy: group.createdBy,
-        createdColor: group.createdColor,
-      })) as Group[];
       const views = data.views as View[];
       const references = data.references.map((ref: any) => quantizeGeometry(ref)) as Reference[];
+      const elements = Array.isArray(data.elements) ? data.elements : [];
       return {
-        cards,
-        groups,
+        elements,
         views,
         references,
+        version: data.version,
         lastUpdated: data.lastUpdated || new Date().toISOString(),
       };
     }
@@ -222,50 +241,24 @@ export class JSONPersistence {
       };
       const views: View[] = [defaultView, functionalView];
 
-      const cards: Card[] = legacyCards.map((card: any) => ({
-        id: card.id || `card-${Date.now()}`,
-        text: card.text ?? '',
-        createdBy: card.createdBy,
-        createdColor: card.createdColor,
-        connections: card.connections,
-      })) as Card[];
-      const groups: Group[] = legacyGroups.map((group: any) => ({
-        id: group.id || `group-${Date.now()}`,
-        label: group.label ?? '',
-        createdBy: group.createdBy,
-        createdColor: group.createdColor,
-      })) as Group[];
-
+      const elements = Array.isArray(data.elements) ? data.elements : [];
       return {
-        cards,
-        groups,
+        elements,
         views,
         references: [],
+        version: data.version,
         lastUpdated: data.lastUpdated || new Date().toISOString(),
       };
     }
 
     // Views exist but references missing: keep views, start with empty references.
     // Cards no longer carry geometry, so positions cannot be recovered.
-    const cards: Card[] = legacyCards.map((card: any) => ({
-      id: card.id || `card-${Date.now()}`,
-      text: card.text ?? '',
-      createdBy: card.createdBy,
-      createdColor: card.createdColor,
-      connections: card.connections,
-    })) as Card[];
-    const groups: Group[] = legacyGroups.map((group: any) => ({
-      id: group.id || `group-${Date.now()}`,
-      label: group.label ?? '',
-      createdBy: group.createdBy,
-      createdColor: group.createdColor,
-    })) as Group[];
-
+    const elements = Array.isArray(data.elements) ? data.elements : [];
     return {
-      cards,
-      groups,
+      elements,
       views: data.views as View[],
       references: [],
+      version: data.version,
       lastUpdated: data.lastUpdated || new Date().toISOString(),
     };
   }

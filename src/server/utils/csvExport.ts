@@ -1,5 +1,6 @@
 import type { Card } from '../../types/Card.js';
 import type { Group } from '../../types/Group.js';
+import type { Element } from '../../types/Element.js';
 import type { Reference } from '../../types/Reference.js';
 
 export type BoardExportType = 'cards' | 'groups' | 'mapping';
@@ -33,7 +34,9 @@ export function buildGroupsCsv(groups: Group[]): string {
   return toCsv(['group'], dataRows, ',');
 }
 
-export function buildMappingCsv(cards: Card[], groups: Group[], references: Reference[]): string {
+export function buildMappingCsv(elements: Element[], references: Reference[]): string {
+  const cards = elements.filter((e) => e.elementType === 'card') as Card[];
+  const groups = elements.filter((e) => e.elementType === 'group') as Group[];
   const cardById = new Map(cards.map((c) => [c.id, c]));
   const groupById = new Map(groups.map((g) => [g.id, g]));
   const dataRows: string[][] = [];
@@ -64,14 +67,16 @@ export function getExportFilename(type: BoardExportType): string {
 
 export function buildBoardExportCsv(
   type: BoardExportType,
-  board: { cards: Card[]; groups: Group[]; references?: Reference[] }
+  board: { elements: Element[]; references?: Reference[] }
 ): string {
+  const cards = board.elements.filter((e) => e.elementType === 'card') as Card[];
+  const groups = board.elements.filter((e) => e.elementType === 'group') as Group[];
   switch (type) {
     case 'cards':
-      return buildCardsCsv(board.cards ?? []);
+      return buildCardsCsv(cards ?? []);
     case 'groups':
-      return buildGroupsCsv(board.groups ?? []);
+      return buildGroupsCsv(groups ?? []);
     case 'mapping':
-      return buildMappingCsv(board.cards ?? [], board.groups ?? [], board.references ?? []);
+      return buildMappingCsv(board.elements, board.references ?? []);
   }
 }

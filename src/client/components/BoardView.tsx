@@ -4,6 +4,7 @@ import Group from './Group.js';
 import { ConnectionRenderer } from './ConnectionRenderer.js';
 import { Card as CardType } from '../../types/Card.js';
 import { Group as GroupType } from '../../types/Group.js';
+import type { Element } from '../../types/Element.js';
 import { View as ViewType } from '../../types/View.js';
 import { Reference as ReferenceType } from '../../types/Reference.js';
 import type { Connection } from '../../types/Connection.js';
@@ -26,14 +27,14 @@ interface BoardViewProps {
   activeViewId?: string;
   onViewChange?: (viewId: string) => void;
   onPlace?: (elementId: string, elementType: 'card' | 'group', x: number, y: number) => void;
-  onCardAdded?: (cards: CardType[]) => void;
-  onGroupAdded?: (groups: GroupType[]) => void;
+  onElementAdded?: (elements: Element[]) => void;
   onCardTextChanged?: (id: string, newText: string) => void;
   onGroupLabelChanged?: (id: string, newLabel: string) => void;
 }
 
 const createDefaultCardModel = (createdBy?: string, createdColor?: string, id?: string): CardType => ({
   id: id || `card-${Date.now()}`,
+  elementType: 'card',
   text: '',
   createdBy,
   createdColor: createdColor || UNKNOWN_USER_COLOR,
@@ -42,6 +43,7 @@ const createDefaultCardModel = (createdBy?: string, createdColor?: string, id?: 
 
 const createDefaultGroupModel = (createdBy?: string, createdColor?: string, id?: string): GroupType => ({
   id: id || `group-${Date.now()}`,
+  elementType: 'group',
   label: '',
   createdBy,
   createdColor: createdColor || UNKNOWN_USER_COLOR,
@@ -49,7 +51,6 @@ const createDefaultGroupModel = (createdBy?: string, createdColor?: string, id?:
 
 const createDefaultReference = (
   elementId: string,
-  elementType: 'card' | 'group',
   x: number,
   y: number,
   viewId: string,
@@ -58,11 +59,10 @@ const createDefaultReference = (
 ): ReferenceType => ({
   id: id || `ref-${Date.now()}`,
   elementId,
-  elementType,
   x: quantizeScalar(x),
   y: quantizeScalar(y),
-  width: elementType === 'card' ? 200 : 440,
-  height: elementType === 'card' ? 45 : 300,
+  width: 200,
+  height: 45,
   viewId,
   groupId,
 });
@@ -75,8 +75,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
   activeViewId: activeViewIdProp,
   onViewChange,
   onPlace,
-  onCardAdded,
-  onGroupAdded,
+  onElementAdded,
   onCardTextChanged,
   onGroupLabelChanged,
 }) => {
@@ -105,6 +104,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
   const cardsRef = useRef<CardType[]>([]);
   const groupsRef = useRef<GroupType[]>([]);
   const referencesRef = useRef<ReferenceType[]>([]);
+  const elementTypeRef = useRef<Map<string, 'card' | 'group'>>(new Map());
   const selectedItemsRef = useRef<string[]>([]);
   const activeViewIdRef = useRef<string | undefined>(undefined);
   const dragRef = useRef<{
@@ -154,8 +154,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
     return fromProp || viewsList.find((v) => v.isDefault) || viewsList[0];
   }, [viewsProp, activeViewIdProp]);
 
-  const cardRefs = useMemo(() => references.filter((r) => r.elementType === 'card' && r.viewId === (activeView?.id ?? '')), [references, activeView?.id]);
-  const groupRefs = useMemo(() => references.filter((r) => r.elementType === 'group' && r.viewId === (activeView?.id ?? '')), [references, activeView?.id]);
+  const cardRefs = useMemo(() => references.filter((r) => elementTypeRef.current.get(r.elementId) === 'card' && r.viewId === (activeView?.id ?? '')), [references, activeView?.id]);
+  const groupRefs = useMemo(() => references.filter((r) => elementTypeRef.current.get(r.elementId) === 'group' && r.viewId === (activeView?.id ?? '')), [references, activeView?.id]);
 
   const refByElementId = useMemo(() => {
     const map = new Map<string, string>();
@@ -183,15 +183,24 @@ export const BoardView: React.FC<BoardViewProps> = ({
     }).filter((g): g is NonNullable<typeof g> => g !== null);
   }, [groupRefs, groups]);
 
-  const applyBoardState = (serverBoard: { cards?: CardType[]; groups?: GroupType[]; views?: ViewType[]; references?: ReferenceType[]; lastUpdated?: string }, users: User[] | null) => {
+  const applyBoardState = (serverBoard: { elements?: Element[]; views?: ViewType[]; references?: ReferenceType[]; lastUpdated?: string }, users: User[] | null) => {
+    const cardElements = serverBoard.elements?.filter((e) => e.elementType === 'card') as CardType[] ?? [];
+    const groupElements = serverBoard.elements?.filter((e) => e.elementType === 'group') as GroupType[] ?? [];
+    const elementTypeMap = new Map<string, 'card' | 'group'>();
+    for (const e of serverBoard.elements ?? []) {
+      elementTypeMap.set(e.id, e.elementType);
+    }
+    elementTypeRef.current = elementTypeMap;
+
     const normalizedBoard = users ? normalizeBoardModel({
-      cards: serverBoard.cards || [],
-      groups: serverBoard.groups || [],
+      elements: serverBoard.elements ?? [],
       lastUpdated: serverBoard.lastUpdated,
-    }, users).board : { cards: serverBoard.cards || [], groups: serverBoard.groups || [], lastUpdated: serverBoard.lastUpdated };
+    }, users).board : { elements: serverBoard.elements ?? [], lastUpdated: serverBoard.lastUpdated };
+    const normalizedCards = normalizedBoard.elements.filter((e) => e.elementType === 'card') as CardType[];
+    const normalizedGroups = normalizedBoard.elements.filter((e) => e.elementType === 'group') as GroupType[];
     mergeBoard({
-      cards: normalizedBoard.cards,
-      groups: normalizedBoard.groups,
+      cards: normalizedCards,
+      groups: normalizedGroups,
       views: serverBoard.views,
       references: serverBoard.references,
       lastUpdated: serverBoard.lastUpdated,
@@ -199,8 +208,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
   };
 
   const mergeBoard = (serverBoard: { cards?: CardType[]; groups?: GroupType[]; views?: ViewType[]; references?: ReferenceType[]; lastUpdated?: string }) => {
-    const serverCards = serverBoard.cards || [];
-    const serverGroups = serverBoard.groups || [];
+    const serverCards = serverBoard.cards ?? [];
+    const serverGroups = serverBoard.groups ?? [];
     const serverViews = serverBoard.views;
     const serverReferences = serverBoard.references;
     setCards(prev => serverCards.map(card => {
@@ -227,9 +236,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
     const loadBoard = async () => {
       try {
         const boardService = BoardService.getInstance();
-        const { cards, groups, views, references } = await boardService.getBoard();
+        const { elements, views, references } = await boardService.getBoard();
         const users = await getDirectoryUsers();
-        applyBoardState({ cards, groups, views, references }, users);
+        applyBoardState({ elements, views, references }, users);
       } catch (err) {
         console.error('Failed to load board:', err);
         setError('Failed to load board data');
@@ -255,17 +264,13 @@ export const BoardView: React.FC<BoardViewProps> = ({
         for (const refId of selectedItems) {
           const ref = refs.find((r) => r.id === refId);
           if (!ref) continue;
-          if (ref.elementType === 'card') {
-            await boardService.deleteReference(ref.id);
-          } else if (ref.elementType === 'group') {
-            await boardService.deleteReference(ref.id);
-          }
+          await boardService.deleteReference(ref.id);
         }
         for (const connId of selectedConnectorIds) {
           const sourceCard = cardsRef.current.find(c => (c.connections || []).some((conn: { id: string }) => conn.id === connId));
           if (sourceCard) {
-            const { cards: updatedCards } = await boardService.removeConnection(sourceCard.id, connId);
-            setCards(updatedCards);
+            const { elements } = await boardService.removeConnection(sourceCard.id, connId);
+            setCards(elements.filter((e) => e.elementType === 'card') as CardType[]);
           }
         }
         setReferences(prev => prev.filter(ref => !selectedItems.includes(ref.id)));
@@ -308,7 +313,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
 
     const unsubscribeDirectory = UserService.getInstance().onUsersDirectoryUpdate((users) => {
       if (!Array.isArray(users)) return;
-      applyBoardState({ cards: cardsRef.current, groups: groupsRef.current, views: viewsProp, references, lastUpdated: lastBoardVersionRef.current || undefined }, users);
+      const allElements = [...cardsRef.current, ...groupsRef.current] as Element[];
+      applyBoardState({ elements: allElements, views: viewsProp, references, lastUpdated: lastBoardVersionRef.current || undefined }, users);
     });
 
     return () => {
@@ -422,10 +428,10 @@ export const BoardView: React.FC<BoardViewProps> = ({
     } else {
       movingIds.push(referenceId);
     }
-    const movingGroupRefs = movingIds.map(id => refs.find((r) => r.id === id)).filter((r): r is ReferenceType => r !== undefined && r.elementType === 'group');
+    const movingGroupRefs = movingIds.map(id => refs.find((r) => r.id === id)).filter((r): r is ReferenceType => r !== undefined && elementTypeRef.current.get(r.elementId) === 'group');
     const movingGroupElementIds = new Set(movingGroupRefs.map((g) => g.elementId));
     refs.forEach((r) => {
-      if (r.elementType === 'card' && r.groupId && movingGroupElementIds.has(r.groupId) && !movingIds.includes(r.id)) {
+      if (elementTypeRef.current.get(r.elementId) === 'card' && r.groupId && movingGroupElementIds.has(r.groupId) && !movingIds.includes(r.id)) {
         movingIds.push(r.id);
       }
     });
@@ -496,8 +502,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
     startPos.forEach((pos, itemId) => {
       const ref = referencesRef.current.find((r) => r.id === itemId);
       if (ref) {
-        if (ref.elementType === 'card') movedCards.push({ id: ref.id, x: quantizeNonNegative(pos.x + dx), y: quantizeNonNegative(pos.y + dy) });
-        else if (ref.elementType === 'group') movedGroups.push({ id: ref.id, x: quantizeNonNegative(pos.x + dx), y: quantizeNonNegative(pos.y + dy) });
+        const et = elementTypeRef.current.get(ref.elementId);
+        if (et === 'card') movedCards.push({ id: ref.id, x: quantizeNonNegative(pos.x + dx), y: quantizeNonNegative(pos.y + dy) });
+        else if (et === 'group') movedGroups.push({ id: ref.id, x: quantizeNonNegative(pos.x + dx), y: quantizeNonNegative(pos.y + dy) });
       }
     });
     if (movedCards.length > 0 || movedGroups.length > 0) {
@@ -552,8 +559,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
         const newBoardX = quantizeNonNegative(pos.x + dx);
         const newBoardY = quantizeNonNegative(pos.y + dy);
         let newGroupId = ref.groupId;
-        if (ref.elementType === 'card') {
-          const targetGroup = refs.find((g) => g.elementType === 'group' && g.viewId === activeViewIdRef.current && insideGroupRef(newBoardX, newBoardY, g));
+        const et = elementTypeRef.current.get(ref.elementId);
+        if (et === 'card') {
+          const targetGroup = refs.find((g) => elementTypeRef.current.get(g.elementId) === 'group' && g.viewId === activeViewIdRef.current && insideGroupRef(newBoardX, newBoardY, g));
           newGroupId = targetGroup ? targetGroup.elementId : undefined;
         }
         refUpdates.push({ id: ref.id, x: newBoardX, y: newBoardY, groupId: newGroupId });
@@ -562,9 +570,9 @@ export const BoardView: React.FC<BoardViewProps> = ({
       // Cards contained inside any moved group travel with it.
       selectedItemsRef.current.forEach(itemId => {
         const ref = refs.find((r) => r.id === itemId);
-        if (!ref || ref.elementType !== 'group') return;
+        if (!ref || elementTypeRef.current.get(ref.elementId) !== 'group') return;
         refs.forEach((cardRef) => {
-          if (cardRef.elementType !== 'card') return;
+          if (elementTypeRef.current.get(cardRef.elementId) !== 'card') return;
           if (refUpdates.some((u) => u.id === cardRef.id)) return;
           if (cardRef.groupId !== ref.elementId) return;
           if (!insideGroupRef(cardRef.x, cardRef.y, ref)) return;
@@ -588,7 +596,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
       if (!ref || !pos) { finishDrag(); return; }
       const newBoardX = quantizeNonNegative(pos.x + dx);
       const newBoardY = quantizeNonNegative(pos.y + dy);
-      const targetGroup = refs.find((g) => g.elementType === 'group' && g.viewId === activeViewIdRef.current && insideGroupRef(newBoardX, newBoardY, g));
+      const targetGroup = refs.find((g) => elementTypeRef.current.get(g.elementId) === 'group' && g.viewId === activeViewIdRef.current && insideGroupRef(newBoardX, newBoardY, g));
       const newGroupId = targetGroup ? targetGroup.elementId : undefined;
       setReferences(prev => prev.map(r => (r.id === activeId ? { ...r, x: newBoardX, y: newBoardY, groupId: newGroupId } : r)));
       await boardService.updateReference(activeId, { x: newBoardX, y: newBoardY, groupId: newGroupId }).catch(err => console.error('Failed to update card position:', err));
@@ -598,7 +606,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
       if (!ref || !pos) { finishDrag(); return; }
       const gx = quantizeNonNegative(pos.x + dx);
       const gy = quantizeNonNegative(pos.y + dy);
-      const movedRefs = refs.filter((r) => r.elementType === 'card' && r.groupId === ref.elementId && insideGroupRef(r.x, r.y, ref));
+      const movedRefs = refs.filter((r) => elementTypeRef.current.get(r.elementId) === 'card' && r.groupId === ref.elementId && insideGroupRef(r.x, r.y, ref));
       const refUpdates: Array<{ id: string; x: number; y: number }> = [{ id: ref.id, x: gx, y: gy }];
       movedRefs.forEach((cardRef) => {
         const cpos = startPos.get(cardRef.id);
@@ -826,8 +834,8 @@ export const BoardView: React.FC<BoardViewProps> = ({
       try {
         const boardService = BoardService.getInstance();
         const connectionId = await boardService.getNewId('conn');
-        const { cards: updatedCards } = await boardService.addConnection(connectionSourceId, targetCardId, connectionId);
-        setCards(updatedCards);
+        const { elements } = await boardService.addConnection(connectionSourceId, targetCardId, connectionId);
+        setCards(elements.filter((e) => e.elementType === 'card') as CardType[]);
         if (connectionId) {
           setEditingConnectorId(connectionId);
           setConnectorNameDraft('');
@@ -892,13 +900,13 @@ export const BoardView: React.FC<BoardViewProps> = ({
         const cardId = await boardService.getNewId('card');
         console.log('BoardView handleBoardClick new card id', cardId);
         const newCard = createDefaultCardModel(currentUser?.name, currentUser?.color, cardId);
-        const { cards } = await boardService.addCard(newCard);
-        console.log('BoardView handleBoardClick addCard result cards=', cards.length);
-        setCards(cards);
-        onCardAdded?.(cards);
+        const { elements } = await boardService.addCard(newCard);
+        console.log('BoardView handleBoardClick addCard result elements=', elements.length);
+        setCards(elements.filter((e) => e.elementType === 'card') as CardType[]);
+        onElementAdded?.(elements);
         const refId = await boardService.getNewId('ref');
         console.log('BoardView handleBoardClick new ref id', refId);
-        const ref = createDefaultReference(cardId, 'card', x, y, viewId, undefined, refId);
+        const ref = createDefaultReference(cardId, x, y, viewId, undefined, refId);
         const { references } = await boardService.addReference(ref);
         console.log('BoardView handleBoardClick addReference result refs=', references.length);
         setReferences(references);
@@ -913,13 +921,13 @@ export const BoardView: React.FC<BoardViewProps> = ({
         const groupId = await boardService.getNewId('group');
         console.log('BoardView handleBoardClick new group id', groupId);
         const newGroup = createDefaultGroupModel(currentUser?.name, currentUser?.color, groupId);
-        const { groups } = await boardService.addGroup(newGroup);
-        console.log('BoardView handleBoardClick addGroup result groups=', groups.length);
-        setGroups(groups);
-        onGroupAdded?.(groups);
+        const { elements } = await boardService.addGroup(newGroup);
+        console.log('BoardView handleBoardClick addGroup result elements=', elements.length);
+        setGroups(elements.filter((e) => e.elementType === 'group') as GroupType[]);
+        onElementAdded?.(elements);
         const refId = await boardService.getNewId('ref');
         console.log('BoardView handleBoardClick new ref id', refId);
-        const ref = createDefaultReference(groupId, 'group', x, y, viewId, undefined, refId);
+        const ref = createDefaultReference(groupId, x, y, viewId, undefined, refId);
         const { references } = await boardService.addReference(ref);
         console.log('BoardView handleBoardClick addReference result refs=', references.length);
         setReferences(references);

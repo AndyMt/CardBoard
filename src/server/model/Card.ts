@@ -7,6 +7,7 @@ export class CardModel {
   static createDefault(_x: number, _y: number, createdBy?: string, createdColor?: string): Card {
     return {
       id: `card-${Date.now()}`,
+      elementType: 'card',
       text: '',
       createdBy,
       createdColor,
@@ -16,6 +17,7 @@ export class CardModel {
   static createFromData(data: Partial<Card>): Card {
     return {
       id: data.id || `card-${Date.now()}`,
+      elementType: 'card',
       text: data.text || '',
       createdBy: data.createdBy,
       createdColor: data.createdColor,

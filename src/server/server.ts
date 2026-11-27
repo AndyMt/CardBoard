@@ -5,6 +5,7 @@ import { Server as SocketServer } from 'socket.io';
 import path from 'path';
 import type { Card } from '../types/Card.js';
 import type { Group } from '../types/Group.js';
+import type { Element } from '../types/Element.js';
 import type { User } from '../types/User.js';
 import type { View } from '../types/View.js';
 import type { Reference } from '../types/Reference.js';
@@ -70,8 +71,7 @@ async function localMutation(
 ): Promise<BoardModel> {
   const saved = await persistence.mutateBoard(async (board) => {
     const draft = {
-      cards: [...board.cards],
-      groups: [...board.groups],
+      elements: [...board.elements],
       views: [...board.views],
       references: [...board.references],
       lastUpdated: board.lastUpdated,
@@ -97,8 +97,7 @@ app.get('/api/board/export', async (req, res) => {
     }
     const board = await getBoardView();
     const csv = buildBoardExportCsv(type as BoardExportType, {
-      cards: board.cards,
-      groups: board.groups,
+      elements: board.elements,
       references: board.references,
     });
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -172,8 +171,7 @@ app.post('/api/board', async (req, res) => {
   try {
     const incoming = req.body as BoardModel;
     const board = await localMutation(() => ({
-      cards: Array.isArray(incoming?.cards) ? incoming.cards : [],
-      groups: Array.isArray(incoming?.groups) ? incoming.groups : [],
+      elements: Array.isArray(incoming?.elements) ? incoming.elements : [],
       views: Array.isArray(incoming?.views) ? incoming.views : [],
       references: Array.isArray(incoming?.references) ? incoming.references.map((r: Reference) => quantizeGeometry(r)) : [],
       lastUpdated: incoming?.lastUpdated || new Date().toISOString(),
@@ -189,7 +187,7 @@ app.post('/api/board/card', async (req, res) => {
   try {
     const card: Card = req.body;
     const board = await localMutation((b) => {
-      b.cards.push(card);
+      b.elements.push(card);
     }, senderSocketId(req));
     res.json(board);
   } catch (error) {
@@ -202,7 +200,7 @@ app.post('/api/board/group', async (req, res) => {
   try {
     const group: Group = req.body;
     const board = await localMutation((b) => {
-      b.groups.push(group);
+      b.elements.push(group);
     }, senderSocketId(req));
     res.json(board);
   } catch (error) {
@@ -217,7 +215,7 @@ app.post('/api/board/reference', async (req, res) => {
     const reference: Reference = req.body;
     const board = await localMutation((b) => {
       const existing = b.references.find(
-        (r) => r.elementId === reference.elementId && r.elementType === reference.elementType && r.viewId === reference.viewId,
+        (r) => r.elementId === reference.elementId && r.viewId === reference.viewId,
       );
       if (existing) {
         Object.assign(existing, { ...reference, id: existing.id });
@@ -270,20 +268,20 @@ app.delete('/api/board/reference/:id', async (req, res) => {
 });
 
 function applyCardUpdate(board: BoardModel, cardId: string, updates: Partial<Card>): boolean {
-  const idx = board.cards.findIndex((card) => card.id === cardId);
+  const idx = board.elements.findIndex((card) => card.id === cardId && card.elementType === 'card');
   if (idx === -1) return false;
-  const next: Card = { ...board.cards[idx] };
+  const next: Card = { ...(board.elements[idx] as Card) };
   if (updates.text !== undefined) next.text = updates.text;
   if (updates.createdBy !== undefined) next.createdBy = updates.createdBy;
   if (updates.createdColor !== undefined) next.createdColor = updates.createdColor;
-  board.cards[idx] = next;
+  board.elements[idx] = next;
   return true;
 }
 
 function applyGroupUpdate(board: BoardModel, groupId: string, updates: Partial<Group>): boolean {
-  const idx = board.groups.findIndex((group) => group.id === groupId);
+  const idx = board.elements.findIndex((group) => group.id === groupId && group.elementType === 'group');
   if (idx === -1) return false;
-  board.groups[idx] = { ...board.groups[idx], ...updates };
+  board.elements[idx] = { ...board.elements[idx], ...updates };
   return true;
 }
 
@@ -317,8 +315,8 @@ app.put('/api/board/card/:id/connections', async (req, res) => {
       return res.status(400).json({ error: 'Cannot connect a card to itself' });
     }
     const board = await localMutation((b) => {
-      const sourceCard = b.cards.find((card) => card.id === cardId);
-      const targetCard = b.cards.find((card) => card.id === targetCardId);
+      const sourceCard = b.elements.find((card) => card.id === cardId && card.elementType === 'card') as Card;
+      const targetCard = b.elements.find((card) => card.id === targetCardId && card.elementType === 'card') as Card;
       if (!sourceCard || !targetCard) return;
       if (!sourceCard.connections) sourceCard.connections = [];
       sourceCard.connections.push({ id: connectionId, targetCardId });
@@ -335,7 +333,7 @@ app.delete('/api/board/card/:id/connections/:connectionId', async (req, res) => 
     const cardId = req.params.id;
     const connectionId = req.params.connectionId;
     const board = await localMutation((b) => {
-      const sourceCard = b.cards.find((card) => card.id === cardId);
+      const sourceCard = b.elements.find((card) => card.id === cardId && card.elementType === 'card') as Card;
       if (!sourceCard || !sourceCard.connections) return;
       sourceCard.connections = sourceCard.connections.filter((c) => c.id !== connectionId);
     }, senderSocketId(req));
@@ -352,7 +350,7 @@ app.put('/api/board/card/:id/connections/:connectionId/name', async (req, res) =
     const connectionId = req.params.connectionId;
     const { name }: { name?: string } = req.body || {};
     const board = await localMutation((b) => {
-      const sourceCard = b.cards.find((card) => card.id === cardId);
+      const sourceCard = b.elements.find((card) => card.id === cardId && card.elementType === 'card') as Card;
       if (!sourceCard || !sourceCard.connections) return;
       const conn = sourceCard.connections.find((c: { id: string }) => c.id === connectionId);
       if (!conn) return;
@@ -407,16 +405,16 @@ app.delete('/api/board/card/:id', async (req, res) => {
     const cardId = req.params.id;
     let found = false;
     const board = await localMutation((b) => {
-      const idx = b.cards.findIndex((card) => card.id === cardId);
+      const idx = b.elements.findIndex((card) => card.id === cardId && card.elementType === 'card');
       if (idx === -1) return;
       found = true;
-      b.cards.splice(idx, 1);
+      b.elements.splice(idx, 1);
       // Remove all view references to this card
       b.references = b.references.filter(
-        (r) => !(r.elementId === cardId && r.elementType === 'card'),
+        (r) => r.elementId !== cardId,
       );
       // Drop connections on other cards that target this card
-      for (const card of b.cards) {
+      for (const card of b.elements.filter((e) => e.elementType === 'card') as Card[]) {
         if (card.connections) {
           card.connections = card.connections.filter((c) => c.targetCardId !== cardId);
         }
@@ -436,13 +434,13 @@ app.delete('/api/board/group/:id', async (req, res) => {
     const groupId = req.params.id;
     let found = false;
     const board = await localMutation((b) => {
-      const idx = b.groups.findIndex((group) => group.id === groupId);
+      const idx = b.elements.findIndex((group) => group.id === groupId && group.elementType === 'group');
       if (idx === -1) return;
       found = true;
-      b.groups.splice(idx, 1);
+      b.elements.splice(idx, 1);
       // Remove all view references to this group
       b.references = b.references.filter(
-        (r) => !(r.elementId === groupId && r.elementType === 'group'),
+        (r) => r.elementId !== groupId,
       );
       // Clear groupId on references that belonged to this group
       b.references = b.references.map((r) => (r.groupId === groupId ? { ...r, groupId: undefined } : r));

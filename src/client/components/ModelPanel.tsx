@@ -1,23 +1,24 @@
 import React from 'react';
 import type { Card } from '../../types/Card.js';
+import type { Element } from '../../types/Element.js';
 import type { Group } from '../../types/Group.js';
 import type { View } from '../../types/View.js';
 
 interface ModelPanelProps {
-  cards: Card[];
-  groups: Group[];
+  elements: Element[];
   activeViewId?: string;
   onPlace?: (elementId: string, elementType: 'card' | 'group', x: number, y: number) => void;
   onDelete?: (elementId: string, elementType: 'card' | 'group') => void;
 }
 
 export const ModelPanel: React.FC<ModelPanelProps> = ({
-  cards,
-  groups,
+  elements,
   activeViewId,
   onPlace,
   onDelete,
 }) => {
+  const cards = elements.filter((e): e is Card => e.elementType === 'card');
+  const groups = elements.filter((e): e is Group => e.elementType === 'group');
   const startDrag = (elementId: string, elementType: 'card' | 'group') => (e: React.DragEvent) => {
     e.dataTransfer.setData('application/cardboard-element', JSON.stringify({ elementId, elementType }));
     e.dataTransfer.effectAllowed = 'move';

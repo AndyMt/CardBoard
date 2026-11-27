@@ -9,15 +9,13 @@ import WebSocketService from './services/WebSocketService.js';
 import BoardService from './services/BoardService.js';
 import type { UsersUpdatePayload, UserDirectoryUpdatePayload } from './services/WebSocketService.js';
 import { User } from '../types/User.js';
-import type { Card } from '../types/Card.js';
-import type { Group } from '../types/Group.js';
+import type { Element } from '../types/Element.js';
 import type { Reference } from '../types/Reference.js';
 import type { View } from '../types/View.js';
 import { quantizeScalar } from '../shared/geometry.js';
 
 interface BoardData {
-  cards: unknown[];
-  groups: unknown[];
+  elements: unknown[];
   views: View[];
   references: unknown[];
 }
@@ -45,9 +43,8 @@ const App: React.FC<AppProps> = () => {
   // Board views and the currently active view (MVC: view selection is controller state)
   const [views, setViews] = useState<View[]>([]);
   const [activeViewId, setActiveViewId] = useState<string>('view-usecase');
-  // Full model (cards + groups) for the left-hand model panel.
-  const [boardCards, setBoardCards] = useState<Card[]>([]);
-  const [boardGroups, setBoardGroups] = useState<Group[]>([]);
+  // Full model (elements) for the left-hand model panel.
+  const [boardElements, setBoardElements] = useState<Element[]>([]);
   const [boardReferences, setBoardReferences] = useState<Reference[]>([]);
 
   const loadBoard = useCallback(async () => {
@@ -68,8 +65,7 @@ const App: React.FC<AppProps> = () => {
         const defaultView = serverViews.find((v) => v.isDefault) || serverViews[0];
         setActiveViewId(defaultView.id);
       }
-      setBoardCards(Array.isArray(board.cards) ? board.cards : []);
-      setBoardGroups(Array.isArray(board.groups) ? board.groups : []);
+      setBoardElements(Array.isArray(board.elements) ? board.elements : []);
       setBoardReferences(Array.isArray(board.references) ? board.references : []);
     } catch (err) {
       console.error('Failed to load board:', err);
@@ -98,16 +94,19 @@ const App: React.FC<AppProps> = () => {
       // boundary drop is not missed.
       let groupId: string | undefined;
       if (elementType === 'card') {
-        const targetGroup = boardReferences.find(
+        const groupElementIds = new Set(
+          boardElements.filter((e) => e.elementType === 'group').map((e) => e.id),
+        );
+        const targetGroupRef = boardReferences.find(
           (g) =>
-            g.elementType === 'group' &&
+            groupElementIds.has(g.elementId) &&
             g.viewId === activeViewId &&
             x >= g.x &&
             x <= g.x + g.width &&
             y >= g.y &&
             y <= g.y + g.height,
         );
-        groupId = targetGroup?.elementId;
+        groupId = targetGroupRef?.elementId;
       }
       try {
         const boardService = BoardService.getInstance();
@@ -115,7 +114,6 @@ const App: React.FC<AppProps> = () => {
         const board = await boardService.addReference({
           id: refId,
           elementId,
-          elementType,
           x: quantizeScalar(x),
           y: quantizeScalar(y),
           width,
@@ -123,15 +121,14 @@ const App: React.FC<AppProps> = () => {
           viewId: activeViewId,
           groupId,
         });
-        setBoardCards(Array.isArray(board.cards) ? board.cards : []);
-        setBoardGroups(Array.isArray(board.groups) ? board.groups : []);
+        setBoardElements(Array.isArray(board.elements) ? board.elements : []);
         setBoardReferences(Array.isArray(board.references) ? board.references : []);
       } catch (err) {
         console.error('Failed to place element:', err);
       }
       window.dispatchEvent(new CustomEvent('board:changed'));
     },
-    [activeViewId, boardReferences],
+    [activeViewId, boardElements, boardReferences],
   );
 
   // Delete a model element (card or group): the server removes the element and all
@@ -141,14 +138,12 @@ const App: React.FC<AppProps> = () => {
       const boardService = BoardService.getInstance();
       try {
         if (elementType === 'card') {
-          const { cards, groups, references } = await boardService.deleteCard(elementId);
-          setBoardCards(cards);
-          setBoardGroups(groups);
+          const { elements, references } = await boardService.deleteCard(elementId);
+          setBoardElements(elements);
           setBoardReferences(references);
         } else {
-          const { cards, groups, references } = await boardService.deleteGroup(elementId);
-          setBoardCards(cards);
-          setBoardGroups(groups);
+          const { elements, references } = await boardService.deleteGroup(elementId);
+          setBoardElements(elements);
           setBoardReferences(references);
         }
       } catch (err) {
@@ -202,8 +197,7 @@ const App: React.FC<AppProps> = () => {
         return;
       }
       if (payload.board) {
-        setBoardCards(Array.isArray(payload.board.cards) ? payload.board.cards : []);
-        setBoardGroups(Array.isArray(payload.board.groups) ? payload.board.groups : []);
+        setBoardElements(Array.isArray(payload.board.elements) ? payload.board.elements : []);
         setBoardReferences(Array.isArray(payload.board.references) ? payload.board.references : []);
       }
       window.dispatchEvent(new CustomEvent('board:changed'));
@@ -318,8 +312,7 @@ const App: React.FC<AppProps> = () => {
       {/* Board view takes remaining space */}
       <div className="flex-1 overflow-hidden pt-12 flex h-full">
         <ModelPanel
-          cards={boardCards}
-          groups={boardGroups}
+          elements={boardElements}
           activeViewId={activeViewId}
           onPlace={handlePlace}
           onDelete={handleDeleteElement}
@@ -334,10 +327,9 @@ const App: React.FC<AppProps> = () => {
             activeViewId={activeViewId}
             onViewChange={handleViewChange}
             onPlace={handlePlace}
-            onCardAdded={setBoardCards}
-            onGroupAdded={setBoardGroups}
-            onCardTextChanged={(id, text) => setBoardCards((prev) => prev.map((c) => c.id === id ? { ...c, text } : c))}
-            onGroupLabelChanged={(id, label) => setBoardGroups((prev) => prev.map((g) => g.id === id ? { ...g, label } : g))}
+            onElementAdded={setBoardElements}
+            onCardTextChanged={(id, text) => setBoardElements((prev) => prev.map((c) => c.id === id ? { ...c, text } : c))}
+            onGroupLabelChanged={(id, label) => setBoardElements((prev) => prev.map((g) => g.id === id ? { ...g, label } : g))}
           />
         </div>
       </div>
