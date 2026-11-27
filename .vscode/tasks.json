@@ -7,7 +7,7 @@
       "command": "powershell",
       "args": [
         "-Command",
-        ". './.kilo/scripts/set-build-number.ps1'; npm run build"
+        ". './scripts/set-build-number.ps1'; npm run build"
       ],
       "problemMatcher": [],
       "group": {
@@ -22,19 +22,31 @@
       "command": "powershell",
       "args": [
         "-Command",
-        ". './.kilo/scripts/set-build-number.ps1'; npm run dev"
+        ". './scripts/set-build-number.ps1'; npm run dev"
       ],
       "problemMatcher": [],
       "group": "none",
       "detail": "Generates BUILD_NUMBER once, then starts the Vite dev server at http://localhost:5173"
     },
     {
-      "label": "PreProd",
+      "label": "Build & Run Dev",
       "type": "shell",
       "command": "powershell",
       "args": [
         "-File",
-        ".kilo/scripts/preprod.ps1"
+        "scripts/build-run-dev.ps1"
+      ],
+      "problemMatcher": [],
+      "group": "none",
+      "detail": "Generates BUILD_NUMBER once, runs build:all, then starts the Vite dev server at http://localhost:5173"
+    },
+    {
+      "label": "Build & Run PreProd",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-File",
+        "scripts/preprod.ps1"
       ],
       "problemMatcher": [],
       "group": "none",
@@ -70,7 +82,7 @@
       "command": "powershell",
       "args": [
         "-Command",
-        ". './.kilo/scripts/set-build-number.ps1'; docker login ghcr.io; docker build --no-cache --build-arg BUILD_NUMBER=$env:BUILD_NUMBER -t ghcr.io/andymt/cardboard:$env:BUILD_NUMBER -t ghcr.io/andymt/cardboard:latest .; docker push ghcr.io/andymt/cardboard:$env:BUILD_NUMBER; docker push ghcr.io/andymt/cardboard:latest"
+        ". './scripts/set-build-number.ps1'; docker login ghcr.io; docker build --no-cache --build-arg BUILD_NUMBER=$env:BUILD_NUMBER -t ghcr.io/andymt/cardboard:$env:BUILD_NUMBER -t ghcr.io/andymt/cardboard:latest .; docker push ghcr.io/andymt/cardboard:$env:BUILD_NUMBER; docker push ghcr.io/andymt/cardboard:latest"
       ],
       "problemMatcher": [],
       "group": "build",
