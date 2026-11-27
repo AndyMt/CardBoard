@@ -26,6 +26,7 @@ interface CardProps {
   createdBy?: string;
   createdColor?: string;
   autoFocus?: boolean;
+  groupId?: string;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -49,6 +50,7 @@ export const Card: React.FC<CardProps> = ({
   createdBy,
   createdColor,
   autoFocus = false,
+  groupId,
 }) => {
   const [cardText, setCardText] = useState(text);
   const [isEditing, setIsEditing] = useState(false);
@@ -173,7 +175,7 @@ export const Card: React.FC<CardProps> = ({
       onMouseDown={(e) => { if (tool !== 'connection') handleMouseDown(e); handleCardMouseDown(e); }}
       onMouseUp={(e) => { if (tool !== 'connection') handleMouseUp(e); }}
       onClick={(e) => e.stopPropagation()}
-      className={`absolute border-2 border-solid border-gray-800 rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}
+      className={`absolute border-2 border-solid ${groupId ? 'border-gray-500' : 'border-gray-800'} rounded-lg bg-white flex flex-col overflow-hidden card-component ${isSelected ? 'selected' : ''}`}
     >
       {/* Drag handle - 8px visible bar, 14px active area */}
       <div

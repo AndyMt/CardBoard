@@ -1001,6 +1001,7 @@ export const BoardView: React.FC<BoardViewProps> = ({
             createdBy={card.createdBy}
             createdColor={card.createdColor}
             autoFocus={autoFocusId === card.id}
+            groupId={ref?.groupId}
           />
         );
       })}

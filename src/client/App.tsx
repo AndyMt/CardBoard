@@ -89,40 +89,43 @@ const App: React.FC<AppProps> = () => {
   const handlePlace = useCallback(
     async (elementId: string, elementType: 'card' | 'group', x: number, y: number) => {
       if (!activeViewId) return;
-      const existing = boardReferences.find(
-        (r) => r.elementId === elementId && r.elementType === elementType && r.viewId === activeViewId,
-      );
       const width = elementType === 'card' ? 200 : 440;
       const height = elementType === 'card' ? 45 : 300;
+
+      // Link a dropped card to the group it lands on: groupId is the target
+      // group's elementId, stored as the sole source of truth on the reference.
+      // Hit-test uses raw drop coordinates (quantization only at storage) so a
+      // boundary drop is not missed.
+      let groupId: string | undefined;
+      if (elementType === 'card') {
+        const targetGroup = boardReferences.find(
+          (g) =>
+            g.elementType === 'group' &&
+            g.viewId === activeViewId &&
+            x >= g.x &&
+            x <= g.x + g.width &&
+            y >= g.y &&
+            y <= g.y + g.height,
+        );
+        groupId = targetGroup?.elementId;
+      }
       try {
-        if (existing) {
-          const boardService = BoardService.getInstance();
-          const board = await boardService.updateReference(existing.id, {
-            x: quantizeScalar(x),
-            y: quantizeScalar(y),
-            width,
-            height,
-          });
-          setBoardCards(Array.isArray(board.cards) ? board.cards : []);
-          setBoardGroups(Array.isArray(board.groups) ? board.groups : []);
-          setBoardReferences(Array.isArray(board.references) ? board.references : []);
-        } else {
-          const boardService = BoardService.getInstance();
-          const refId = await boardService.getNewId('ref');
-          const board = await boardService.addReference({
-            id: refId,
-            elementId,
-            elementType,
-            x: quantizeScalar(x),
-            y: quantizeScalar(y),
-            width,
-            height,
-            viewId: activeViewId,
-          });
-          setBoardCards(Array.isArray(board.cards) ? board.cards : []);
-          setBoardGroups(Array.isArray(board.groups) ? board.groups : []);
-          setBoardReferences(Array.isArray(board.references) ? board.references : []);
-        }
+        const boardService = BoardService.getInstance();
+        const refId = await boardService.getNewId('ref');
+        const board = await boardService.addReference({
+          id: refId,
+          elementId,
+          elementType,
+          x: quantizeScalar(x),
+          y: quantizeScalar(y),
+          width,
+          height,
+          viewId: activeViewId,
+          groupId,
+        });
+        setBoardCards(Array.isArray(board.cards) ? board.cards : []);
+        setBoardGroups(Array.isArray(board.groups) ? board.groups : []);
+        setBoardReferences(Array.isArray(board.references) ? board.references : []);
       } catch (err) {
         console.error('Failed to place element:', err);
       }
